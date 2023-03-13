@@ -7,7 +7,6 @@ function ellipse(d::UPbAnalysis;
     a, b, θ = ellipseparameters(d, sigmalevel)
     return ellipse(d.μ[1], d.μ[2], a, b, θ; npoints)
 end
-
 # Make an ellipse if given x and y positions, major and minor axes, and rotation
 function ellipse(x₀, y₀, a, b, θ; npoints::Integer=100)
     t = range(0, 2π, length=npoints)
@@ -17,6 +16,7 @@ function ellipse(x₀, y₀, a, b, θ; npoints::Integer=100)
 end
 export ellipse
 
+# Non-exported function: return semimajor and minor axes for a given U-Pb analysis
 function ellipseparameters(d::UPbAnalysis{T}, sigmalevel::Number) where T
     if !any(isnan, d.Σ)
         # Calculate eigenvectors and eigenvalues from the covariance matrix.
