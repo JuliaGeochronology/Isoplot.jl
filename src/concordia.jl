@@ -18,24 +18,25 @@ export ellipse
 
 # Non-exported function: return semimajor and minor axes for a given U-Pb analysis
 function ellipseparameters(d::UPbAnalysis{T}, sigmalevel::Number) where T
-    if !any(isnan, d.Σ)
-        # Calculate eigenvectors and eigenvalues from the covariance matrix.
-        # V: matrix of eigenvectors, D: diagonal matrix of eigenvalues
-        F = eigen(d.Σ)
-        # Find index of semimajor and semiminor axes
-        major = argmax(F.values)
-        minor = argmin(F.values)
-        v = view(F.vectors, :, major)
+   
+    # Quickly exit if any NaNs
+    any(isnan, d.Σ) && return T.((NaN, NaN, NaN))
+        
+    # Calculate eigenvectors and eigenvalues from the covariance matrix.
+    # V: matrix of eigenvectors, D: diagonal matrix of eigenvalues
+    F = eigen(d.Σ)
+    # Find index of semimajor and semiminor axes
+    major = argmax(F.values)
+    minor = argmin(F.values)
+    v = view(F.vectors, :, major)
 
-        # Calculate angle of major axis of ellipse from horizontal
-        θ = atan(v[2]/v[1])
+    # Calculate angle of major axis of ellipse from horizontal
+    θ = atan(v[2]/v[1])
 
-        # Calculate length of semimajor and semiminor axes for given p-value
-        a = T(sigmalevel)*sqrt(abs(F.values[major]))
-        b = T(sigmalevel)*sqrt(abs(F.values[minor]))
+    # Calculate length of semimajor and semiminor axes for given p-value
+    a = T(sigmalevel)*sqrt(abs(F.values[major]))
+    b = T(sigmalevel)*sqrt(abs(F.values[minor]))
 
-        return a, b, θ
-    else
-        return T.((NaN, NaN, NaN))
-    end
+    return a, b, θ
+
 end
