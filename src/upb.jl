@@ -1,11 +1,11 @@
-# Decay constants
+# Decay constants:
 # Uranium 238 decay constant and uncertainty
-const λ238U = log(2)/(4.4683*10^9) ± log(2)/(4.4683*10^9)*0.0024/4.4683 # Jaffey, 1/Years
+const λ238U = log(2)/(4.4683*10^3) ± log(2)/(4.4683*10^3)*0.0024/4.4683 # Jaffey, 1/Myr
 export λ238U
 
 # Uranium 235 decay constant and uncertainty
-# const λ235U = log(2)/(7.0381*10^8) ± log(2)/(7.0381*10^8)*0.0048/7.0381 # Jaffey, 1/Years
-const λ235U = 9.8569E-10 ± 0.0017E-10 # Schoene, 1/Years [U238 years]
+# const λ235U = log(2)/(7.0381*10^2) ± log(2)/(7.0381*10^2)*0.0048/7.0381 # Jaffey, 1/Myr
+const λ235U = 9.8569E-4 ± 0.0017E-4 # Schoene, 1/Myr [U-238 years]
 export λ235U
 
 # Core type and constructors for U-Pb analyses
