@@ -2,6 +2,7 @@ module Isoplot
 
     using LinearAlgebra
     using Distributions
+    using Measurements
     using Plots: Shape
 
     include("upb.jl")
