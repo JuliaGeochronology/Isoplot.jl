@@ -25,4 +25,13 @@ using Test
     @test e1.x ≈ x
     @test e1.y ≈ y
 
+    tₗₗ = 35
+    ui = upper_intercept(tₗₗ, d1)
+    @test ui isa Isoplot.Measurement
+
+    N = 10000
+    uis = upper_intercept(tₗₗ, d1, N)
+    @test uis isa Vector{Float64}
+    @test (sum(uis)/length(uis)) ≈ ui.val atol=(4*ui.err/sqrt(N))
+
 end
