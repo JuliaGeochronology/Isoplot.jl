@@ -4,7 +4,7 @@ CurrentModule = Isoplot
 
 # Isoplot
 
-Documentation for [Isoplot.jl](https://github.com/JuliaGeoIsoplotology/Isoplot.jl).
+Documentation for [Isoplot.jl](https://github.com/JuliaGeochronology/Isoplot.jl).
 
 ```@index
 ```
