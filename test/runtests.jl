@@ -35,4 +35,22 @@ using Test, Statistics
     @test mean(uis) ≈ ui.val atol=(4*ui.err/sqrt(N))
     @test std(uis) ≈ ui.err rtol=0.03
 
+    # Test upper and lower intercepts of multiple-sample concordia arrays
+    d = [UPbAnalysis(22.6602, 0.0175, 0.40864, 0.00017, 0.83183)
+         UPbAnalysis(33.6602, 0.0175, 0.50864, 0.00017, 0.83183)]
+
+    uis = upper_intercept(d, N)
+    @test mean(uis) ≈ 4601.82 atol=0.1
+    @test std(uis) ≈ 1.53 atol=0.1
+
+    lis = lower_intercept(d, N)
+    @test mean(lis) ≈ 1318.12 atol=0.1
+    @test std(lis) ≈ 2.04 atol=0.1
+
+    uis, lis = intercepts(d, N)
+    @test mean(uis) ≈ 4601.82 atol=0.1
+    @test std(uis) ≈ 1.53 atol=0.1
+    @test mean(lis) ≈ 1318.12 atol=0.1
+    @test std(lis) ≈ 2.04 atol=0.1
+
 end

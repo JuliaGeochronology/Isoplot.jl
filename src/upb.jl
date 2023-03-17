@@ -48,7 +48,6 @@ function UPbAnalysis(r²⁰⁷Pb²³⁵U::Number, σ²⁰⁷Pb²³⁵U::Number, 
     μ = T[r²⁰⁷Pb²³⁵U, r²⁰⁶Pb²³⁸U]
     UPbAnalysis(μ, Σ)
 end
-export UPbAnalysis
 
 
 # Add custom methods to Base.rand to sample from a UPbAnalysis

@@ -14,7 +14,6 @@ function ellipse(x₀, y₀, a, b, θ; npoints::Integer=50)
     y = a*sin(θ)*cos.(t) .+ b*cos(θ)*sin.(t) .+ y₀
     return Shape(x, y)
 end
-export ellipse
 
 # Non-exported function: return semimajor and minor axes for a given U-Pb analysis
 function ellipseparameters(d::UPbAnalysis{T}, sigmalevel::Number) where T
@@ -74,13 +73,13 @@ function upper_intercept(tₗₗ::Number, s::Shape{T,T};
 end
 
 function upper_intercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integer) where T
-    results = zeros(T, nresamplings)
+    ui = zeros(T, nresamplings)
 
     # Get ratios
     r75₀, r68₀ = d.μ
     # Return early if our lead loss time is too young or anything is NaN'd
-    tₗₗ < log(r68₀+1)/λ238U.val || return fill!(results, T(NaN))
-    tₗₗ < log(r75₀+1)/λ235U.val || return fill!(results, T(NaN))
+    tₗₗ < log(r68₀+1)/λ238U.val || return fill!(uis, T(NaN))
+    tₗₗ < log(r75₀+1)/λ235U.val || return fill!(uis, T(NaN))
 
     # Calculate isotopic ratios of our time of Pb-loss
     r75ₗₗ = exp(λ235U.val*tₗₗ) - 1
@@ -91,12 +90,59 @@ function upper_intercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integ
     for i in axes(samples,2)
         r75, r68 = view(samples, :, i)
         slope = (r68-r68ₗₗ)/(r75-r75ₗₗ)
-        ui = find_zero(t->Δ68(t,slope,r75,r68), 4.567e3)
-        results[i] = ui
+        ui[i] = find_zero(t->Δ68(t,slope,r75,r68), 4.567e3)
     end
-    return results
+    return ui
 end
 
 upper_intercept(tₗₗ::Number, d::UPbAnalysis) = upper_intercept(tₗₗ, ellipse(d; npoints=100))
 
-export upper_intercept
+function upper_intercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+    ui = zeros(T, nresamplings)
+    slopes, intercepts = fit_lines(d, nresamplings)
+    for i in eachindex(slopes, intercepts)
+        ui[i] = find_zero(t->Δ68(t,slopes[i],zero(T),intercepts[i]), 4567.0)
+    end
+    return ui
+end
+
+function lower_intercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+    li = zeros(T, nresamplings)
+    slopes, intercepts = fit_lines(d, nresamplings)
+    for i in eachindex(slopes, intercepts)
+        li[i] = find_zero(t->Δ68(t,slopes[i],zero(T),intercepts[i]), 0.0)
+    end
+    return li
+end
+
+function intercepts(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+    ui, li = zeros(T, nresamplings), zeros(T, nresamplings)
+    slopes, intercepts = fit_lines(d, nresamplings)
+    for i in eachindex(slopes, intercepts)
+        ui[i] = find_zero(t->Δ68(t,slopes[i],zero(T),intercepts[i]), 4567.0)
+        li[i] = find_zero(t->Δ68(t,slopes[i],zero(T),intercepts[i]), 0.0)
+    end
+    return ui, li
+end
+
+function fit_lines(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+    nanalyses = length(d)
+    # Vectors of ratios
+    r75, r68 = zeros(T, nanalyses), zeros(T, nanalyses)
+    # Draw random ratios from each analysis
+    randratios = rand.(d, nresamplings)
+    # Allocate temporary arrays for regression
+    A = ones(T, nanalyses, 2)
+    # Allocate output slopes and intercepts
+    slopes, intercepts = zeros(T, nresamplings), zeros(T, nresamplings)
+    @inbounds for n in eachindex(slopes, intercepts)
+        for i in eachindex(d, randratios)
+            r75[i] = randratios[i][1,n]
+            r68[i] = randratios[i][2,n]
+        end
+        A[:,2] .= r75
+        ϕ = A\r68
+        slopes[n], intercepts[n] = ϕ[2], ϕ[1]
+    end
+    return slopes, intercepts
+end
