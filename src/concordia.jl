@@ -137,11 +137,11 @@ function fit_lines(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     slopes, intercepts = zeros(T, nresamplings), zeros(T, nresamplings)
     @inbounds for n in eachindex(slopes, intercepts)
         for i in eachindex(d, randratios)
-            r75[i] = randratios[i][1,n]
+            A[i,2] = randratios[i][1,n]
             r68[i] = randratios[i][2,n]
         end
-        A[:,2] .= r75
-        ϕ = A\r68
+        # Linear regression, equivalent to ϕ = A\r68
+        ϕ = ldiv!(lu!(A), r68)
         slopes[n], intercepts[n] = ϕ[2], ϕ[1]
     end
     return slopes, intercepts
