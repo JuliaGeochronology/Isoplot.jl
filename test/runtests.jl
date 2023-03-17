@@ -1,5 +1,5 @@
 using Isoplot
-using Test
+using Test, Statistics
 
 @testset "UPb" begin
     r75 = 22.6602
@@ -32,6 +32,7 @@ using Test
     N = 10000
     uis = upper_intercept(tₗₗ, d1, N)
     @test uis isa Vector{Float64}
-    @test (sum(uis)/length(uis)) ≈ ui.val atol=(4*ui.err/sqrt(N))
+    @test mean(uis) ≈ ui.val atol=(4*ui.err/sqrt(N))
+    @test std(uis) ≈ ui.err rtol=0.03
 
 end

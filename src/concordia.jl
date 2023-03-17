@@ -1,7 +1,7 @@
 
 # Make an ellipse from a UPbAnalysis object
 function ellipse(d::UPbAnalysis;
-        sigmalevel=sqrt(invlogccdf(Chisq(2), log(0.05))),
+        sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
         npoints::Integer=50,
     )
     a, b, θ = ellipseparameters(d, sigmalevel)
@@ -43,7 +43,10 @@ end
 
 Δ68(t,slope,r75,r68) = slope * (exp(λ235U.val*t) - 1 - r75) + r68 - exp(λ238U.val*t) + 1
 
-function upper_intercept(tₗₗ::Number, s::Shape{T,T}) where T
+function upper_intercept(tₗₗ::Number, s::Shape{T,T};
+        sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
+    ) where T
+
     # Get ratios from our ellipse
     r75, r68 = s.x, s.y
     r75₀, r68₀ = center(s)
@@ -67,7 +70,7 @@ function upper_intercept(tₗₗ::Number, s::Shape{T,T}) where T
     ui₋ = find_zero(t->Δ68(t,slope₋,r75₋,r68₋), 4.567e3)
     ui₊ = find_zero(t->Δ68(t,slope₊,r75₊,r68₊), 4.567e3)
 
-    return ui₀ ± (ui₊ - ui₋)/2
+    return ui₀ ± (ui₊ - ui₋)/2sigmalevel
 end
 
 function upper_intercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integer) where T
@@ -94,6 +97,6 @@ function upper_intercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integ
     return results
 end
 
-upper_intercept(tₗₗ::Number, d::UPbAnalysis) = upper_intercept(tₗₗ, ellipse(d; sigmalevel=1, npoints=100))
+upper_intercept(tₗₗ::Number, d::UPbAnalysis) = upper_intercept(tₗₗ, ellipse(d; npoints=100))
 
 export upper_intercept
