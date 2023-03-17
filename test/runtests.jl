@@ -53,4 +53,8 @@ using Test, Statistics
     @test mean(lis) ≈ 1318.12 atol=0.1
     @test std(lis) ≈ 2.04 atol=0.1
 
+    ϕ = linreg(1:10, 1:10)
+    @test ϕ[1] ≈ 0 atol=1e-12
+    @test ϕ[2] ≈ 1 atol=1e-12
+
 end

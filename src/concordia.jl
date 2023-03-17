@@ -127,8 +127,8 @@ end
 
 function fit_lines(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     nanalyses = length(d)
-    # Vectors of ratios
-    r75, r68 = zeros(T, nanalyses), zeros(T, nanalyses)
+    # Vector of ratios
+    r68 = zeros(T, nanalyses)
     # Draw random ratios from each analysis
     randratios = rand.(d, nresamplings)
     # Allocate temporary arrays for regression
@@ -140,8 +140,8 @@ function fit_lines(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
             A[i,2] = randratios[i][1,n]
             r68[i] = randratios[i][2,n]
         end
-        # Linear regression, equivalent to ϕ = A\r68
-        ϕ = ldiv!(lu!(A), r68)
+        # Linear regression
+        ϕ = A\r68 # or perhgaps alternatively in some cases ϕ = ldiv!(lu!(A), r68)?
         slopes[n], intercepts[n] = ϕ[2], ϕ[1]
     end
     return slopes, intercepts

@@ -6,6 +6,9 @@ module Isoplot
     using Plots: Shape, center
     using Roots
 
+    include("regression.jl")
+    export linreg
+
     include("upb.jl")
     export UPbAnalysis
 
