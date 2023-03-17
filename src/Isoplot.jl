@@ -7,12 +7,14 @@ module Isoplot
     using Roots
 
     include("regression.jl")
-    export linreg
+    export linreg, yorkfit
 
     include("upb.jl")
     export UPbAnalysis
 
     include("concordia.jl")
     export ellipse, upper_intercept, lower_intercept, intercepts
+
+    include("show.jl")
 
 end # module Isoplot

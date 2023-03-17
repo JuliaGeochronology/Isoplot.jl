@@ -1,7 +1,7 @@
 using Isoplot
 using Test, Statistics
 
-@testset "UPb" begin
+@testset "U-Pb" begin
     r75 = 22.6602
     σ75 = 0.017516107998
     r68 = 0.408643
@@ -52,9 +52,33 @@ using Test, Statistics
     @test std(uis) ≈ 1.53 atol=0.1
     @test mean(lis) ≈ 1318.12 atol=0.1
     @test std(lis) ≈ 2.04 atol=0.1
+end
 
+@testset "Regression" begin
+    # Simple linear regression
     ϕ = linreg(1:10, 1:10)
     @test ϕ[1] ≈ 0 atol=1e-12
     @test ϕ[2] ≈ 1 atol=1e-12
+
+    # York (1968) fit
+    x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
+    y = [0.8742, 2.1626, 3.042, 3.829, 5.0116, 5.5614, 6.7675, 7.8856, 9.6414, 10.4955]
+    fobj = yorkfit(x, ones(10)/4, y, ones(10)/4)
+    @test fobj isa Isoplot.YorkFit
+    @test fobj.intercept.val ≈-0.23498964673701916
+    @test fobj.intercept.err ≈ 0.02250863813481163
+    @test fobj.slope.val ≈ 1.041124018512526
+    @test fobj.slope.err ≈ 0.0035683808205783673
+    @test fobj.mswd ≈ 1.1419901440278089
+    @test display(fobj) != NaN
+
+    # x = (1:100) .+ randn.()
+    # y = 2*(1:100) .+ randn.()
+    # fobj = yorkfit(x, ones(100), y, ones(100))
+    # @test fobj isa Isoplot.YorkFit
+    # @test fobj.intercept.val ≈ 0 atol = 1
+    # @test fobj.slope.val ≈ 2 atol = 0.1
+    # @test fobj.mswd ≈ 1 atol = 0.5
+    # @test display(fobj) != NaN
 
 end
