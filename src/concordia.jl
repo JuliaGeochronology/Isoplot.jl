@@ -49,7 +49,7 @@ function upper_intercept(tₗₗ::Number, s::Shape{T,T};
     # Get ratios from our ellipse
     r75, r68 = s.x, s.y
     r75₀, r68₀ = center(s)
-    # Return early if our lead loss time is too young or anything is NaN'd
+    # Return early if our lead loss time is too old or anything is NaN'd
     tₗₗ < log(r68₀+1)/λ238U.val || return T(NaN) ± T(NaN)
     tₗₗ < log(r75₀+1)/λ235U.val || return T(NaN) ± T(NaN)
 
@@ -66,6 +66,8 @@ function upper_intercept(tₗₗ::Number, s::Shape{T,T};
     slope₊ = (r68₊-r68ₗₗ)/(r75₊-r75ₗₗ)
 
     ui₀ = find_zero(t->Δ68(t,slope₀,r75₀,r68₀), 4.567e3)
+    # Return early if our upper intercept is younger than the analysis
+    ui₀ > log(r68₀+1)/λ238U.val || return T(NaN) ± T(NaN)
     ui₋ = find_zero(t->Δ68(t,slope₋,r75₋,r68₋), 4.567e3)
     ui₊ = find_zero(t->Δ68(t,slope₊,r75₊,r68₊), 4.567e3)
 
@@ -77,7 +79,7 @@ function upper_intercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integ
 
     # Get ratios
     r75₀, r68₀ = d.μ
-    # Return early if our lead loss time is too young or anything is NaN'd
+    # Return early if our lead loss time is too old or anything is NaN'd
     tₗₗ < log(r68₀+1)/λ238U.val || return fill!(uis, T(NaN))
     tₗₗ < log(r75₀+1)/λ235U.val || return fill!(uis, T(NaN))
 
