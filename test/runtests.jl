@@ -75,7 +75,7 @@ end
     @test mswd(x .± σx) ≈ 38.44179426844445
 
     # Simple linear egression
-    ϕ = Isoplot.linreg(1:10, 1:10)
+    ϕ = linreg(1:10, 1:10)
     @test ϕ[1] ≈ 0 atol=1e-12
     @test ϕ[2] ≈ 1 atol=1e-12
 

@@ -13,7 +13,7 @@ module Isoplot
 
     include("regression.jl")
     export wmean, awmean, gwmean, mswd
-    export yorkfit
+    export linreg, yorkfit
 
     include("upb.jl")
     export UPbAnalysis, age, discordance
