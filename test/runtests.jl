@@ -1,5 +1,6 @@
 using Isoplot
 using Test, Statistics
+using Plots
 
 @testset "U-Pb" begin
     r75 = 22.6602
@@ -80,5 +81,37 @@ end
     # @test fobj.slope.val ≈ 2 atol = 0.1
     # @test fobj.mswd ≈ 1 atol = 0.5
     # @test display(fobj) != NaN
+
+end
+
+using ImageIO, FileIO
+@testset "Plotting" begin
+    data = [ 1.02849 0.0006788034 0.11781 3.946635e-5 0.959
+             1.02826 0.0013932923 0.11771 5.120385e-5 0.693
+             1.02716 0.0006727898 0.11768 3.8246e-5 0.972
+             1.02694 0.001899839 0.11767 9.707775e-5 0.65
+             1.02712 0.0009090012 0.11763 4.881645e-5 0.797
+             1.02551 0.00081528045 0.11756 4.1146e-5 0.859
+             1.02653 0.0014679379 0.11754 7.69887e-5 0.691
+             1.02451 0.0006556864 0.11742 3.75744e-5 0.962
+             1.02039 0.00309688365 0.11738 9.21433e-5 0.552
+             1.01931 0.0008460273 0.11699 4.21164e-5 0.837
+             1.01996 0.000662974 0.11689 3.798925e-5 0.971
+             1.01914 0.0007235894 0.11689 3.798925e-5 0.929
+             1.01309 0.0006686394 0.11614 3.77455e-5 0.962
+             1.01285 0.001397733 0.11594 5.33324e-5 0.645
+             1.00183 0.0008315189 0.11502 3.91068e-5 0.856
+             1.00198 0.0006663167 0.11496 3.7362e-5 0.968]
+
+    d = UPbAnalysis.(eachcol(data)...,)
+    h = plot(framestyle=:box)
+    plot!(h, ellipse.(d), color=:blue, alpha=0.3, label="")
+    concordiacurve!(h)
+    savefig(h, "concordia.png")
+
+    # test against known image
+    img_known = load("concordia_known.png")
+    img = load("concordia.png")
+    @test img_known ≈ img rtol=0.1
 
 end

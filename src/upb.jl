@@ -1,8 +1,8 @@
 # Decay constants:
-# const λ235U = log(2)/(7.0381*10^2) ± log(2)/(7.0381*10^2)*0.0048/7.0381 # Jaffey, 1/Myr
 const λ238U = log(2)/(4.4683*10^3) ± log(2)/(4.4683*10^3)*0.0024/4.4683 # Jaffey, 1/Myr
 const λ235U = 9.8569E-4 ± 0.0017E-4 # Schoene, 1/Myr [U-238 years]
-export λ238U, λ235U
+const λ235U_jaffey = log(2)/(7.0381*10^2) ± log(2)/(7.0381*10^2)*0.0048/7.0381 # Jaffey, 1/Myr
+export λ238U, λ235U, λ235U_jaffey
 
 """
 ```

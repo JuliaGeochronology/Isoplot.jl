@@ -3,8 +3,9 @@ module Isoplot
     using LinearAlgebra
     using Distributions
     using Measurements
-    using Plots: Shape, center
     using Roots
+    using Plots: Shape, center
+    import Plots
 
     include("regression.jl")
     export linreg, yorkfit
@@ -14,6 +15,9 @@ module Isoplot
 
     include("concordia.jl")
     export ellipse, upper_intercept, lower_intercept, intercepts
+
+    include("plotting.jl")
+    export concordiacurve!
 
     include("show.jl")
 
