@@ -12,6 +12,7 @@ module Isoplot
     export ellipse
 
     include("regression.jl")
+    export wmean, awmean, gwmean
     export linreg, yorkfit
 
     include("upb.jl")

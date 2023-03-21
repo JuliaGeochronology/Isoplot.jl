@@ -47,5 +47,10 @@ function ellipseparameters(d::Analysis{T}, sigmalevel::Number) where T
     b = T(sigmalevel)*sqrt(abs(F.values[minor]))
 
     return a, b, θ
-
 end
+
+# Convenience methods for converting between Measurements and values and errors
+@inline val(m::Measurement{T}) where {T} = m.val::T
+@inline err(m::Measurement{T}) where {T} = m.err::T
+val(x::Vector{<:Measurement}) = [val(m) for m in x]
+err(x::Vector{<:Measurement}) = [err(m) for m in x]

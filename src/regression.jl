@@ -1,4 +1,93 @@
-# Simple linear regression
+## --- Weighted means
+
+"""
+```julia
+wμ, wσ, mswd = wmean(μ, σ; corrected=false)
+wμ ± wσ, mswd = wmean(x; corrected=false)
+```
+The weighted mean, with or without the "geochronologist's MSWD correction" to uncertainty.
+You may specify your means and standard deviations either as separate vectors `μ` and `σ`,
+or as a single vector `x` of `Measurement`s equivalent to `x = μ .± σ`
+
+In all cases, `σ` is assumed to reported as _actual_ sigma (i.e., 1-sigma).
+
+### Examples
+```julia
+julia> x = randn(10)
+10-element Vector{Float64}:
+  0.4612989881720301
+ -0.7255529837975242
+ -0.18473979056481055
+ -0.4176427262202118
+ -0.21975911391551833
+ -1.6250003193791873
+ -1.6185557291787287
+  0.25315988825847513
+ -0.4979804844182867
+  1.3565281078086726
+
+julia> y = ones(10);
+
+julia> wmean(x, y)
+(-0.321824416323509, 0.31622776601683794, 0.8192171477885678)
+
+julia> wmean(x .± y)
+(-0.32 ± 0.32, 0.8192171477885678)
+
+julia> wmean(x .± y./10)
+(-0.322 ± 0.032, 81.9217147788568)
+
+julia> wmean(x .± y./10, corrected=true)
+(-0.32 ± 0.29, 81.9217147788568)
+```
+"""
+function wmean(μ::AbstractArray{T}, σ::AbstractArray; corrected=false) where {T}
+    sum_of_values = sum_of_weights = χ² = zero(float(T))
+    @inbounds for i in eachindex(μ,σ)
+        σ² = σ[i]^2
+        sum_of_values += μ[i] / σ²
+        sum_of_weights += one(T) / σ²
+    end
+    wμ = sum_of_values / sum_of_weights
+
+    @inbounds for i in eachindex(μ,σ)
+        χ² += (μ[i] - wμ)^2 / σ[i]^2
+    end
+    mswd = χ² / (length(μ)-1)
+    wσ = if corrected
+        sqrt(mswd / sum_of_weights)
+    else
+        sqrt(1 / sum_of_weights)
+    end
+    return wμ, wσ, mswd
+end
+function wmean(x::AbstractArray{Measurement{T}}; corrected=false) where {T}
+    sum_of_values = sum_of_weights = χ² = zero(float(T))
+    @inbounds for i in eachindex(x)
+        μ, σ² = val(x[i]), err(x[i])^2
+        sum_of_values += μ / σ²
+        sum_of_weights += one(T) / σ²
+    end
+    wμ = sum_of_values / sum_of_weights
+
+    @inbounds for i in eachindex(x)
+        μ, σ = val(x[i]), err(x[i])
+        χ² += (μ - wμ)^2 / σ^2
+    end
+    mswd = χ² / (length(x)-1)
+    wσ = if corrected
+        sqrt(mswd / sum_of_weights)
+    else
+        sqrt(1 / sum_of_weights)
+    end
+    return wμ ± wσ, mswd
+end
+
+# Legacy methods, for backwards compatibility
+awmean(args...) = wmean(args...; corrected=false)
+gwmean(args...) = wmean(args...; corrected=true)
+
+## ---  Simple linear regression
 
 function linreg(x::AbstractVector{T}, y::AbstractVector{<:Number}) where {T<:Number}
     A = similar(x, length(x), 2)
@@ -6,7 +95,6 @@ function linreg(x::AbstractVector{T}, y::AbstractVector{<:Number}) where {T<:Num
     A[:,2] .= x
     return A\y
 end
-
 
 ## -- The York (1968) two-dimensional linear regression with x and y uncertainties
     # as commonly used in isochrons
@@ -44,7 +132,7 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}; iterations=10) = yorkfit(means(x), sigmas(x), means(y), sigmas(y); iterations)
+yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}; iterations=10) = yorkfit(val(x), err(x), val(y), err(y); iterations)
 function yorkfit(x, σx, y, σy; iterations=10)
 
     ## 1. Ordinary linear regression (to get a first estimate of slope and intercept)
@@ -121,6 +209,3 @@ function yorkfit(x, σx, y, σy; iterations=10)
     ## Results
     return YorkFit(a ± σa, b ± σb, mswd)
 end
-
-means(x::Vector{<:Measurement}) = [m.val for m in x]
-sigmas(x::Vector{<:Measurement}) = [m.err for m in x]
