@@ -153,14 +153,14 @@ end
 
 """
 ```julia
-(a,b) = linreg(x::AbstractVector, y::AbstractVector)
+(a,b) = lsqfit(x::AbstractVector, y::AbstractVector)
 ```
 Returns the coefficients for a simple linear least-squares regression of
 the form `y = a + bx`
 
 ### Examples
 ```
-julia> a, b = linreg(1:10, 1:10)
+julia> a, b = lsqfit(1:10, 1:10)
 2-element Vector{Float64}:
  -1.19542133983862e-15
   1.0
@@ -172,7 +172,7 @@ julia> isapprox(b, 1, atol = 1e-12)
 true
 ```
 """
-function linreg(x::AbstractVector{T}, y::AbstractVector{<:Number}) where {T<:Number}
+function lsqfit(x::AbstractVector{T}, y::AbstractVector{<:Number}) where {T<:Number}
     A = similar(x, length(x), 2)
     A[:,1] .= one(T)
     A[:,2] .= x
@@ -230,7 +230,7 @@ function yorkfit(x, σx, y, σy; iterations=10)
 
     # Calculate the ordinary least-squares fit
     # For the equation y=a+bx, m(1)=a, m(2)=b
-    a, b = linreg(x, y)
+    a, b = lsqfit(x, y)
 
     ## 2. Now, let's define parameters needed by the York fit
 
