@@ -1,11 +1,11 @@
 
-function concordiacurve!(hdl::Plots.Plot)
+function concordiacurve!(hdl::Plots.Plot=Plots.current())
     # Uncertainty of 235 decay constant relative to the 238 decay constant
     σₜ = λ235U_jaffey.val .* sqrt((λ238U.err/λ238U.val).^2 + (λ235U_jaffey.err/λ235U_jaffey.val).^2) # 1/Years
 
     # Plot the concordia curve
     xl, yl = Plots.xlims(hdl), Plots.ylims(hdl) # Note current size of figure
-    tlim = log.(xl.+1)./λ235U_jaffey.val # Calculate time range of current window
+    tlim = log.((xl .|> x-> max(x, 0.0)) .+ 1)./λ235U_jaffey.val # Calculate time range of current window
     t = range(0.9*tlim[1],1.1*tlim[2],length=1000) # Time vector, including padding
     r75t = exp.(λ235U_jaffey.val.*t) .- 1 # X axis values
     r68t = exp.(λ238U.val.*t) .- 1 # Y axis values
