@@ -3,7 +3,7 @@
 """
 ```julia
 wμ, wσ, mswd = wmean(μ, σ; corrected=false)
-wμ ± wσ, mswd = wmean(x; corrected=false)
+wμ ± wσ, mswd = wmean(μ ± σ; corrected=false)
 ```
 The weighted mean, with or without the "geochronologist's MSWD correction" to uncertainty.
 You may specify your means and standard deviations either as separate vectors `μ` and `σ`,
@@ -86,6 +86,68 @@ end
 # Legacy methods, for backwards compatibility
 awmean(args...) = wmean(args...; corrected=false)
 gwmean(args...) = wmean(args...; corrected=true)
+
+
+
+"""
+```julia
+mswd(μ, σ)
+mswd(μ ± σ)
+```
+Return the Mean Square of Weighted Deviates (AKA the reduced chi-squared
+statistic) of a dataset with values `x` and one-sigma uncertainties `σ`
+
+### Examples
+```julia
+julia> x = randn(10)
+10-element Vector{Float64}:
+ -0.977227094347237
+  2.605603343967434
+ -0.6869683962845955
+ -1.0435377148872693
+ -1.0171093080088411
+  0.12776158554629713
+ -0.7298235147864734
+ -0.3164914095249262
+ -1.44052961622873
+  0.5515207382660242
+
+julia> mswd(x, ones(10))
+1.3901517474017941
+```
+"""
+function mswd(μ::AbstractArray{T}, σ::AbstractArray) where {T}
+    sum_of_values = sum_of_weights = χ² = zero(float(T))
+
+    @inbounds for i in eachindex(μ,σ)
+        w = 1 / σ[i]^2
+        sum_of_values += w * μ[i]
+        sum_of_weights += w
+    end
+    wx = sum_of_values / sum_of_weights
+
+    @inbounds for i in eachindex(μ,σ)
+        χ² += (μ[i] - wx)^2 / σ[i]^2
+    end
+
+    return χ² / (length(μ)-1)
+end
+function mswd(x::AbstractArray{Measurement{T}}) where {T}
+    sum_of_values = sum_of_weights = χ² = zero(float(T))
+
+    @inbounds for i in eachindex(x)
+        w = 1 / err(x[i])^2
+        sum_of_values += w * val(x[i])
+        sum_of_weights += w
+    end
+    wx = sum_of_values / sum_of_weights
+
+    @inbounds for i in eachindex(x)
+        χ² += (val(x[i]) - wx)^2 / err(x[i])^2
+    end
+
+    return χ² / (length(x)-1)
+end
 
 ## ---  Simple linear regression
 
