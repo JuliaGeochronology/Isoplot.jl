@@ -11,7 +11,7 @@ module Isoplot
     export linreg, yorkfit
 
     include("upb.jl")
-    export UPbAnalysis
+    export UPbAnalysis, age, discordance
 
     include("concordia.jl")
     export ellipse, upper_intercept, lower_intercept, intercepts

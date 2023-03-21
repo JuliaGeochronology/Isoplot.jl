@@ -49,6 +49,19 @@ function UPbAnalysis(r²⁰⁷Pb²³⁵U::Number, σ²⁰⁷Pb²³⁵U::Number, 
     UPbAnalysis(μ, Σ)
 end
 
+# 75 and 68 ages
+function age(d::UPbAnalysis)
+    a75 = log(1 + d.μ[1] ± sqrt(d.Σ[1,1]))/λ235U
+    a68 = log(1 + d.μ[2] ± sqrt(d.Σ[2,2]))/λ238U
+    return a75, a68
+end
+
+# Percent discordance
+function discordance(d::UPbAnalysis)
+    μ75 = log(1 + d.μ[1])/λ235U.val
+    μ68 = log(1 + d.μ[2])/λ238U.val
+    return (μ75 - μ68) / μ75 * 100
+end
 
 # Add custom methods to Base.rand to sample from a UPbAnalysis
 Base.rand(d::UPbAnalysis) = rand(MvNormal(d.μ, d.Σ))

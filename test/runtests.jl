@@ -16,6 +16,13 @@ using Plots
     @test d1.μ ≈ d2.μ
     @test d1.Σ ≈ d2.Σ
 
+    a76, a68 = age(d1)
+    @test a76.val ≈ 3209.725483265418
+    @test a76.err ≈ 0.933031271855386
+    @test a68.val ≈ 2208.7076248184017
+    @test a68.err ≈ 1.422824131349332
+    @test discordance(d1) ≈ 31.187024051310136
+
     @test rand(d1) isa Vector{Float64}
     @test rand(d1, 10) isa Matrix{Float64}
 
@@ -53,6 +60,7 @@ using Plots
     @test std(uis) ≈ 1.53 atol=0.1
     @test mean(lis) ≈ 1318.12 atol=0.1
     @test std(lis) ≈ 2.04 atol=0.1
+
 end
 
 @testset "Regression" begin
