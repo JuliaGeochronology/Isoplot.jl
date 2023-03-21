@@ -1,3 +1,4 @@
+Plots.Shape(e::Ellipse{T}) where {T} = Shape{T,T}(e.x, e.y)
 
 function concordiacurve!(hdl::Plots.Plot=Plots.current())
     # Uncertainty of 235 decay constant relative to the 238 decay constant
@@ -38,3 +39,13 @@ function concordiacurve!(hdl::Plots.Plot=Plots.current())
 
     return hdl
 end
+
+Plots.plot(e::Ellipse, args...; kwargs...) = plot(Shape(e), args...; kwargs...)
+Plots.plot!(hdl::Plots.Plot, e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(e), args...; kwargs...)
+Plots.plot(e::Vector{<:Ellipse}, args...; kwargs...) = plot(Shape.(e), args...; kwargs...)
+Plots.plot!(hdl::Plots.Plot, e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
+
+Plots.plot(a::Analysis, args...; kwargs...) = plot(ellipse(a), args...; kwargs...)
+Plots.plot!(hdl::Plots.Plot, a::Analysis, args...; kwargs...) = plot!(hdl, ellipse(a), args...; kwargs...)
+Plots.plot(a::Vector{<:Analysis}, args...; kwargs...) = plot(ellipse.(a), args...; kwargs...)
+Plots.plot!(hdl::Plots.Plot, a::Vector{<:Analysis}, args...; kwargs...) = plot!(hdl, ellipse.(a), args...; kwargs...)

@@ -29,7 +29,7 @@ using Plots
     x = [22.70307499779583, 22.681635852743682, 22.63876085494785, 22.61732500220417, 22.638764147256317, 22.68163914505215, 22.70307499779583]
     y = [0.4089925091091875, 0.40901969166358015, 0.4086701825543926, 0.40829349089081246, 0.4082663083364198, 0.4086158174456074, 0.4089925091091875]
     e1 = ellipse(d1, npoints=7)
-    @test e1 isa Isoplot.Shape
+    @test e1 isa Isoplot.Ellipse
     @test e1.x ≈ x
     @test e1.y ≈ y
 
@@ -112,13 +112,38 @@ using ImageIO, FileIO
              1.00198 0.0006663167 0.11496 3.7362e-5 0.968  ]
 
     d = UPbAnalysis.(eachcol(data)...,)
+
+    # Plot many concordia ellipses and concordia curve
     h = plot(framestyle=:box)
-    plot!(h, ellipse.(d), color=:blue, alpha=0.3, label="")
+    plot!(h, d, color=:blue, alpha=0.3, label="")
     concordiacurve!(h)
     savefig(h, "concordia.png")
-
     img = load("concordia.png")
     @test size(img) == (400,600)
-    @test sum(img)/length(img) ≈ RGB{Float64}(0.9448600653594766,0.9448600653594766,0.9658495915032675) rtol = 0.1
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.9448600653594766,0.9448600653594766,0.9658495915032675) rtol = 0.01
+    rm("concordia.png")
+
+    h = plot(d, color=:blue, alpha=0.3, label="", framestyle=:box)
+    concordiacurve!(h)
+    savefig(h, "concordia.png")
+    img = load("concordia.png")
+    @test size(img) == (400,600)
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.9448600653594766,0.9448600653594766,0.9658495915032675) rtol = 0.01
+    rm("concordia.png")
+
+    # Plot single concordia ellipse
+    h = plot(framestyle=:box)
+    plot!(h, d[1], color=:blue, alpha=0.3, label="")
+    savefig(h, "concordia.png")
+    img = load("concordia.png")
+    @test size(img) == (400,600)
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.9414076797385613,0.9414076797385613,0.9870670098039216) rtol = 0.01
+    rm("concordia.png")
+
+    h = plot(d[1], color=:blue, alpha=0.3, label="", framestyle=:box)
+    savefig(h, "concordia.png")
+    img = load("concordia.png")
+    @test size(img) == (400,600)
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.9414076797385613,0.9414076797385613,0.9870670098039216) rtol = 0.01
     rm("concordia.png")
 end

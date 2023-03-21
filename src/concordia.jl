@@ -10,13 +10,13 @@ function newton_zero(f, df, x0, args::Tuple, iterations=10)
     return x0
 end
 
-function upperintercept(tₗₗ::Number, s::Shape{T,T};
+function upperintercept(tₗₗ::Number, s::Ellipse{T};
         sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
     ) where T
 
     # Get ratios from our ellipse
     r75, r68 = s.x, s.y
-    r75₀, r68₀ = center(s)
+    r75₀, r68₀ = s.x₀, s.y₀
     # Return early if our lead loss time is too old or anything is NaN'd
     tₗₗ < log(r68₀+1)/λ238U.val || return T(NaN) ± T(NaN)
     tₗₗ < log(r75₀+1)/λ235U.val || return T(NaN) ± T(NaN)
@@ -44,6 +44,8 @@ function upperintercept(tₗₗ::Number, s::Shape{T,T};
     return ui₀ ± (ui₊ - ui₋)/2sigmalevel
 end
 
+upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, ellipse(d; npoints=50))
+
 function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integer) where T
     ui = zeros(T, nresamplings)
 
@@ -66,8 +68,6 @@ function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Intege
     end
     return ui
 end
-
-upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, ellipse(d; npoints=50))
 
 function upperintercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     ui = zeros(T, nresamplings)

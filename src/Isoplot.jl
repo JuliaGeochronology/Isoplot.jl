@@ -3,8 +3,9 @@ module Isoplot
     using LinearAlgebra
     using Distributions
     using Measurements
-    using Plots: Shape, center
+    using Plots: Shape, plot, plot!
     import Plots
+    export plot, plot!
 
     # Abstract types which we'll subtype later
     include("analysis.jl")

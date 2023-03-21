@@ -1,6 +1,13 @@
 # Our overarching analysis type.
 # Must contain a vector of means μ and a covariance matrix Σ
-abstract type Analysis{T} end
+abstract type Analysis{T<:Float64} end
+
+struct Ellipse{T}
+    x::Vector{T}
+    y::Vector{T}
+    x₀::T
+    y₀::T
+end
 
 # Make an ellipse from a Analysis object
 function ellipse(d::Analysis;
@@ -15,7 +22,7 @@ function ellipse(x₀, y₀, a, b, θ; npoints::Integer=50)
     t = range(0, 2π, length=npoints)
     x = a*cos(θ)*cos.(t) .- b*sin(θ)*sin.(t) .+ x₀
     y = a*sin(θ)*cos.(t) .+ b*cos(θ)*sin.(t) .+ y₀
-    return Shape(x, y)
+    return Ellipse(x, y, x₀, y₀,)
 end
 
 # Non-exported function: return semimajor and minor axes for a given U-Pb analysis
