@@ -3,7 +3,6 @@ module Isoplot
     using LinearAlgebra
     using Distributions
     using Measurements
-    using Roots
     using Plots: Shape, center
     import Plots
 

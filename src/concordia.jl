@@ -1,5 +1,14 @@
 
-Δ68(t,slope,r75,r68) = slope * (exp(λ235U.val*t) - 1 - r75) + r68 - exp(λ238U.val*t) + 1
+Δ68(t,(slope,r75,r68)) = slope * (exp(λ235U.val*t) - 1 - r75) + r68 - exp(λ238U.val*t) + 1
+dΔ68(t,(slope,r75,r68)) = slope * λ235U.val*exp(λ235U.val*t) - λ238U.val*exp(λ238U.val*t)
+
+function newton_zero(f, df, x0, args::Tuple, iterations=10)
+    for i in 1:iterations
+        δx = f(x0, args)/df(x0, args)
+        x0 -= δx
+    end
+    return x0
+end
 
 function upperintercept(tₗₗ::Number, s::Shape{T,T};
         sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
@@ -26,11 +35,11 @@ function upperintercept(tₗₗ::Number, s::Shape{T,T};
     slope₊ = (r68₊-r68ₗₗ)/(r75₊-r75ₗₗ)
     0 < slope₊ < Inf || return T(NaN) ± T(NaN)
 
-    ui₀ = find_zero(t->Δ68(t,slope₀,r75₀,r68₀), 4.567e3)
+    ui₀ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₀,r75₀,r68₀))
     # Return early if our upper intercept is younger than the analysis
     ui₀ > log(r68₀+1)/λ238U.val || return T(NaN) ± T(NaN)
-    ui₋ = find_zero(t->Δ68(t,slope₋,r75₋,r68₋), 4.567e3)
-    ui₊ = find_zero(t->Δ68(t,slope₊,r75₊,r68₊), 4.567e3)
+    ui₋ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₋,r75₋,r68₋))
+    ui₊ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₊,r75₊,r68₊))
 
     return ui₀ ± (ui₊ - ui₋)/2sigmalevel
 end
@@ -53,18 +62,18 @@ function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Intege
     for i in axes(samples,2)
         r75, r68 = view(samples, :, i)
         slope = (r68-r68ₗₗ)/(r75-r75ₗₗ)
-        ui[i] = find_zero(t->Δ68(t,slope,r75,r68), 4.567e3)
+        ui[i] = newton_zero(Δ68, dΔ68, 4.567e3, (slope,r75,r68))
     end
     return ui
 end
 
-upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, ellipse(d; npoints=100))
+upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, ellipse(d; npoints=50))
 
 function upperintercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     ui = zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
     for i in eachindex(slopes, intercepts)
-        ui[i] = find_zero(t->Δ68(t,slopes[i],zero(T),intercepts[i]), 4567.0)
+        ui[i] = newton_zero(Δ68, dΔ68, 4.567e3, (slopes[i],zero(T),intercepts[i]))
     end
     return ui
 end
@@ -73,7 +82,7 @@ function lowerintercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where 
     li = zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
     for i in eachindex(slopes, intercepts)
-        li[i] = find_zero(t->Δ68(t,slopes[i],zero(T),intercepts[i]), 0.0)
+        li[i] = newton_zero(Δ68, dΔ68, 0.0, (slopes[i],zero(T),intercepts[i]))
     end
     return li
 end
@@ -82,8 +91,8 @@ function intercepts(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     ui, li = zeros(T, nresamplings), zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
     for i in eachindex(slopes, intercepts)
-        ui[i] = find_zero(t->Δ68(t,slopes[i],zero(T),intercepts[i]), 4567.0)
-        li[i] = find_zero(t->Δ68(t,slopes[i],zero(T),intercepts[i]), 0.0)
+        ui[i] = newton_zero(Δ68, dΔ68, 4.567e3, (slopes[i],zero(T),intercepts[i]))
+        li[i] = newton_zero(Δ68, dΔ68, 0.0, (slopes[i],zero(T),intercepts[i]))
     end
     return ui, li
 end
