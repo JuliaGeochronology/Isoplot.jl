@@ -62,8 +62,10 @@ function upper_intercept(tₗₗ::Number, s::Shape{T,T};
     # largest and smallest angular difference from the center
     r75₋, r68₋ = argmax(x->atan((x[2]-r68ₗₗ)/(x[1]-r75ₗₗ)), zip(r75, r68))
     slope₋ = (r68₋-r68ₗₗ)/(r75₋-r75ₗₗ)
+    0 < slope₋ < Inf || return T(NaN) ± T(NaN)
     r75₊, r68₊ = argmin(x->atan((x[2]-r68ₗₗ)/(x[1]-r75ₗₗ)), zip(r75, r68))
     slope₊ = (r68₊-r68ₗₗ)/(r75₊-r75ₗₗ)
+    0 < slope₊ < Inf || return T(NaN) ± T(NaN)
 
     ui₀ = find_zero(t->Δ68(t,slope₀,r75₀,r68₀), 4.567e3)
     # Return early if our upper intercept is younger than the analysis
