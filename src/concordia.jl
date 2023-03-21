@@ -1,7 +1,7 @@
 
 Δ68(t,slope,r75,r68) = slope * (exp(λ235U.val*t) - 1 - r75) + r68 - exp(λ238U.val*t) + 1
 
-function upper_intercept(tₗₗ::Number, s::Shape{T,T};
+function upperintercept(tₗₗ::Number, s::Shape{T,T};
         sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
     ) where T
 
@@ -35,7 +35,7 @@ function upper_intercept(tₗₗ::Number, s::Shape{T,T};
     return ui₀ ± (ui₊ - ui₋)/2sigmalevel
 end
 
-function upper_intercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integer) where T
+function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integer) where T
     ui = zeros(T, nresamplings)
 
     # Get ratios
@@ -58,9 +58,9 @@ function upper_intercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integ
     return ui
 end
 
-upper_intercept(tₗₗ::Number, d::UPbAnalysis) = upper_intercept(tₗₗ, ellipse(d; npoints=100))
+upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, ellipse(d; npoints=100))
 
-function upper_intercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+function upperintercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     ui = zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
     for i in eachindex(slopes, intercepts)
@@ -69,7 +69,7 @@ function upper_intercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where
     return ui
 end
 
-function lower_intercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+function lowerintercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     li = zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
     for i in eachindex(slopes, intercepts)

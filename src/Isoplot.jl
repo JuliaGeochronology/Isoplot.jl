@@ -18,7 +18,7 @@ module Isoplot
     export UPbAnalysis, age, discordance
 
     include("concordia.jl")
-    export upper_intercept, lower_intercept, intercepts
+    export upperintercept, lowerintercept, intercepts
 
     include("plotting.jl")
     export concordiacurve!

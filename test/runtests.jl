@@ -34,11 +34,11 @@ using Plots
     @test e1.y ≈ y
 
     tₗₗ = 35
-    ui = upper_intercept(tₗₗ, d1)
+    ui = upperintercept(tₗₗ, d1)
     @test ui isa Isoplot.Measurement
 
     N = 10000
-    uis = upper_intercept(tₗₗ, d1, N)
+    uis = upperintercept(tₗₗ, d1, N)
     @test uis isa Vector{Float64}
     @test mean(uis) ≈ ui.val atol=(4*ui.err/sqrt(N))
     @test std(uis) ≈ ui.err rtol=0.03
@@ -47,11 +47,11 @@ using Plots
     d = [UPbAnalysis(22.6602, 0.0175, 0.40864, 0.00017, 0.83183)
          UPbAnalysis(33.6602, 0.0175, 0.50864, 0.00017, 0.83183)]
 
-    uis = upper_intercept(d, N)
+    uis = upperintercept(d, N)
     @test mean(uis) ≈ 4601.82 atol=0.1
     @test std(uis) ≈ 1.53 atol=0.1
 
-    lis = lower_intercept(d, N)
+    lis = lowerintercept(d, N)
     @test mean(lis) ≈ 1318.12 atol=0.1
     @test std(lis) ≈ 2.04 atol=0.1
 
