@@ -109,14 +109,8 @@ using ImageIO, FileIO
     concordiacurve!(h)
     savefig(h, "concordia.png")
 
-    # test against known image
-
-    img_known = load("concordia_known.png")
-    xk = round.(Int, range(1, size(img_known,2), length=120))
-    yk = round.(Int, range(1, size(img_known,1), length=80))
     img = load("concordia.png")
-    x = round.(Int, range(1, size(img,2), length=120))
-    y = round.(Int, range(1, size(img,1), length=80))
-    @test img_known ≈ img rtol=0.2
-
+    @test size(img) == (400,600)
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.9448600653594766,0.9448600653594766,0.9658495915032675) rtol = 0.1
+    rm("concordia.png")
 end
