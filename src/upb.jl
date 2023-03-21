@@ -6,7 +6,7 @@ export λ238U, λ235U, λ235U_jaffey
 
 """
 ```
-struct UPbAnalysis{T<:AbstractFloat}
+struct UPbAnalysis{T} <: Analysis{T}
 ```
 Core type for U-Pb analyses.
 Has fields
@@ -24,7 +24,7 @@ and Σ contains the covariance matrix
      σ₇_₅*σ₃_₈ σ₃_₈^2]
 ```
 """
-struct UPbAnalysis{T<:AbstractFloat}
+struct UPbAnalysis{T} <: Analysis{T}
     μ::Vector{T}
     Σ::Matrix{T}
 end

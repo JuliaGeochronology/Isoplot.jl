@@ -7,6 +7,10 @@ module Isoplot
     using Plots: Shape, center
     import Plots
 
+    # Abstract types which we'll subtype later
+    include("analysis.jl")
+    export ellipse
+
     include("regression.jl")
     export linreg, yorkfit
 
@@ -14,7 +18,7 @@ module Isoplot
     export UPbAnalysis, age, discordance
 
     include("concordia.jl")
-    export ellipse, upper_intercept, lower_intercept, intercepts
+    export upper_intercept, lower_intercept, intercepts
 
     include("plotting.jl")
     export concordiacurve!

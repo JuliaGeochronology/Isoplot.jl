@@ -1,45 +1,4 @@
 
-# Make an ellipse from a UPbAnalysis object
-function ellipse(d::UPbAnalysis;
-        sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
-        npoints::Integer=50,
-    )
-    a, b, θ = ellipseparameters(d, sigmalevel)
-    return ellipse(d.μ[1], d.μ[2], a, b, θ; npoints)
-end
-# Make an ellipse if given x and y positions, major and minor axes, and rotation
-function ellipse(x₀, y₀, a, b, θ; npoints::Integer=50)
-    t = range(0, 2π, length=npoints)
-    x = a*cos(θ)*cos.(t) .- b*sin(θ)*sin.(t) .+ x₀
-    y = a*sin(θ)*cos.(t) .+ b*cos(θ)*sin.(t) .+ y₀
-    return Shape(x, y)
-end
-
-# Non-exported function: return semimajor and minor axes for a given U-Pb analysis
-function ellipseparameters(d::UPbAnalysis{T}, sigmalevel::Number) where T
-
-    # Quickly exit if any NaNs
-    any(isnan, d.Σ) && return T.((NaN, NaN, NaN))
-
-    # Calculate eigenvectors and eigenvalues from the covariance matrix.
-    # V: matrix of eigenvectors, D: diagonal matrix of eigenvalues
-    F = eigen(d.Σ)
-    # Find index of semimajor and semiminor axes
-    major = argmax(F.values)
-    minor = argmin(F.values)
-    v = view(F.vectors, :, major)
-
-    # Calculate angle of major axis of ellipse from horizontal
-    θ = atan(v[2]/v[1])
-
-    # Calculate length of semimajor and semiminor axes for given p-value
-    a = T(sigmalevel)*sqrt(abs(F.values[major]))
-    b = T(sigmalevel)*sqrt(abs(F.values[minor]))
-
-    return a, b, θ
-
-end
-
 Δ68(t,slope,r75,r68) = slope * (exp(λ235U.val*t) - 1 - r75) + r68 - exp(λ238U.val*t) + 1
 
 function upper_intercept(tₗₗ::Number, s::Shape{T,T};
