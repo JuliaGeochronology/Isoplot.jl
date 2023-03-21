@@ -1,6 +1,7 @@
 using Isoplot
 using Test, Statistics
 using Plots
+using Measurements
 
 @testset "U-Pb" begin
     r75 = 22.6602
@@ -81,14 +82,13 @@ end
     @test fobj.mswd ≈ 1.1419901440278089
     @test display(fobj) != NaN
 
-    # x = (1:100) .+ randn.()
-    # y = 2*(1:100) .+ randn.()
-    # fobj = yorkfit(x, ones(100), y, ones(100))
-    # @test fobj isa Isoplot.YorkFit
-    # @test fobj.intercept.val ≈ 0 atol = 1
-    # @test fobj.slope.val ≈ 2 atol = 0.1
-    # @test fobj.mswd ≈ 1 atol = 0.5
-    # @test display(fobj) != NaN
+    x = ((1:100) .+ randn.()) .± 1
+    y = (2*(1:100) .+ randn.()) .± 1
+    fobj = yorkfit(x, y)
+    @test fobj isa Isoplot.YorkFit
+    @test fobj.intercept.val ≈ 0 atol = 1
+    @test fobj.slope.val ≈ 2 atol = 0.1
+    @test fobj.mswd ≈ 1 atol = 0.5
 
 end
 

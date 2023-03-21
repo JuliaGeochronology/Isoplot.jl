@@ -44,7 +44,8 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-function yorkfit(x, σx, y, σy; niterations=10)
+yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}; iterations=10) = yorkfit(means(x), sigmas(x), means(y), sigmas(y); iterations)
+function yorkfit(x, σx, y, σy; iterations=10)
 
     ## 1. Ordinary linear regression (to get a first estimate of slope and intercept)
 
@@ -86,7 +87,7 @@ function yorkfit(x, σx, y, σy; niterations=10)
     b = sum(sV) ./ sum(sU)
 
     a = Ȳ - b .* X̄
-    for i = 2:niterations
+    for i = 2:iterations
         W .= ωx.*ωy ./ (b^2*ωy + ωx - 2*b*r.*α)
 
         X̄ = sum(W.*x) / sum(W)
@@ -120,3 +121,6 @@ function yorkfit(x, σx, y, σy; niterations=10)
     ## Results
     return YorkFit(a ± σa, b ± σb, mswd)
 end
+
+means(x::Vector{<:Measurement}) = [m.val for m in x]
+sigmas(x::Vector{<:Measurement}) = [m.err for m in x]
