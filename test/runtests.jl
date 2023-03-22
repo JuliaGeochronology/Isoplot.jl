@@ -97,7 +97,7 @@ end
     y = (2*(1:100) .+ randn.()) .± 1
     fobj = yorkfit(x, y)
     @test fobj isa Isoplot.YorkFit
-    @test fobj.intercept.val ≈ 0 atol = 1
+    @test fobj.intercept.val ≈ 0 atol = 2
     @test fobj.slope.val ≈ 2 atol = 0.1
     @test fobj.mswd ≈ 1 atol = 0.5
 

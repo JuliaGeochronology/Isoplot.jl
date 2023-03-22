@@ -7,6 +7,8 @@ module Isoplot
     import Plots
     export plot, plot!
 
+    const Collection{T} = Union{AbstractArray{T}, NTuple{N,T}} where N
+
     # Abstract types which we'll subtype later
     include("analysis.jl")
     export ellipse

@@ -11,6 +11,10 @@ or as a single vector `x` of `Measurement`s equivalent to `x = μ .± σ`
 
 In all cases, `σ` is assumed to reported as _actual_ sigma (i.e., 1-sigma).
 
+If `corrected=true`, the resulting uncertainty of the weighted mean is corrected
+for dispersion when the MSWD is greater than `1` by multiplying by the square
+root of the MSWD.
+
 ### Examples
 ```julia
 julia> x = randn(10)
@@ -41,7 +45,7 @@ julia> wmean(x .± y./10, corrected=true)
 (-0.32 ± 0.29, 81.9217147788568)
 ```
 """
-function wmean(μ::AbstractArray{T}, σ::AbstractArray; corrected=false) where {T}
+function wmean(μ::Collection{T}, σ::Collection; corrected=false) where {T}
     sum_of_values = sum_of_weights = χ² = zero(float(T))
     @inbounds for i in eachindex(μ,σ)
         σ² = σ[i]^2
@@ -55,13 +59,13 @@ function wmean(μ::AbstractArray{T}, σ::AbstractArray; corrected=false) where {
     end
     mswd = χ² / (length(μ)-1)
     wσ = if corrected
-        sqrt(mswd / sum_of_weights)
+        sqrt(max(mswd,1) / sum_of_weights)
     else
         sqrt(1 / sum_of_weights)
     end
     return wμ, wσ, mswd
 end
-function wmean(x::AbstractArray{Measurement{T}}; corrected=false) where {T}
+function wmean(x::Collection{Measurement{T}}; corrected=false) where {T}
     sum_of_values = sum_of_weights = χ² = zero(float(T))
     @inbounds for i in eachindex(x)
         μ, σ² = val(x[i]), err(x[i])^2
@@ -76,7 +80,7 @@ function wmean(x::AbstractArray{Measurement{T}}; corrected=false) where {T}
     end
     mswd = χ² / (length(x)-1)
     wσ = if corrected
-        sqrt(mswd / sum_of_weights)
+        sqrt(max(mswd,1) / sum_of_weights)
     else
         sqrt(1 / sum_of_weights)
     end
@@ -116,7 +120,7 @@ julia> mswd(x, ones(10))
 1.3901517474017941
 ```
 """
-function mswd(μ::AbstractArray{T}, σ::AbstractArray) where {T}
+function mswd(μ::Collection{T}, σ::Collection) where {T}
     sum_of_values = sum_of_weights = χ² = zero(float(T))
 
     @inbounds for i in eachindex(μ,σ)
@@ -132,7 +136,8 @@ function mswd(μ::AbstractArray{T}, σ::AbstractArray) where {T}
 
     return χ² / (length(μ)-1)
 end
-function mswd(x::AbstractArray{Measurement{T}}) where {T}
+
+function mswd(x::Collection{Measurement{T}}) where {T}
     sum_of_values = sum_of_weights = χ² = zero(float(T))
 
     @inbounds for i in eachindex(x)
