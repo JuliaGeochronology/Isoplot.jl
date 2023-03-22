@@ -39,16 +39,10 @@ function dist_ll(
     end
     # Calculate a weighted mean and examine our MSWD
     (wm, mswd) = awmean(data)
-    Zf = if length(data) == 1 || mswd < 1
-        1.0
-    elseif mswd * sqrt(length(data)) > 1000
-        0.0
-    else
-        f = length(data) - 1
-        # Height of MSWD distribution relative to height at MSWD = 1
-        # (see Wendt and Carl, 1991, Chemical geology)
-        exp((f / 2 - 1) * log(mswd) - f / 2 * (mswd - 1))
-    end
+    # Height of MSWD distribution relative to height at MSWD = 1
+    # (see Wendt and Carl, 1991, Chemical geology)
+    f = length(data) - 1
+    Zf = exp((f / 2 - 1) * log(mswd) - f / 2 * (mswd - 1)) * (f > 0)
     # To prevent instability / runaway of the MCMC for small datasets (low N),
     # favor the weighted mean interpretation at high Zf (MSWD close to 1) and
     # the youngest-zircon interpretation at low Zf (MSWD far from one). The
