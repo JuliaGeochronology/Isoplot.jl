@@ -17,6 +17,7 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T};
     # Get ratios from our ellipse
     r75, r68 = s.x, s.y
     r75₀, r68₀ = s.x₀, s.y₀
+    σ75₀, σ68₀ = s.σx₀, s.σy₀
     # Return early if our lead loss time is too old or anything is NaN'd
     tₗₗ < log(r68₀+1)/λ238U.val || return T(NaN) ± T(NaN)
     tₗₗ < log(r75₀+1)/λ235U.val || return T(NaN) ± T(NaN)
@@ -37,7 +38,8 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T};
 
     ui₀ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₀,r75₀,r68₀))
     # Return early if our upper intercept is younger than the analysis
-    ui₀ > log(r68₀+1)/λ238U.val || return T(NaN) ± T(NaN)
+    age68 = log(1 + r68₀ ± σ68₀)/λ238U.val
+    ui₀ > age68.val || return age68
     ui₋ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₋,r75₋,r68₋))
     ui₊ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₊,r75₊,r68₊))
 

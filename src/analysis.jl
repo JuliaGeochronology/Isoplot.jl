@@ -7,6 +7,8 @@ struct Ellipse{T}
     y::Vector{T}
     x₀::T
     y₀::T
+    σx₀::T
+    σy₀::T
 end
 
 # Make an ellipse from a Analysis object
@@ -15,14 +17,15 @@ function ellipse(d::Analysis;
         npoints::Integer=50,
     )
     a, b, θ = ellipseparameters(d, sigmalevel)
-    return ellipse(d.μ[1], d.μ[2], a, b, θ; npoints)
+    return ellipse(d, a, b, θ; npoints)
 end
 # Make an ellipse if given x and y positions, major and minor axes, and rotation
-function ellipse(x₀, y₀, a, b, θ; npoints::Integer=50)
+function ellipse(d::Analysis, a, b, θ; npoints::Integer=50)
+    x₀, y₀ = d.μ[1], d.μ[2]
     t = range(0, 2π, length=npoints)
     x = a*cos(θ)*cos.(t) .- b*sin(θ)*sin.(t) .+ x₀
     y = a*sin(θ)*cos.(t) .+ b*cos(θ)*sin.(t) .+ y₀
-    return Ellipse(x, y, x₀, y₀,)
+    return Ellipse(x, y, x₀, y₀, d.σ[1], d.σ[2])
 end
 
 # Non-exported function: return semimajor and minor axes for a given U-Pb analysis

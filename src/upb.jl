@@ -26,6 +26,7 @@ and Σ contains the covariance matrix
 """
 struct UPbAnalysis{T} <: Analysis{T}
     μ::Vector{T}
+    σ::Vector{T}
     Σ::Matrix{T}
 end
 
@@ -45,14 +46,15 @@ function UPbAnalysis(r²⁰⁷Pb²³⁵U::Number, σ²⁰⁷Pb²³⁵U::Number, 
     cov = σ²⁰⁷Pb²³⁵U * σ²⁰⁶Pb²³⁸U * correlation
     Σ = T[σ²⁰⁷Pb²³⁵U^2  cov
           cov  σ²⁰⁶Pb²³⁸U^2]
+    σ = T[σ²⁰⁷Pb²³⁵U, σ²⁰⁶Pb²³⁸U]
     μ = T[r²⁰⁷Pb²³⁵U, r²⁰⁶Pb²³⁸U]
-    UPbAnalysis(μ, Σ)
+    UPbAnalysis(μ, σ, Σ)
 end
 
 # 75 and 68 ages
 function age(d::UPbAnalysis)
-    a75 = log(1 + d.μ[1] ± sqrt(d.Σ[1,1]))/λ235U
-    a68 = log(1 + d.μ[2] ± sqrt(d.Σ[2,2]))/λ238U
+    a75 = log(1 + d.μ[1] ± d.σ[1])/λ235U
+    a68 = log(1 + d.μ[2] ± d.σ[2])/λ238U
     return a75, a68
 end
 
