@@ -62,7 +62,6 @@ using Measurements
     @test std(uis) ≈ 1.53 atol=0.1
     @test mean(lis) ≈ 1318.12 atol=0.1
     @test std(lis) ≈ 2.04 atol=0.1
-
 end
 
 @testset "Regression" begin
@@ -100,41 +99,36 @@ end
     @test fobj.intercept.val ≈ 0 atol = 2
     @test fobj.slope.val ≈ 2 atol = 0.1
     @test fobj.mswd ≈ 1 atol = 0.5
-
 end
+
+data = [1.1009 0.00093576 0.123906 0.00002849838 0.319
+        1.1003 0.00077021 0.123901 0.00003531178 0.415
+        1.0995 0.00049477 0.123829 0.00002538494 0.434
+        1.0992 0.00060456 0.123813 0.00003652483 0.616
+        1.1006 0.00071539 0.123813 0.00002228634 0.321
+        1.0998 0.00076986 0.123802 0.00002537941 0.418
+        1.0992 0.00065952 0.123764 0.00003589156 0.509
+        1.0981 0.00109810 0.123727 0.00003959264 0.232
+        1.0973 0.00052670 0.123612 0.00002966688 0.470
+        1.0985 0.00087880 0.123588 0.00002842524 0.341
+        1.0936 0.00054680 0.123193 0.00003264614 0.575
+        1.0814 0.00051366 0.121838 0.00003045950 0.587 ]
+
+analyses = UPbAnalysis.(eachcol(data)...,)
 
 using ImageIO, FileIO
 @testset "Plotting" begin
-    data = [ 1.02849 0.0006788034 0.11781 3.946635e-5 0.959
-             1.02826 0.0013932923 0.11771 5.120385e-5 0.693
-             1.02716 0.0006727898 0.11768 3.8246e-5 0.972
-             1.02694 0.001899839 0.11767 9.707775e-5 0.65
-             1.02712 0.0009090012 0.11763 4.881645e-5 0.797
-             1.02551 0.00081528045 0.11756 4.1146e-5 0.859
-             1.02653 0.0014679379 0.11754 7.69887e-5 0.691
-             1.02451 0.0006556864 0.11742 3.75744e-5 0.962
-             1.02039 0.00309688365 0.11738 9.21433e-5 0.552
-             1.01931 0.0008460273 0.11699 4.21164e-5 0.837
-             1.01996 0.000662974 0.11689 3.798925e-5 0.971
-             1.01914 0.0007235894 0.11689 3.798925e-5 0.929
-             1.01309 0.0006686394 0.11614 3.77455e-5 0.962
-             1.01285 0.001397733 0.11594 5.33324e-5 0.645
-             1.00183 0.0008315189 0.11502 3.91068e-5 0.856
-             1.00198 0.0006663167 0.11496 3.7362e-5 0.968  ]
-
-    d = UPbAnalysis.(eachcol(data)...,)
-
     # Plot many concordia ellipses and concordia curve
     h = plot(framestyle=:box)
-    plot!(h, d, color=:blue, alpha=0.3, label="")
+    plot!(h, analyses, color=:blue, alpha=0.3, label="")
     concordiacurve!(h)
     savefig(h, "concordia.png")
     img = load("concordia.png")
     @test size(img) == (400,600)
-    @test sum(img)/length(img) ≈ RGB{Float64}(0.9448600653594766,0.9448600653594766,0.9658495915032675) rtol = 0.01
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.9493200816993481,0.9493200816993481,0.9614482516339886) rtol = 0.01
     rm("concordia.png")
 
-    h = plot(d, color=:blue, alpha=0.3, label="", framestyle=:box)
+    h = plot(analyses, color=:blue, alpha=0.3, label="", framestyle=:box)
     concordiacurve!(h)
     savefig(h, "concordia.png")
     img = load("concordia.png")
@@ -144,17 +138,32 @@ using ImageIO, FileIO
 
     # Plot single concordia ellipse
     h = plot(framestyle=:box)
-    plot!(h, d[1], color=:blue, alpha=0.3, label="")
+    plot!(h, analyses[1], color=:blue, alpha=0.3, label="")
     savefig(h, "concordia.png")
     img = load("concordia.png")
     @test size(img) == (400,600)
-    @test sum(img)/length(img) ≈ RGB{Float64}(0.9414076797385613,0.9414076797385613,0.9870670098039216) rtol = 0.01
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.8315243464052321,0.8315243464052321,0.9846906535947715) rtol = 0.01
     rm("concordia.png")
 
-    h = plot(d[1], color=:blue, alpha=0.3, label="", framestyle=:box)
+    h = plot(analyses[1], color=:blue, alpha=0.3, label="", framestyle=:box)
     savefig(h, "concordia.png")
     img = load("concordia.png")
     @test size(img) == (400,600)
-    @test sum(img)/length(img) ≈ RGB{Float64}(0.9414076797385613,0.9414076797385613,0.9870670098039216) rtol = 0.01
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.8315243464052321,0.8315243464052321,0.9846906535947715) rtol = 0.01
     rm("concordia.png")
+end
+
+@testset "Metropolis" begin
+    data = upperintercept.(0, analyses)
+    @test Isoplot.check_dist_ll(ones(10), data, 751, 755) ≈ -20.139445921297565
+    @test Isoplot.check_dist_ll(ones(10), data, 750, 760) ≈ -30.508892188237297
+
+    tmindist, t0dist = metropolis_min(1000, ones(10), analyses)
+
+    @test tmindist isa Vector{Float64}
+    @test mean(tmindist) ≈ 751.8964100608977 atol = 1.5
+    @test std(tmindist) ≈ 0.44203784229237997 rtol = 0.6
+    @test t0dist isa Vector{Float64}
+    @test mean(t0dist) ≈ 43.95580821273335 atol = 90
+    @test std(t0dist) ≈ 31.489531276914047 rtol = 0.6
 end

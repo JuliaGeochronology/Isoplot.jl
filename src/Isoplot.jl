@@ -1,5 +1,6 @@
 module Isoplot
 
+    using LoopVectorization
     using LinearAlgebra
     using Distributions
     using Measurements
@@ -25,6 +26,9 @@ module Isoplot
 
     include("plotting.jl")
     export concordiacurve!
+
+    include("metropolis.jl")
+    export metropolis_min, metropolis_min!
 
     include("show.jl")
 
