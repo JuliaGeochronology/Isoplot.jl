@@ -73,8 +73,10 @@ end
     @test gwmean(x .± σx) == (0.08737999999999996 ± 0.49016447665837415, 38.44179426844445)
     @test mswd(x, σx) ≈ 38.44179426844445
     @test mswd(x .± σx) ≈ 38.44179426844445
+    σx .*= 20 # Test underdispersed data
+    @test gwmean(x, σx) == awmean(x, σx)
 
-    # Simple linear egression
+    # Simple linear regression
     ϕ = lsqfit(1:10, 1:10)
     @test ϕ[1] ≈ 0 atol=1e-12
     @test ϕ[2] ≈ 1 atol=1e-12
@@ -157,9 +159,10 @@ end
     data = upperintercept.(0, analyses)
     @test Isoplot.dist_ll(ones(10), data, 751, 755) ≈ -20.139445921297565
     @test Isoplot.dist_ll(ones(10), data, 750, 760) ≈ -30.508892188237297
+    @test Isoplot.dist_ll(ones(10), data, 752, 753) ≈ -15.347952846611049
+    @test Isoplot.dist_ll(ones(10), data, 751, 752) ≈ -47.431672803923334
 
-    tmindist, t0dist = metropolis_min(1000, ones(10), analyses; burnin=100)
-
+    tmindist, t0dist = metropolis_min(1000, ones(10), analyses; burnin=200)
     @test tmindist isa Vector{Float64}
     @test mean(tmindist) ≈ 751.8964100608977 atol = 1.5
     @test std(tmindist) ≈ 0.44203784229237997 rtol = 0.6
