@@ -10,9 +10,8 @@ function newton_zero(f, df, x0, args::Tuple, iterations=10)
     return x0
 end
 
-function upperintercept(tₗₗ::Number, s::Ellipse{T};
-        sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
-    ) where T
+function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.447746830680816) where {T<:AbstractFloat}
+    # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
 
     # Get ratios from our ellipse
     r75, r68 = s.x, s.y
@@ -54,8 +53,6 @@ end
 upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, ellipse(d; npoints=50))
 
 function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integer) where T
-    ui = zeros(T, nresamplings)
-
     # Get ratios
     r75₀, r68₀ = d.μ
     # Return early if our lead loss time is too old or anything is NaN'd
@@ -67,8 +64,10 @@ function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Intege
     r68ₗₗ = exp(λ238U.val*tₗₗ) - 1
     slope₀ = (r68₀-r68ₗₗ)/(r75₀-r75ₗₗ)
 
+    ui = zeros(T, nresamplings)
     samples = rand(d, nresamplings)
-    for i in axes(samples,2)
+    @assert axes(samples,2) == eachindex(ui)
+    @inbounds for i in axes(samples,2)
         r75, r68 = view(samples, :, i)
         slope = (r68-r68ₗₗ)/(r75-r75ₗₗ)
         ui[i] = newton_zero(Δ68, dΔ68, 4.567e3, (slope,r75,r68))
@@ -76,35 +75,35 @@ function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Intege
     return ui
 end
 
-function upperintercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+function upperintercept(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     ui = zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
-    for i in eachindex(slopes, intercepts)
+    @inbounds for i in eachindex(ui, slopes, intercepts)
         ui[i] = newton_zero(Δ68, dΔ68, 4.567e3, (slopes[i],zero(T),intercepts[i]))
     end
     return ui
 end
 
-function lowerintercept(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+function lowerintercept(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     li = zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
-    for i in eachindex(slopes, intercepts)
+    @inbounds for i in eachindex(li, slopes, intercepts)
         li[i] = newton_zero(Δ68, dΔ68, 0.0, (slopes[i],zero(T),intercepts[i]))
     end
     return li
 end
 
-function intercepts(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+function intercepts(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     ui, li = zeros(T, nresamplings), zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
-    for i in eachindex(slopes, intercepts)
+    @inbounds for i in eachindex(ui, li, slopes, intercepts)
         ui[i] = newton_zero(Δ68, dΔ68, 4.567e3, (slopes[i],zero(T),intercepts[i]))
         li[i] = newton_zero(Δ68, dΔ68, 0.0, (slopes[i],zero(T),intercepts[i]))
     end
     return ui, li
 end
 
-function fit_lines(d::Vector{UPbAnalysis{T}}, nresamplings::Integer) where {T}
+function fit_lines(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     nanalyses = length(d)
     # Vector of ratios
     r68 = zeros(T, nanalyses)
