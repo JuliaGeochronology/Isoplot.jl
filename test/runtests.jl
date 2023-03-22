@@ -155,8 +155,8 @@ end
 
 @testset "Metropolis" begin
     data = upperintercept.(0, analyses)
-    @test Isoplot.check_dist_ll(ones(10), data, 751, 755) ≈ -20.139445921297565
-    @test Isoplot.check_dist_ll(ones(10), data, 750, 760) ≈ -30.508892188237297
+    @test Isoplot.dist_ll(ones(10), data, 751, 755) ≈ -20.139445921297565
+    @test Isoplot.dist_ll(ones(10), data, 750, 760) ≈ -30.508892188237297
 
     tmindist, t0dist = metropolis_min(1000, ones(10), analyses)
 

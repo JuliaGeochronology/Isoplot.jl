@@ -1,4 +1,4 @@
-function check_dist_ll(
+function dist_ll(
         dist::Collection,
         data::Collection{<:Measurement},
         tmin::Number,
@@ -62,6 +62,7 @@ function check_dist_ll(
     return loglikelihood
 end
 
+
 function metropolis_min(nsteps::Int, dist::Collection, data::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T}
     # Allocate ouput arrays
     tmindist = Array{T}(undef,nsteps)
@@ -101,7 +102,7 @@ function metropolis_min!(
     tmaxₚ = tmax = oldest.val
 
     # Log likelihood of initial proposal
-    ll = llₚ = check_dist_ll(dist, ages, tmin, tmax) + logpdf(t0prior, t0)
+    ll = llₚ = dist_ll(dist, ages, tmin, tmax) + logpdf(t0prior, t0)
 
     # Burnin
     for i = 1:burnin
@@ -114,7 +115,7 @@ function metropolis_min!(
 
         # Calculate log likelihood for new proposal
         @. ages = upperintercept(t0ₚ, ellipses)
-        llₚ = check_dist_ll(dist, ages, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
         llₚ += logpdf(t0prior, t0ₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
@@ -145,7 +146,7 @@ function metropolis_min!(
             ages[j] = upperintercept(t0ₚ, ellipses[j])
         end
         # @. ages = upperintercept(t0ₚ, ellipses)
-        llₚ = check_dist_ll(dist, ages, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
         llₚ += logpdf(t0prior, t0ₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
