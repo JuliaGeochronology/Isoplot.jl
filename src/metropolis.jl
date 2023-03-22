@@ -1,19 +1,19 @@
 function dist_ll(
         dist::Collection,
-        data::Collection{<:Measurement},
+        analyses::Collection{<:Measurement},
         tmin::Number,
         tmax::Number,
     )
     # Define some frequently used variables
-    old = maximum(data)
-    yng = minimum(data)
+    old = maximum(analyses)
+    yng = minimum(analyses)
     nbins = length(dist) - 1
     dt = abs(tmax - tmin)
 
     # Cycle through each datum in dataset
     loglikelihood = zero(float(eltype(dist)))
-    @inbounds for j in eachindex(data)
-        dⱼ = data[j]
+    @inbounds for j in eachindex(analyses)
+        dⱼ = analyses[j]
         μⱼ, σⱼ = val(dⱼ), err(dⱼ)
 
         # Find equivalent index position of μⱼ in the `dist` array
@@ -38,17 +38,17 @@ function dist_ll(
         loglikelihood += log(likelihood)
     end
     # Calculate a weighted mean and examine our MSWD
-    (wm, mswd) = awmean(data)
+    (wm, mswd) = awmean(analyses)
     # Height of MSWD distribution relative to height at MSWD = 1
     # (see Wendt and Carl, 1991, Chemical geology)
-    f = length(data) - 1
+    f = length(analyses) - 1
     Zf = exp((f / 2 - 1) * log(mswd) - f / 2 * (mswd - 1)) * (f > 0)
     # To prevent instability / runaway of the MCMC for small datasets (low N),
     # favor the weighted mean interpretation at high Zf (MSWD close to 1) and
     # the youngest-zircon interpretation at low Zf (MSWD far from one). The
     # penalties used here were determined by training against synthetic datasets.
     # In other words, these are just context-dependent prior distributions on tmax and tmin
-    loglikelihood -= (2 / log(1 + length(data))) * (                    # Scaling factor that decreases with log number of data points (i.e., no penalty at high N)
+    loglikelihood -= (2 / log(1 + length(analyses))) * (                    # Scaling factor that decreases with log number of analyses points (i.e., no penalty at high N)
       log((abs(tmin - wm.val) + wm.err) / wm.err) * Zf +            # Penalty for proposing tmin too far from the weighted mean at low MSWD (High Zf)
       log((abs(tmax - wm.val) + wm.err) / wm.err) * Zf +            # Penalty for proposing tmax too far from the weighted mean at low MSWD (High Zf)
       log((abs(tmin - yng.val) + yng.err) / yng.err) * (1 - Zf) +   # Penalty for proposing tmin too far from youngest zircon at high MSWD (low Zf)
@@ -57,31 +57,32 @@ function dist_ll(
 end
 
 
-function metropolis_min(nsteps::Int, dist::Collection, data::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T}
+function metropolis_min(nsteps::Int, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Int=0) where {T}
     # Allocate ouput arrays
     tmindist = Array{T}(undef,nsteps)
     t0dist = Array{T}(undef,nsteps)
     # Run Metropolis sampler
-    metropolis_min!(tmindist, t0dist, nsteps, dist, data; burnin)
+    metropolis_min!(tmindist, t0dist, nsteps, dist, analyses; burnin)
     return tmindist, t0dist
 end
 
 function metropolis_min!(
-        tmindist::DenseArray,
-        t0dist::DenseArray,
-        nsteps::Integer,
-        dist::Collection,
-        data::Collection{<:UPbAnalysis};
-        burnin::Integer = 0,
-    )
+            tmindist::DenseArray{T},
+            t0dist::DenseArray{T},
+            nsteps::Integer,
+            dist::Collection{T},
+            analyses::Collection{UPbAnalysis{T}};
+            burnin::Int = 0,
+        ) where {T}
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
 
     # These quantities will be used more than once
-    t0 = 0.0
-    ellipses = ellipse.(data)
-    ages = upperintercept.(t0, ellipses)
+    t0ₚ = t0 = 0.0
+    ellipses = ellipse.(analyses)
+    ages = similar(ellipses, Measurement{T})
+    @. ages = upperintercept(t0ₚ, ellipses)
     youngest = minimum(ages)
     oldest = maximum(ages)
     t0step = youngest.val/50
@@ -89,7 +90,7 @@ function metropolis_min!(
 
     # Initial step sigma for Gaussian proposal distributions
     dt = sqrt((oldest.val - youngest.val)^2 + oldest.err^2 + youngest.err^2)
-    tmin_step = tmax_step = dt / length(data)
+    tmin_step = tmax_step = dt / length(analyses)
 
     # Use oldest and youngest zircons for initial proposal
     tminₚ = tmin = youngest.val
@@ -136,10 +137,7 @@ function metropolis_min!(
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        for j in eachindex(ellipses, ages)
-            ages[j] = upperintercept(t0ₚ, ellipses[j])
-        end
-        # @. ages = upperintercept(t0ₚ, ellipses)
+        @. ages = upperintercept(t0ₚ, ellipses)
         llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
         llₚ += logpdf(t0prior, t0ₚ)
         # Decide to accept or reject the proposal
