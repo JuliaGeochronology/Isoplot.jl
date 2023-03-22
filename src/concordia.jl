@@ -39,7 +39,8 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T};
     ui₀ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₀,r75₀,r68₀))
     # Return early if our upper intercept is younger than the analysis
     age68 = log(1 + r68₀ ± σ68₀)/λ238U.val
-    ui₀ > age68.val || return age68
+    age75 = log(1 + r75₀ ± σ75₀)/λ235U.val
+    ui₀ > age68.val || return (age68 + age75)/2
     ui₋ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₋,r75₋,r68₋))
     ui₊ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₊,r75₊,r68₊))
 
