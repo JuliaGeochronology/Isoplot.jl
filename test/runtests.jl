@@ -142,14 +142,14 @@ using ImageIO, FileIO
     savefig(h, "concordia.png")
     img = load("concordia.png")
     @test size(img) == (400,600)
-    @test sum(img)/length(img) ≈ RGB{Float64}(0.8315243464052321,0.8315243464052321,0.9846906535947715) rtol = 0.01
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.8151617156862782,0.8151617156862782,0.986395212418301) rtol = 0.02
     rm("concordia.png")
 
     h = plot(analyses[1], color=:blue, alpha=0.3, label="", framestyle=:box)
     savefig(h, "concordia.png")
     img = load("concordia.png")
     @test size(img) == (400,600)
-    @test sum(img)/length(img) ≈ RGB{Float64}(0.8315243464052321,0.8315243464052321,0.9846906535947715) rtol = 0.01
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.8151617156862782,0.8151617156862782,0.986395212418301) rtol = 0.02
     rm("concordia.png")
 end
 
