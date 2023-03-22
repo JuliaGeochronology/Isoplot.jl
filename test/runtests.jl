@@ -158,7 +158,7 @@ end
     @test Isoplot.dist_ll(ones(10), data, 751, 755) ≈ -20.139445921297565
     @test Isoplot.dist_ll(ones(10), data, 750, 760) ≈ -30.508892188237297
 
-    tmindist, t0dist = metropolis_min(1000, ones(10), analyses)
+    tmindist, t0dist = metropolis_min(1000, ones(10), analyses; burnin=100)
 
     @test tmindist isa Vector{Float64}
     @test mean(tmindist) ≈ 751.8964100608977 atol = 1.5
