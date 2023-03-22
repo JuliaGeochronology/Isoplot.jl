@@ -12,17 +12,24 @@ Core type for U-Pb analyses.
 Has fields
 ```
 μ :: Vector{T<:AbstractFloat}
+σ :: Vector{T<:AbstractFloat}
 Σ :: Matrix{T<:AbstractFloat}
 ```
 where `μ` contains the means
 ```
 μ = [r²⁰⁷Pb²³⁵U, r²⁰⁶Pb²³⁸U]
 ```
+where `σ` contains the standard deviations
+```
+σ = [σ²⁰⁷Pb²³⁵U, σ²⁰⁶Pb²³⁸U]
+```
 and Σ contains the covariance matrix
 ```
 Σ = [σ₇_₅^2 σ₇_₅*σ₃_₈
      σ₇_₅*σ₃_₈ σ₃_₈^2]
 ```
+If `σ` is not provided, it will be automatically calculated from `Σ`,
+given that `σ.^2 = diag(Σ)`.
 """
 struct UPbAnalysis{T} <: Analysis{T}
     μ::Vector{T}
@@ -50,6 +57,7 @@ function UPbAnalysis(r²⁰⁷Pb²³⁵U::Number, σ²⁰⁷Pb²³⁵U::Number, 
     μ = T[r²⁰⁷Pb²³⁵U, r²⁰⁶Pb²³⁸U]
     UPbAnalysis(μ, σ, Σ)
 end
+UPbAnalysis(μ::Vector{T}, Σ::Matrix{T}) where {T} = UPbAnalysis{T}(μ, sqrt.(diag(Σ)), Σ)
 
 # 75 and 68 ages
 function age(d::UPbAnalysis)
