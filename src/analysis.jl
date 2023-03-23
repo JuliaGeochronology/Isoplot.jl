@@ -1,7 +1,11 @@
 # Our overarching analysis type.
-# Must contain a vector of means μ and a covariance matrix Σ
+# Must contain a vector of means μ, standard deviations σ, and a covariance matrix Σ
 abstract type Analysis{T<:Float64} end
 
+# Extend Base.isnan to return true if any component of the Analysis is NaN
+Base.isnan(a::Analysis) = any(isnan, a.μ) || any(isnan, a.σ) || any(isnan, a.Σ)
+
+# A type to hold a 2d covariance ellipse for any pair of measurements
 struct Ellipse{T}
     x::Vector{T}
     y::Vector{T}

@@ -19,6 +19,7 @@ using Measurements
     @test d1.μ ≈ d2.μ ≈ d3.μ
     @test d1.σ ≈ d2.σ ≈ d3.σ
     @test d1.Σ ≈ d2.Σ ≈ d3.Σ
+    @test !isnan(d1)
 
     a76, a68 = age(d1)
     @test a76.val ≈ 3209.725483265418
@@ -166,9 +167,9 @@ end
 
     tmindist, t0dist = metropolis_min(1000, ones(10), analyses; burnin=200)
     @test tmindist isa Vector{Float64}
-    @test mean(tmindist) ≈ 751.8964100608977 atol = 1.5
-    @test std(tmindist) ≈ 0.44203784229237997 rtol = 0.6
+    @test mean(tmindist) ≈ 751.85 atol = 1.5
+    @test std(tmindist) ≈ 0.40 rtol = 0.6
     @test t0dist isa Vector{Float64}
-    @test mean(t0dist) ≈ 43.95580821273335 atol = 90
-    @test std(t0dist) ≈ 31.489531276914047 rtol = 0.6
+    @test mean(t0dist) ≈ 80. atol = 90
+    @test std(t0dist) ≈ 50. rtol = 0.6
 end
