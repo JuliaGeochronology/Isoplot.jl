@@ -47,35 +47,42 @@ display(hdl)
 
 ### Pb-loss-aware Bayesian eruption age estimation
 ```julia
-nsteps = 100000
-tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10000)
+nsteps = 10^6
+tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10^4)
 
-using VectorizedStatistics
-m = vmean(tmindist)
-l = m - vpercentile(tmindist, 2.5)
-u = vpercentile(tmindist, 97.5) - m
-println("Eruption age: $m +$u/-$l Ma (95% CI)")
+terupt = CI(tmindist)
+println("Eruption/deposition age: $terupt Ma (95% CI)")
 ```
-> Eruption age: 751.9432442465145 +0.5067945247379839/-0.6812510091036756 Ma (95% CI)
+> Eruption/deposition age: 751.942 +0.504/-0.709 Ma (95% CI)
 
 ```julia
-h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", color=:darkblue, alpha=0.5, linealpha=0.1, framestyle=:box)
-ylims!(h, 0, ylims()[2])
+h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", color=:darkblue, alpha=0.65, linealpha=0.1, framestyle=:box)
+ylims!(h, 0, last(ylims()))
 savefig(h, "EruptionAge.svg")
 display(h)
 ```
 ![svg](examples/eruptionage.svg)
 
 ```julia
-h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", color=:darkblue, alpha=0.5, linealpha=0.1, framestyle=:box)
-xlims!(h, 0, xlims()[2])
-ylims!(h, 0, ylims()[2])
+h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", color=:darkblue, alpha=0.65, linealpha=0.1, framestyle=:box)
+xlims!(h, 0, last(xlims()))
+ylims!(h, 0, last(ylims()))
 savefig(h, "PbLoss.svg")
 display(h)
-
 ```
 ![svg](examples/pbloss.svg)
 
+Notably, In contrast to a weighted mean or a standard Bayesian eruption age, the result appears to be influenced little if at all by any decision to exclude or not exclude discordant grains, for example:
+
+Excluding several most discordant grains
+![svg](examples/concordiascreened.svg)
+> Eruption/deposition age: 751.946 +0.508/-0.765 Ma (95% CI)
+
+Excluding nothing
+![svg](examples/concordiaall.svg)
+> Eruption/deposition age: 751.951 +0.501/-0.695 Ma (95% CI)
+
+indicating perhaps only a slight _increase_ in precision when more data are included, even if those data happen to be highly discordant.
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://JuliaGeochronology.github.io/Isoplot.jl/dev/

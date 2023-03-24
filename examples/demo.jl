@@ -24,25 +24,21 @@ analyses = analyses[discordance.(analyses) .< 0.2]
 hdl = plot(xlabel="²⁰⁷Pb/²³⁵U", ylabel="²⁰⁶Pb/²³⁸U", framestyle=:box)
 plot!(hdl, analyses, color=:darkblue, alpha=0.3, label = "")
 concordiacurve!(hdl) # Add concordia curve
-savefig(hdl, "concordia.svg")
+savefig(hdl, "concordia.pdf")
 display(hdl)
 
 ## --- Bayesian Pb-loss-aware eruption age estimation
 
-nsteps = 100000
-tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10000)
+nsteps = 10^6
+tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10^4)
 
-using VectorizedStatistics
-m = vmean(tmindist)
-l = m - vpercentile(tmindist, 2.5)
-u = vpercentile(tmindist, 97.5) - m
-println("Eruption age: $m +$u/-$l Ma (95% CI)")
-
-
+terupt = CI(tmindist)
+println("Eruption/deposition age: $terupt Ma (95% CI)")
+terupt
 ## --- Histogram of distribution of eruption age
 
-h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", color=:darkblue, alpha=0.5, linealpha=0.1, framestyle=:box)
-ylims!(h, 0, ylims()[2])
+h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", color=:darkblue, alpha=0.65, linealpha=0.1, framestyle=:box)
+ylims!(h, 0, last(ylims()))
 savefig(h, "EruptionAge.svg")
 display(h)
 
@@ -50,16 +46,16 @@ display(h)
 
 uis = upperintercept.(vmean(t0dist), analyses)
 h = rankorder(Isoplot.val.(uis), Isoplot.err.(uis))
-plot!(h,1:length(uis),fill(m-l,length(uis)),fillto=m+u,color=:blue,fillalpha=0.5,linealpha=0, label="Model ($(round(m,digits=3)) +$(round(u,digits=3))/-$(round(l,digits=3)) Ma)")
-plot!(h,1:length(uis),fill(m,length(uis)),linecolor=:black,linestyle=:dot,label="",legend=:topleft,fg_color_legend=:white,framestyle=:box)
+plot!(h,1:length(uis),fill(terupt.lower,length(uis)),fillto=terupt.upper,color=:blue,fillalpha=0.5,linealpha=0, label="Model ($terupt Ma, 95% CI)")
+plot!(h,1:length(uis),fill(terupt.mean,length(uis)),linecolor=:black,linestyle=:dot,label="",legend=:topleft,fg_color_legend=:white,framestyle=:box)
 
 # concordialine!(hdl, t₀, t₁, color=:darkred)
 
 
 ## --- Histogram of distribution of time of Pb-loss
 
-h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", color=:darkblue, alpha=0.5, linealpha=0.1, framestyle=:box)
-xlims!(h, 0, xlims()[2])
-ylims!(h, 0, ylims()[2])
+h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", color=:darkblue, alpha=0.65, linealpha=0.1, framestyle=:box)
+xlims!(h, 0, last(xlims()))
+ylims!(h, 0, last(ylims()))
 savefig(h, "PbLoss.svg")
 display(h)
