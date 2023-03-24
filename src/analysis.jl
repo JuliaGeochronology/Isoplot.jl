@@ -1,6 +1,7 @@
 # Our overarching analysis type.
 # Must contain a vector of means μ, standard deviations σ, and a covariance matrix Σ
-abstract type Analysis{T<:Float64} end
+abstract type Data{T} end
+abstract type Analysis{T<:Float64} <: Data{T} end
 
 age(r::Number, λ::Number) = log(1+r)/λ
 ratio(t::Number, λ::Number) = exp(λ*t) - 1
@@ -9,7 +10,7 @@ ratio(t::Number, λ::Number) = exp(λ*t) - 1
 Base.isnan(a::Analysis) = any(isnan, a.μ) || any(isnan, a.σ) || any(isnan, a.Σ)
 
 # A type to hold a 2d covariance ellipse for any pair of measurements
-struct Ellipse{T}
+struct Ellipse{T} <: Data{T}
     x::Vector{T}
     y::Vector{T}
     x₀::T

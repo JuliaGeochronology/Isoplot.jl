@@ -1,13 +1,11 @@
 # Plot 2d uncertainty ellipses of any sort
 Plots.Shape(e::Ellipse{T}) where {T} = Shape{T,T}(e.x, e.y)
 
-Plots.plot(e::Union{Ellipse,Vector{<:Ellipse}}, args...; kwargs...) = plot!(plot(), e, args...; kwargs...)
-Plots.plot!(hdl::Plots.Plot, e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(e), args...; kwargs...)
-Plots.plot!(hdl::Plots.Plot, e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
-
-Plots.plot(a::Union{Analysis,Vector{<:Analysis}}, args...; kwargs...) = plot!(plot(), a, args...; kwargs...)
+Plots.plot(e::Union{Data,Vector{<:Data}}, args...; kwargs...) = plot!(plot(), e, args...; kwargs...)
 Plots.plot!(hdl::Plots.Plot, a::Analysis, args...; kwargs...) = plot!(hdl, ellipse(a), args...; kwargs...)
 Plots.plot!(hdl::Plots.Plot, a::Vector{<:Analysis}, args...; kwargs...) = plot!(hdl, ellipse.(a), args...; kwargs...)
+Plots.plot!(hdl::Plots.Plot, e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(e), args...; kwargs...)
+Plots.plot!(hdl::Plots.Plot, e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
 
 # Plot a line between two times in Wetherill Concordia space
 concordialine(t₀, t₁; framestyle=:box, kwargs...) = concordialine!(plot(xlims=ratio.((t₀, t₁), λ235U.val)), t₀, t₁; framestyle, kwargs...)
