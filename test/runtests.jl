@@ -130,16 +130,15 @@ analyses = UPbAnalysis.(eachcol(data)...,)
 
 using ImageIO, FileIO
 @testset "Plotting" begin
-    # Plot many concordia ellipses and concordia curve
-    h = plot(framestyle=:box)
-    plot!(h, analyses, color=:blue, alpha=0.3, label="")
-    concordiacurve!(h)
+    # Plot single concordia ellipse
+    h = plot(analyses[1], color=:blue, alpha=0.3, label="", framestyle=:box)
     savefig(h, "concordia.png")
     img = load("concordia.png")
     @test size(img) == (400,600)
-    @test sum(img)/length(img) ≈ RGB{Float64}(0.9493200816993481,0.9493200816993481,0.9614482516339886) rtol = 0.01
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.8151617156862782,0.8151617156862782,0.986395212418301) rtol = 0.02
     rm("concordia.png")
 
+    # Plot many concordia ellipses and concordia curve
     h = plot(analyses, color=:blue, alpha=0.3, label="", framestyle=:box)
     concordiacurve!(h)
     savefig(h, "concordia.png")
@@ -149,19 +148,12 @@ using ImageIO, FileIO
     rm("concordia.png")
 
     # Plot single concordia ellipse
-    h = plot(framestyle=:box)
-    plot!(h, analyses[1], color=:blue, alpha=0.3, label="")
+    h = concordialine(0, 100, label="", framestyle=:box)
+    concordiacurve!(h)
     savefig(h, "concordia.png")
     img = load("concordia.png")
     @test size(img) == (400,600)
-    @test sum(img)/length(img) ≈ RGB{Float64}(0.8151617156862782,0.8151617156862782,0.986395212418301) rtol = 0.02
-    rm("concordia.png")
-
-    h = plot(analyses[1], color=:blue, alpha=0.3, label="", framestyle=:box)
-    savefig(h, "concordia.png")
-    img = load("concordia.png")
-    @test size(img) == (400,600)
-    @test sum(img)/length(img) ≈ RGB{Float64}(0.8151617156862782,0.8151617156862782,0.986395212418301) rtol = 0.02
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.981812385620915,0.9832414705882352,0.9841176307189541) rtol = 0.01
     rm("concordia.png")
 end
 

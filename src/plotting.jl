@@ -40,12 +40,27 @@ function concordiacurve!(hdl::Plots.Plot=Plots.current())
     return hdl
 end
 
-Plots.plot(e::Ellipse, args...; kwargs...) = plot(Shape(e), args...; kwargs...)
+concordialine(t₀, t₁; framestyle=:box, kwargs...) = concordialine!(plot(xlims=ratio.((t₀, t₁), λ235U.val)), t₀, t₁; framestyle, kwargs...)
+function concordialine!(hdl::Plots.Plot, t₀, t₁; kwargs...)
+    r75₀ = ratio(t₀, λ235U.val)
+    r68₀ = ratio(t₀, λ238U.val)
+    r75₁ = ratio(t₁, λ235U.val)
+    r68₁ = ratio(t₁, λ238U.val)
+    slope = (r68₁-r68₀)/(r75₁-r75₀)
+    intercept = r68₀ - r75₀*slope
+    xl = Plots.xlims(hdl)
+    x = collect(range(xl..., length=50))
+    y = intercept .+ slope .* x
+    plot!(hdl, x, val.(y); ribbon=err.(y), kwargs...)
+    Plots.xlims!(hdl, xl)
+end
+
+Plots.plot(e::Ellipse, args...; kwargs...) = plot!(plot(), Shape(e), args...; kwargs...)
 Plots.plot!(hdl::Plots.Plot, e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(e), args...; kwargs...)
-Plots.plot(e::Vector{<:Ellipse}, args...; kwargs...) = plot(Shape.(e), args...; kwargs...)
+Plots.plot(e::Vector{<:Ellipse}, args...; kwargs...) = plot!(plot(), Shape.(e), args...; kwargs...)
 Plots.plot!(hdl::Plots.Plot, e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
 
-Plots.plot(a::Analysis, args...; kwargs...) = plot(ellipse(a), args...; kwargs...)
+Plots.plot(a::Analysis, args...; kwargs...) = plot!(plot(), ellipse(a), args...; kwargs...)
 Plots.plot!(hdl::Plots.Plot, a::Analysis, args...; kwargs...) = plot!(hdl, ellipse(a), args...; kwargs...)
-Plots.plot(a::Vector{<:Analysis}, args...; kwargs...) = plot(ellipse.(a), args...; kwargs...)
+Plots.plot(a::Vector{<:Analysis}, args...; kwargs...) = plot!(plot(), ellipse.(a), args...; kwargs...)
 Plots.plot!(hdl::Plots.Plot, a::Vector{<:Analysis}, args...; kwargs...) = plot!(hdl, ellipse.(a), args...; kwargs...)
