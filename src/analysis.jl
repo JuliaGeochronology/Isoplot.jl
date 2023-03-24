@@ -2,7 +2,7 @@
 # Must contain a vector of means μ, standard deviations σ, and a covariance matrix Σ
 abstract type Analysis{T<:Float64} end
 
-age(r::Number, λ::Number) = log(1 + r)/λ
+age(r::Number, λ::Number) = log(1+r)/λ
 ratio(t::Number, λ::Number) = exp(λ*t) - 1
 
 # Extend Base.isnan to return true if any component of the Analysis is NaN

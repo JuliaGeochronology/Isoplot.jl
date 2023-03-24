@@ -18,19 +18,19 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.44774683
     r75₀, r68₀ = s.x₀, s.y₀
     σ75₀, σ68₀ = s.σx₀, s.σy₀
     # Return early if our lead loss time is too old or anything is NaN'd
-    tₗₗ < log(r68₀+1)/λ238U.val || return T(NaN) ± T(NaN)
-    tₗₗ < log(r75₀+1)/λ235U.val || return T(NaN) ± T(NaN)
+    tₗₗ < age(r68₀,λ238U.val) || return T(NaN) ± T(NaN)
+    tₗₗ < age(r75₀,λ235U.val) || return T(NaN) ± T(NaN)
 
     # If reversely discordant, move to the closest point on Concordia rather
     # than projecting down a fictive "lead gain" array, increasing uncertainty
     # by sqrt(MSWD) if discordance is large
-    age68 = log(1 + r68₀ ± σ68₀)/λ238U.val
-    age75 = log(1 + r75₀ ± σ75₀)/λ235U.val
+    age68 = age(r68₀ ± σ68₀, λ238U.val)
+    age75 = age(r75₀ ± σ75₀, λ235U.val)
     age75.val > age68.val || return first(wmean((age68, age75), corrected=true))
 
     # Calculate isotopic ratios of our time of Pb-loss
-    r75ₗₗ = exp(λ235U.val*tₗₗ) - 1
-    r68ₗₗ = exp(λ238U.val*tₗₗ) - 1
+    r75ₗₗ = ratio(tₗₗ, λ235U.val)
+    r68ₗₗ = ratio(tₗₗ, λ238U.val)
     slope₀ = (r68₀-r68ₗₗ)/(r75₀-r75ₗₗ)
 
     # Find the values on the margin of the ellipse with the
