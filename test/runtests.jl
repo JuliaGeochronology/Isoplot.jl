@@ -160,10 +160,10 @@ end
 
 @testset "Metropolis" begin
     data = upperintercept.(0, analyses)
-    @test Isoplot.dist_ll(ones(10), data, 751, 755) ≈ -20.139445921297565
-    @test Isoplot.dist_ll(ones(10), data, 750, 760) ≈ -30.508892188237297
-    @test Isoplot.dist_ll(ones(10), data, 752, 753) ≈ -15.347952846611049
-    @test Isoplot.dist_ll(ones(10), data, 751, 752) ≈ -47.431672803923334
+    @test Isoplot.dist_ll(ones(10), data, 751, 755) ≈ -20.09136536048026
+    @test Isoplot.dist_ll(ones(10), data, 750, 760) ≈ -30.459633175497830
+    @test Isoplot.dist_ll(ones(10), data, 752, 753) ≈ -15.305463167234748
+    @test Isoplot.dist_ll(ones(10), data, 751, 752) ≈ -47.386667785224034
 
     tmindist, t0dist = metropolis_min(1000, ones(10), analyses; burnin=200)
     @test tmindist isa Vector{Float64}

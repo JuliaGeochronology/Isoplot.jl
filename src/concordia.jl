@@ -26,7 +26,7 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.44774683
     # by sqrt(MSWD) if discordance is large
     age68 = log(1 + r68₀ ± σ68₀)/λ238U.val
     age75 = log(1 + r75₀ ± σ75₀)/λ235U.val
-    age75.val > age68.val || return first(gwmean((age68, age75)))
+    age75.val > age68.val || return first(wmean((age68, age75), corrected=true))
 
     # Calculate isotopic ratios of our time of Pb-loss
     r75ₗₗ = exp(λ235U.val*tₗₗ) - 1

@@ -38,7 +38,7 @@ function dist_ll(
         loglikelihood += log(likelihood)
     end
     # Calculate a weighted mean and examine our MSWD
-    (wm, mswd) = awmean(analyses)
+    (wm, mswd) = wmean(analyses, corrected=true)
     # Height of MSWD distribution relative to height at MSWD = 1
     # (see Wendt and Carl, 1991, Chemical geology)
     f = length(analyses) - 1
