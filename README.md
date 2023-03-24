@@ -59,7 +59,7 @@ println("Eruption age: $m +$u/-$l Ma (95% CI)")
 > Eruption age: 751.9432442465145 +0.5067945247379839/-0.6812510091036756 Ma (95% CI)
 
 ```julia
-h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", framestyle=:box)
+h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", color=:darkblue, alpha=0.5, linealpha=0.1, framestyle=:box)
 ylims!(h, 0, ylims()[2])
 savefig(h, "EruptionAge.svg")
 display(h)
@@ -67,11 +67,12 @@ display(h)
 ![svg](examples/eruptionage.svg)
 
 ```julia
-h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", framestyle=:box)
+h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", color=:darkblue, alpha=0.5, linealpha=0.1, framestyle=:box)
 xlims!(h, 0, xlims()[2])
 ylims!(h, 0, ylims()[2])
 savefig(h, "PbLoss.svg")
 display(h)
+
 ```
 ![svg](examples/pbloss.svg)
 

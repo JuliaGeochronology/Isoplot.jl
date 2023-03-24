@@ -41,11 +41,10 @@ println("Eruption age: $m +$u/-$l Ma (95% CI)")
 
 ## --- Histogram of distribution of eruption age
 
-h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", framestyle=:box)
+h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", color=:darkblue, alpha=0.5, linealpha=0.1, framestyle=:box)
 ylims!(h, 0, ylims()[2])
 savefig(h, "EruptionAge.svg")
 display(h)
-
 
 ## --- Show eruption age relative to distribution of upper intercepts
 
@@ -59,7 +58,7 @@ plot!(h,1:length(uis),fill(m,length(uis)),linecolor=:black,linestyle=:dot,label=
 
 ## --- Histogram of distribution of time of Pb-loss
 
-h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", framestyle=:box)
+h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", color=:darkblue, alpha=0.5, linealpha=0.1, framestyle=:box)
 xlims!(h, 0, xlims()[2])
 ylims!(h, 0, ylims()[2])
 savefig(h, "PbLoss.svg")
