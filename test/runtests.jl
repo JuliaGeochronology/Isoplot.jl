@@ -171,4 +171,11 @@ end
     @test t0dist isa Vector{Float64}
     @test mean(t0dist) ≈ 80. atol = 90
     @test std(t0dist) ≈ 50. rtol = 0.6
+
+    @test mean(UniformDistribution) ≈ 1
+    @test mean(TriangularDistribution) ≈ 1
+    @test mean(HalfNormalDistribution) ≈ 1
+    @test mean(ExponentialDistribution) ≈ 1.03 atol=0.01
+    @test mean(MeltsZirconDistribution) ≈ 1 atol=0.01
+    @test mean(MeltsVolcanicZirconDistribution) ≈ 1 atol=0.01
 end

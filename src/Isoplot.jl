@@ -30,6 +30,11 @@ module Isoplot
     include("metropolis.jl")
     export metropolis_min, metropolis_min!
 
+    include("distributions.jl")
+    export UniformDistribution, TriangularDistribution,
+    HalfNormalDistribution, ExponentialDistribution,
+    MeltsZirconDistribution, MeltsVolcanicZirconDistribution
+
     include("show.jl")
 
 end # module Isoplot
