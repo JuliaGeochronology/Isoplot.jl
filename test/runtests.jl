@@ -148,13 +148,21 @@ using ImageIO, FileIO
     rm("concordia.png")
 
     # Plot single concordia ellipse
-    h = concordialine(0, 100, label="", framestyle=:box)
+    h = concordialine(0, 100, label="")
     concordiacurve!(h)
     savefig(h, "concordia.png")
     img = load("concordia.png")
     @test size(img) == (400,600)
     @test sum(img)/length(img) ≈ RGB{Float64}(0.981812385620915,0.9832414705882352,0.9841176307189541) rtol = 0.01
     rm("concordia.png")
+
+    # Rank-order plot
+    h = rankorder(1:10, 2*ones(10), label="")
+    savefig(h, "rankorder.png")
+    img = load("rankorder.png")
+    @test size(img) == (400,600)
+    @test sum(img)/length(img) ≈ RGB{Float64}(0.9842757843137254,0.9882103758169932,0.9906218464052285) rtol = 0.01
+    rm("rankorder.png")
 end
 
 @testset "Metropolis" begin

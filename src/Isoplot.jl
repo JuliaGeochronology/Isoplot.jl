@@ -25,7 +25,8 @@ module Isoplot
     export upperintercept, lowerintercept, intercepts
 
     include("plotting.jl")
-    export concordiacurve!, concordialine, concordialine!
+    export concordiacurve!, concordialine, concordialine!,
+    rankorder, rankorder!
 
     include("metropolis.jl")
     export metropolis_min, metropolis_min!
