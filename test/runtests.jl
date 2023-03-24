@@ -8,6 +8,11 @@ using Measurements
     @test Isoplot.err(1±1) === 1.0
     @test Isoplot.val(1) === 1
     @test Isoplot.err(1) === 0
+
+    ci = CI(1:10)
+    @test ci == CI{Float64}(5.5, 3.0276503540974917, 5.5, 1.225, 9.775)
+    @test "$ci" === "5.5 +4.28/-4.28"
+    @test display(ci) != NaN
 end
 
 @testset "U-Pb" begin
