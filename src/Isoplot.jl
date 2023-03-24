@@ -12,14 +12,14 @@ module Isoplot
 
     # Abstract types which we'll subtype later
     include("analysis.jl")
-    export ellipse
+    export age, ratio, ellipse
 
     include("regression.jl")
     export wmean, awmean, gwmean, mswd
     export lsqfit, yorkfit
 
     include("upb.jl")
-    export UPbAnalysis, age, discordance
+    export UPbAnalysis, discordance
 
     include("concordia.jl")
     export upperintercept, lowerintercept, intercepts
