@@ -1,5 +1,6 @@
 module Isoplot
 
+    using VectorizedStatistics
     using LoopVectorization
     using LinearAlgebra
     using Distributions
@@ -12,7 +13,7 @@ module Isoplot
 
     # Abstract types which we'll subtype later
     include("analysis.jl")
-    export age, ratio, ellipse
+    export age, ratio, ellipse, CI
 
     include("regression.jl")
     export wmean, awmean, gwmean, mswd

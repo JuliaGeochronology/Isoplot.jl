@@ -180,6 +180,14 @@ end
     @test mean(t0dist) ≈ 80. atol = 90
     @test std(t0dist) ≈ 50. rtol = 0.6
 
+    terupt = CI(tmindist)
+    @test terupt isa CI{Float64}
+    @test terupt.mean ≈ 751.85 atol = 1.5
+    @test terupt.sigma ≈ 0.40 rtol = 0.6
+    @test terupt.median ≈ 751.83 atol = 1.5
+    @test terupt.lower ≈ 750.56 atol = 1.5
+    @test terupt.upper ≈ 752.52 atol = 1.5
+
     @test mean(UniformDistribution) ≈ 1
     @test mean(TriangularDistribution) ≈ 1
     @test mean(HalfNormalDistribution) ≈ 1
