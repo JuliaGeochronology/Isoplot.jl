@@ -3,6 +3,13 @@ using Test, Statistics
 using Plots
 using Measurements
 
+@testset "General" begin
+    @test Isoplot.val(1±1) === 1.0
+    @test Isoplot.err(1±1) === 1.0
+    @test Isoplot.val(1) === 1
+    @test Isoplot.err(1) === 0
+end
+
 @testset "U-Pb" begin
     r75 = 22.6602
     σ75 = 0.017516107998

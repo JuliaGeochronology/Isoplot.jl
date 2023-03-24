@@ -56,8 +56,10 @@ function ellipseparameters(d::Analysis{T}, sigmalevel::Number) where T
     return a, b, θ
 end
 
-# Convenience methods for converting between Measurements and values and errors
-@inline val(m::Measurement{T}) where {T} = m.val::T
-@inline err(m::Measurement{T}) where {T} = m.err::T
-val(x::Vector{<:Measurement}) = [val(m) for m in x]
-err(x::Vector{<:Measurement}) = [err(m) for m in x]
+# Convenience methods for possibly obtaining values or uncertainties
+# Generic fallback methods for things that don't have uncertainties
+val(x) = x
+err(x::T) where {T} = zero(T)
+# Specialized methods for `Measurement`s
+val(m::Measurement{T}) where {T} = m.val::T
+err(m::Measurement{T}) where {T} = m.err::T

@@ -93,8 +93,8 @@ function metropolis_min!(
     tmin_step = tmax_step = dt / length(analyses)
 
     # Use oldest and youngest zircons for initial proposal
-    tminₚ = tmin = youngest.val
-    tmaxₚ = tmax = oldest.val
+    tminₚ = tmin = val(youngest)
+    tmaxₚ = tmax = val(oldest)
 
     # Log likelihood of initial proposal
     ll = llₚ = dist_ll(dist, ages, tmin, tmax) + logpdf(t0prior, t0)

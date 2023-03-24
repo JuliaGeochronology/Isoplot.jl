@@ -221,7 +221,7 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}; iterations=10) = yorkfit(val(x), err(x), val(y), err(y); iterations)
+yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}; iterations=10) = yorkfit(val.(x), err.(x), val.(y), err.(y); iterations)
 function yorkfit(x, σx, y, σy; iterations=10)
 
     ## 1. Ordinary linear regression (to get a first estimate of slope and intercept)
