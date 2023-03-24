@@ -75,10 +75,12 @@ display(h)
 Notably, In contrast to a weighted mean or a standard Bayesian eruption age, the result appears to be influenced little if at all by any decision to exclude or not exclude discordant grains, for example:
 
 Excluding several most discordant grains
+
 ![svg](examples/concordiascreened.svg)
 > Eruption/deposition age: 751.946 +0.508/-0.765 Ma (95% CI)
 
 Excluding nothing
+
 ![svg](examples/concordiaall.svg)
 > Eruption/deposition age: 751.951 +0.501/-0.695 Ma (95% CI)
 
