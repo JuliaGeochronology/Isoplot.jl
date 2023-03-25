@@ -46,6 +46,7 @@ display(hdl)
 
 
 ### Pb-loss-aware Bayesian eruption age estimation
+Among other things implemented in this package is an extension of the method of [Keller, Schoene, and Samperton (2018)](https://doi.org/10.7185/geochemlet.1826) to the case where some analyses may have undergone significant Pb-loss:
 ```julia
 nsteps = 10^6
 tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10^4)
