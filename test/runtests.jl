@@ -3,16 +3,21 @@ using Test, Statistics
 using Plots
 using Measurements
 
-@testset "General" begin
-    @test Isoplot.val(1±1) === 1.0
-    @test Isoplot.err(1±1) === 1.0
-    @test Isoplot.val(1) === 1
-    @test Isoplot.err(1) === 0
+@testset "Show" begin
+    yf = Isoplot.YorkFit(1±1, 1±1, 1.0)
+    @test display(yf) != NaN
 
     ci = CI(1:10)
     @test ci == CI{Float64}(5.5, 3.0276503540974917, 5.5, 1.225, 9.775)
     @test "$ci" === "5.5 +4.28/-4.28"
     @test display(ci) != NaN
+end
+
+@testset "General" begin
+    @test Isoplot.val(1±1) === 1.0
+    @test Isoplot.err(1±1) === 1.0
+    @test Isoplot.val(1) === 1
+    @test Isoplot.err(1) === 0
 end
 
 @testset "U-Pb" begin
@@ -109,7 +114,6 @@ end
     @test fobj.slope.val ≈ 1.041124018512526
     @test fobj.slope.err ≈ 0.0035683808205783673
     @test fobj.mswd ≈ 1.1419901440278089
-    @test display(fobj) != NaN
 
     x = ((1:100) .+ randn.()) .± 1
     y = (2*(1:100) .+ randn.()) .± 1
