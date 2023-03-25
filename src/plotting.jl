@@ -8,18 +8,33 @@ Plots.plot!(hdl::Plots.Plot, e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(
 Plots.plot!(hdl::Plots.Plot, e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
 
 # Plot a line between two times in Wetherill Concordia space
-concordialine(t₀, t₁; framestyle=:box, kwargs...) = concordialine!(plot(xlims=ratio.((t₀, t₁), λ235U.val)), t₀, t₁; framestyle, kwargs...)
-function concordialine!(hdl::Plots.Plot, t₀, t₁; kwargs...)
+concordialine(t₀, t₁; framestyle=:box, kwargs...) = concordialine!(plot(xlims=ratio.((first(t₀), first(t₁)), λ235U.val)), t₀, t₁; framestyle, kwargs...)
+function concordialine!(hdl::Plots.Plot, t₀::Number, t₁::Number; kwargs...)
+    xl = Plots.xlims(hdl)
+    x = collect(range(xl..., length=50))
     r75₀ = ratio(t₀, λ235U.val)
     r68₀ = ratio(t₀, λ238U.val)
     r75₁ = ratio(t₁, λ235U.val)
     r68₁ = ratio(t₁, λ238U.val)
     slope = (r68₁-r68₀)/(r75₁-r75₀)
     intercept = r68₀ - r75₀*slope
-    xl = Plots.xlims(hdl)
-    x = collect(range(xl..., length=50))
     y = intercept .+ slope .* x
     plot!(hdl, x, val.(y); ribbon=err.(y), kwargs...)
+    Plots.xlims!(hdl, xl)
+end
+function concordialine!(hdl::Plots.Plot, t₀::Collection, t₁::Collection; label="", color=:black, alpha=0.05, kwargs...)
+    xl = Plots.xlims(hdl)
+    x = collect(range(xl..., length=50))
+    r75₀ = ratio.(t₀, λ235U.val)
+    r68₀ = ratio.(t₀, λ238U.val)
+    r75₁ = ratio.(t₁, λ235U.val)
+    r68₁ = ratio.(t₁, λ238U.val)
+    slope = @. (r68₁-r68₀)/(r75₁-r75₀)
+    intercept = @. r68₀ - r75₀*slope
+    y(slope, intercept) = @. intercept + slope * x
+    ys = y.(slope, intercept)
+    plot!(hdl, x, ys; label="", color, alpha, kwargs...)
+    plot!(hdl, x, sum(ys)./length(ys); label, color, alpha=1, kwargs...)
     Plots.xlims!(hdl, xl)
 end
 
