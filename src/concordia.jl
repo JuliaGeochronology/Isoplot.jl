@@ -46,9 +46,13 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.44774683
     ui₀ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₀,r75₀,r68₀))
     ui₋ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₋,r75₋,r68₋))
     ui₊ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₊,r75₊,r68₊))
-
-    return ui₀ ± (ui₊ - ui₋)/2sigmalevel
+    # Direct uncertainty, from spread in intercepts given size of ellipse
+    σ = (val(ui₊) - val(ui₋))/2sigmalevel
+    # Include also uncertainty, from lower intercept if tₗₗ (and ui) are `Measurement`s
+    return val(ui₀) ± σcombined(ui₀, σ)
 end
+σcombined(m::Measurement, σ) = sqrt(err(m)^2 + σ^2)
+σcombined(m, σ) = σ # If m is not a Measurement
 
 upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, ellipse(d; npoints=50))
 

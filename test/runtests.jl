@@ -51,8 +51,10 @@ end
     @test e1.y ≈ y
 
     tₗₗ = 35
+    ui = upperintercept(tₗₗ ± 10, d1)
+    @test ui == 3921.343026090256 ± 2.745595368456398
     ui = upperintercept(tₗₗ, d1)
-    @test ui isa Isoplot.Measurement
+    @test ui == 3921.343026090256 ± 0.7241111646504936
 
     N = 10000
     uis = upperintercept(tₗₗ, d1, N)
