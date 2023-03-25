@@ -80,9 +80,11 @@ display(h)
 Notably, In contrast to a weighted mean or a standard Bayesian eruption age, the result appears to be influenced little if at all by any decision to exclude or not exclude discordant grains, for example:
 
 Excluding four analyses with >0.07% discordance:
+
 ![svg](examples/concordiascreened.svg)
 
 Excluding nothing:
+
 ![svg](examples/concordiaall.svg)
 
 with in this example perhaps only a slight _increase_ in precision when more data are included, even if those data happen to be highly discordant.
