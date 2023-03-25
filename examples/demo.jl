@@ -18,7 +18,7 @@ data = [1.1009 0.00093576 0.123906 0.00002849838 0.319
 # Turn into UPbAnalysis objects
 analyses = UPbAnalysis.(eachcol(data)...,)
 # Screen for discordance
-analyses = analyses[discordance.(analyses) .< 0.2]
+analyses = analyses[discordance.(analyses) .< 0.07]
 
 # Plot in Wetherill concordia space
 hdl = plot(xlabel="²⁰⁷Pb/²³⁵U", ylabel="²⁰⁶Pb/²³⁸U", framestyle=:box)
@@ -31,10 +31,15 @@ display(hdl)
 
 nsteps = 10^6
 tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10^4)
-
+tpbloss = CI(t0dist)
 terupt = CI(tmindist)
 println("Eruption/deposition age: $terupt Ma (95% CI)")
+# Add to concordia plot
+I = rand(1:length(tmindist), 1000) # Pick 100 random samples from the posterior distribution
+concordialine!(hdl, t0dist[I], tmindist[I], color=:darkred, alpha=0.02, label="Model: $terupt Ma") # Add to Concordia plot
+display(hdl)
 terupt
+
 ## --- Histogram of distribution of eruption age
 
 h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", color=:darkblue, alpha=0.65, linealpha=0.1, framestyle=:box)
@@ -49,7 +54,6 @@ h = rankorder(Isoplot.val.(uis), Isoplot.err.(uis))
 plot!(h,1:length(uis),fill(terupt.lower,length(uis)),fillto=terupt.upper,color=:blue,fillalpha=0.5,linealpha=0, label="Model ($terupt Ma, 95% CI)")
 plot!(h,1:length(uis),fill(terupt.mean,length(uis)),linecolor=:black,linestyle=:dot,label="",legend=:topleft,fg_color_legend=:white,framestyle=:box)
 
-# concordialine!(hdl, t₀, t₁, color=:darkred)
 
 
 ## --- Histogram of distribution of time of Pb-loss

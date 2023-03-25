@@ -49,9 +49,14 @@ display(hdl)
 ```julia
 nsteps = 10^6
 tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10^4)
-
+tpbloss = CI(t0dist)
 terupt = CI(tmindist)
 println("Eruption/deposition age: $terupt Ma (95% CI)")
+
+# Add to concordia plot
+I = rand(1:length(tmindist), 1000) # Pick 100 random samples from the posterior distribution
+concordialine!(hdl, t0dist[I], tmindist[I], color=:darkred, alpha=0.02, label="Model: $terupt Ma") # Add to Concordia plot
+display(hdl)
 ```
 > Eruption/deposition age: 751.942 +0.504/-0.709 Ma (95% CI)
 
@@ -74,21 +79,13 @@ display(h)
 
 Notably, In contrast to a weighted mean or a standard Bayesian eruption age, the result appears to be influenced little if at all by any decision to exclude or not exclude discordant grains, for example:
 
-Excluding several most discordant grains
+![svg](examples/concordiascreened.svg) ![svg](examples/concordiaall.svg)
 
-![svg](examples/concordiascreened.svg)
-> Eruption/deposition age: 751.946 +0.508/-0.765 Ma (95% CI)
-
-Excluding nothing
-
-![svg](examples/concordiaall.svg)
-> Eruption/deposition age: 751.951 +0.501/-0.695 Ma (95% CI)
-
-indicating perhaps only a slight _increase_ in precision when more data are included, even if those data happen to be highly discordant.
+with in this example perhaps only a slight _increase_ in precision when more data are included, even if those data happen to be highly discordant.
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://JuliaGeochronology.github.io/Isoplot.jl/dev/
 [ci-img]: https://github.com/JuliaGeochronology/Isoplot.jl/workflows/CI/badge.svg
 [ci-url]: https://github.com/JuliaGeochronology/Isoplot.jl/actions/workflows/CI.yml
 [codecov-img]: http://codecov.io/github/JuliaGeochronology/Isoplot.jl/coverage.svg?branch=main
-[codecov-url]: http://codecov.io/github/JuliaGeochronology/Isoplot.jl?branch=main
+[codecov-url]: http://app.codecov.io/github/JuliaGeochronology/Isoplot.jl?branch=main
