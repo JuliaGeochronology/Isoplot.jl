@@ -30,7 +30,8 @@ module Isoplot
     rankorder, rankorder!
 
     include("metropolis.jl")
-    export metropolis_min, metropolis_min!
+    export metropolis_min, metropolis_min!,
+    metropolis_minmax, metropolis_minmax!
 
     include("distributions.jl")
     export UniformDistribution, TriangularDistribution,

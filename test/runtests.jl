@@ -185,7 +185,7 @@ using ImageIO, FileIO
     rm("rankorder.png")
 end
 
-@testset "Metropolis" begin
+@testset "Concordia Metropolis" begin
     data = upperintercept.(0, analyses)
     @test Isoplot.dist_ll(ones(10), data, 751, 755) ≈ -20.09136536048026
     @test Isoplot.dist_ll(ones(10), data, 750, 760) ≈ -30.459633175497830
@@ -207,6 +207,18 @@ end
     @test terupt.median ≈ 751.83 atol = 1.5
     @test terupt.lower ≈ 750.56 atol = 1.5
     @test terupt.upper ≈ 752.52 atol = 1.5
+end
+
+@testset "General Metropolis" begin
+    mu, sigma = collect(100:0.1:101), 0.01*ones(11);
+    @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100,101) ≈ -3.6933372932657607
+
+    tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
+    @test mean(tmindist) ≈ 99.9228 atol=0.015
+
+    tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
+    @test mean(tmindist) ≈ 99.9228  atol=0.015
+    @test mean(tmaxdist) ≈ 101.08  atol=0.015
 
     @test mean(UniformDistribution) ≈ 1
     @test mean(TriangularDistribution) ≈ 1
