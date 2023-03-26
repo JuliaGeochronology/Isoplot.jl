@@ -19,13 +19,13 @@ function dist_ll(
         # Find equivalent index position of μⱼ in the `dist` array
         ix = (μⱼ - tmin) / dt * nbins + 1
         # If possible, prevent aliasing problems by interpolation
-        if (σⱼ < dt / nbins) && ix > 1 && ix < length(dist)
+        if (σⱼ < dt / nbins) && 1 < ix < length(dist)
             # Interpolate corresponding distribution value
             f = floor(Int, ix)
             δ = ix - f
             likelihood = (dist[f+1]*δ + dist[f]*(1-δ)) / dt
-            # Otherwise, sum contributions from Gaussians at each point in distribution
         else
+            # Otherwise, sum contributions from Gaussians at each point in distribution
             𝑖 = 1:length(dist)
             likelihood = zero(float(eltype(dist)))
             normconst = 1/(length(dist) * σⱼ * sqrt(2 * pi))
@@ -101,10 +101,16 @@ function metropolis_min!(
 
     # Burnin
     for i = 1:burnin
-        # Adjust upper and lower bounds
-        tminₚ = tmin + tmin_step * randn()
-        tmaxₚ = tmax + tmax_step * randn()
-        t0ₚ = t0 + t0step * randn()
+        tminₚ, tmaxₚ, t0ₚ = tmin, tmax, t0
+        # Adjust upper or lower bounds, or Pb-loss time
+        r = rand()
+        if r < 0.35
+            tminₚ += tmin_step * randn()
+        elseif r < 0.70
+            tmaxₚ += tmax_step * randn()
+        else
+            t0ₚ += t0step * randn()
+        end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
@@ -128,11 +134,17 @@ function metropolis_min!(
         end
     end
     # Step through each of the N steps in the Markov chain
-    @inbounds for i = 1:nsteps
-        # Adjust upper and lower bounds
-        tminₚ = tmin + tmin_step * randn()
-        tmaxₚ = tmax + tmax_step * randn()
-        t0ₚ = t0 + t0step * randn()
+    @inbounds for i in eachindex(tmindist, t0dist)
+        tminₚ, tmaxₚ, t0ₚ = tmin, tmax, t0
+        # Adjust upper or lower bounds, or Pb-loss time
+        r = rand()
+        if r < 0.35
+            tminₚ += tmin_step * randn()
+        elseif r < 0.70
+            tmaxₚ += tmax_step * randn()
+        else
+            t0ₚ += t0step * randn()
+        end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
@@ -156,7 +168,6 @@ function metropolis_min!(
         end
         tmindist[i] = tmin
         t0dist[i] = t0
-
     end
     return tmindist
 end
