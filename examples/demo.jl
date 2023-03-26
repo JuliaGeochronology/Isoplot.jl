@@ -1,4 +1,4 @@
-using Isoplot, Plots
+using Isoplot, Plots, VectorizedStatistics
 
 # Example U-Pb dataset (MacLennan et al. 2020)
 #       207/235  1σ abs   206/236     1σ abs     correlation
@@ -18,7 +18,7 @@ data = [1.1009 0.00093576 0.123906 0.00002849838 0.319
 # Turn into UPbAnalysis objects
 analyses = UPbAnalysis.(eachcol(data)...,)
 # Screen for discordance
-analyses = analyses[discordance.(analyses) .< 0.07]
+# analyses = analyses[discordance.(analyses) .< 0.07]
 
 # Plot in Wetherill concordia space
 hdl = plot(xlabel="²⁰⁷Pb/²³⁵U", ylabel="²⁰⁶Pb/²³⁸U", framestyle=:box)
@@ -33,7 +33,9 @@ nsteps = 10^6
 tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10^4)
 tpbloss = CI(t0dist)
 terupt = CI(tmindist)
+display(terupt)
 println("Eruption/deposition age: $terupt Ma (95% CI)")
+
 # Add to concordia plot
 I = rand(1:length(tmindist), 1000) # Pick 100 random samples from the posterior distribution
 concordialine!(hdl, t0dist[I], tmindist[I], color=:darkred, alpha=0.02, label="Model: $terupt Ma") # Add to Concordia plot

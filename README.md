@@ -52,6 +52,7 @@ nsteps = 10^6
 tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10^4)
 tpbloss = CI(t0dist)
 terupt = CI(tmindist)
+display(terupt)
 println("Eruption/deposition age: $terupt Ma (95% CI)")
 
 # Add to concordia plot
@@ -59,7 +60,7 @@ I = rand(1:length(tmindist), 1000) # Pick 100 random samples from the posterior 
 concordialine!(hdl, t0dist[I], tmindist[I], color=:darkred, alpha=0.02, label="Model: $terupt Ma") # Add to Concordia plot
 display(hdl)
 ```
-> Eruption/deposition age: 751.942 +0.504/-0.709 Ma (95% CI)
+> Eruption/deposition age: 751.952 +0.493/-0.757 Ma (95% CI)
 
 ```julia
 h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", color=:darkblue, alpha=0.65, linealpha=0.1, framestyle=:box)
