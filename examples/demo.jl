@@ -18,11 +18,11 @@ data = [1.1009 0.00093576 0.123906 0.00002849838 0.319
 # Turn into UPbAnalysis objects
 analyses = UPbAnalysis.(eachcol(data)...,)
 # Screen for discordance
-# analyses = analyses[discordance.(analyses) .< 0.07]
+analyses = analyses[discordance.(analyses) .< 0.2]
 
 # Plot in Wetherill concordia space
-hdl = plot(xlabel="²⁰⁷Pb/²³⁵U", ylabel="²⁰⁶Pb/²³⁸U", framestyle=:box)
-plot!(hdl, analyses, color=:darkblue, alpha=0.3, label = "")
+hdl = plot(xlabel="²⁰⁷Pb/²³⁵U", ylabel="²⁰⁶Pb/²³⁸U", grid=false, framestyle=:box)
+plot!(hdl, analyses, color=:darkblue, alpha=0.3, label="")
 concordiacurve!(hdl) # Add concordia curve
 savefig(hdl, "concordia.pdf")
 display(hdl)
