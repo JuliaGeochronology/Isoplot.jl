@@ -21,9 +21,9 @@ function Base.show(io::IO, ::MIME"text/plain", x::CI{T}) where T
     )
 end
 function Base.print(io::IO, x::CI)
-    l = round(x.mean - x.lower, sigdigits=3)
-    u = round(x.upper - x.mean, sigdigits=3)
+    l = round(x.mean - x.lower, sigdigits=2)
+    u = round(x.upper - x.mean, sigdigits=2)
     d = floor(Int, log10(abs(x.mean))) - floor(Int, log10(max(abs(l),abs(u))))
-    m = round(x.mean, sigdigits=3+d)
+    m = round(x.mean, sigdigits=2+d)
     print(io, "$m +$u/-$l")
 end
