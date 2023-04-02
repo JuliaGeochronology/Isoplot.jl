@@ -216,10 +216,10 @@ end
     mu, sigma = collect(100:0.1:101), 0.01*ones(11);
     @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100,101) ≈ -3.6933372932657607
 
-    tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
+    tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
     @test mean(tmindist) ≈ 99.9228 atol=0.015
 
-    tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
+    tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
     @test mean(tmindist) ≈ 99.9228  atol=0.015
     @test mean(tmaxdist) ≈ 101.08  atol=0.015
 

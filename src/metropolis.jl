@@ -119,8 +119,9 @@ end
 
 """
 ```julia
+metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0)
 metropolis_min(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
-metropolis_min(nsteps::Integer, dist::Collection, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0)
+metropolis_min(nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis; burnin::Integer=0)
 ```
 Run a Metropolis sampler to estimate the minimum of a finite-range source
 distribution `dist` using samples drawn from that distribution -- e.g., estimate
@@ -133,13 +134,14 @@ tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, bu
 tmindist, t0dist = metropolis_min(2*10^5, HalfNormalDistribution, analyses, burnin=10^5)
 ```
 """
+metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0) = metropolis_min(nsteps, dist, val.(data), err.(data); burnin)
 function metropolis_min(nsteps::Integer, dist::Collection, mu::Collection, sigma::Collection; burnin::Integer=0)
     # Allocate ouput array
     tminDist = Array{float(eltype(mu))}(undef,nsteps)
     # Run Metropolis sampler
     return metropolis_min!(tminDist, nsteps, dist, mu, sigma; burnin)
 end
-function metropolis_min(nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Int=0) where {T}
+function metropolis_min(nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T}
     # Allocate ouput arrays
     tmindist = Array{T}(undef,nsteps)
     t0dist = Array{T}(undef,nsteps)
@@ -341,7 +343,8 @@ end
 
 """
 ```julia
-metropolis_minmax(nsteps::Int, dist::AbstractArray, data::AbstractArray, uncert::AbstractArray; burnin::Integer=0)
+metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0)
+metropolis_minmax(nsteps::Integer, dist::AbstractArray, data::AbstractArray, uncert::AbstractArray; burnin::Integer=0)
 ```
 Run a Metropolis sampler to estimate the extrema of a finite-range source
 distribution `dist` using samples drawn from that distribution -- e.g.,
@@ -353,7 +356,8 @@ crystallization ages.
 tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-function metropolis_minmax(nsteps::Int, dist::AbstractArray, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0) = metropolis_minmax(nsteps, dist, val.(data), err.(data); burnin)
+function metropolis_minmax(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
     # Allocate ouput arrays
     acceptanceDist = falses(nsteps)
     llDist = Array{float(eltype(dist))}(undef,nsteps)
@@ -365,7 +369,7 @@ end
 
 """
 ```julia
-metropolis_minmax!(tminDist, tmaxDist, llDist, acceptanceDist, nsteps::Int, dist::AbstractArray, data::AbstractArray, uncert::AbstractArray; burnin::Integer=0)
+metropolis_minmax!(tminDist, tmaxDist, llDist, acceptanceDist, nsteps::Integer, dist::AbstractArray, data::AbstractArray, uncert::AbstractArray; burnin::Integer=0)
 ```
 In-place (non-allocating) version of `metropolis_minmax`, filling existing arrays
 
@@ -379,7 +383,7 @@ crystallization ages.
 metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-function metropolis_minmax!(tminDist::AbstractArray, tmaxDist::AbstractArray, llDist::AbstractArray, acceptanceDist::AbstractArray, nsteps::Int, dist::AbstractArray, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+function metropolis_minmax!(tminDist::AbstractArray, tmaxDist::AbstractArray, llDist::AbstractArray, acceptanceDist::AbstractArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
