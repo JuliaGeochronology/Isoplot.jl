@@ -19,11 +19,18 @@ module Isoplot
     export wmean, awmean, gwmean, mswd
     export lsqfit, yorkfit
 
-    include("upb.jl")
+    include("U-Pb.jl")
     export UPbAnalysis, discordance
 
     include("concordia.jl")
     export upperintercept, lowerintercept, intercepts
+
+    include("U-Th.jl")
+    include("Re-Os.jl")
+    include("Lu-Hf.jl")
+    include("Sm-Nd.jl")
+    include("Rb-Sr.jl")
+    include("K-Ar.jl")
 
     include("plotting.jl")
     export concordiacurve!, concordialine, concordialine!,
