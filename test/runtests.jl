@@ -203,6 +203,20 @@ end
     @test mean(t0dist) ≈ 80. atol = 90
     @test std(t0dist) ≈ 50. rtol = 0.6
 
+    tmindist, tmaxdist, t0dist, lldist, acceptancedist = metropolis_minmax(10000, ones(10), analyses; burnin=200)
+    @test tmindist isa Vector{Float64}
+    @test mean(tmindist) ≈ 751.85 atol = 1.5
+    @test std(tmindist) ≈ 0.40 rtol = 0.6
+    @test tmaxdist isa Vector{Float64}
+    @test mean(tmaxdist) ≈ 753.32 atol = 1.5
+    @test std(tmaxdist) ≈ 0.60 rtol = 0.6
+    @test t0dist isa Vector{Float64}
+    @test mean(t0dist) ≈ 80. atol = 90
+    @test std(t0dist) ≈ 50. rtol = 0.6
+    @test lldist isa Vector{Float64}
+    @test acceptancedist isa BitVector
+    @test mean(acceptancedist) ≈ 0.6 atol=0.2
+
     terupt = CI(tmindist)
     @test terupt isa CI{Float64}
     @test terupt.mean ≈ 751.85 atol = 1.5
@@ -222,6 +236,9 @@ end
     tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
     @test mean(tmindist) ≈ 99.9228  atol=0.015
     @test mean(tmaxdist) ≈ 101.08  atol=0.015
+    @test lldist isa Vector{Float64}
+    @test acceptancedist isa BitVector
+    @test mean(acceptancedist) ≈ 0.6 atol=0.2
 
     @test mean(UniformDistribution) ≈ 1
     @test mean(TriangularDistribution) ≈ 1

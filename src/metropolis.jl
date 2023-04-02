@@ -366,10 +366,21 @@ function metropolis_minmax(nsteps::Integer, dist::Collection, mu::AbstractArray,
     # Run metropolis sampler
     return metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, nsteps, dist, mu, sigma; burnin)
 end
+function metropolis_minmax(nsteps::Integer, dist::Collection{T}, analyses::Collection{<:UPbAnalysis{T}}; burnin::Integer=0) where T
+    # Allocate ouput arrays
+    acceptancedist = falses(nsteps)
+    lldist = Array{T}(undef,nsteps)
+    t0dist = Array{T}(undef,nsteps)
+    tmaxdist = Array{T}(undef,nsteps)
+    tmindist = Array{T}(undef,nsteps)
+    # Run metropolis sampler
+    return metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, nsteps, dist, analyses; burnin)
+end
 
 """
 ```julia
 metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, nsteps::Integer, dist::AbstractArray, data::AbstractArray, uncert::AbstractArray; burnin::Integer=0)
+metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer = 0)
 ```
 In-place (non-allocating) version of `metropolis_minmax`, filling existing arrays
 
@@ -383,7 +394,7 @@ crystallization ages.
 metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-function metropolis_minmax!(tmindist::AbstractArray, tmaxdist::AbstractArray, lldist::AbstractArray, acceptancedist::AbstractArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::DenseArray, acceptancedist::BitVector, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
@@ -460,4 +471,105 @@ function metropolis_minmax!(tmindist::AbstractArray, tmaxdist::AbstractArray, ll
         lldist[i] = ll
     end
     return tmindist, tmaxdist, lldist, acceptancedist
+end
+function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, t0dist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer = 0) where {T}
+    # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
+    stepfactor = 2.9
+    # Sort the dataset from youngest to oldest
+
+    # These quantities will be used more than once
+    t0ₚ = t0 = 0.0
+    ellipses = ellipse.(analyses)
+    ages = similar(ellipses, Measurement{T})
+    @. ages = upperintercept(t0ₚ, ellipses)
+    youngest = minimum(ages)
+    oldest = maximum(ages)
+    t0step = youngest.val/50
+    t0prior = Uniform(0, youngest.val)
+
+    # Initial step sigma for Gaussian proposal distributions
+    dt = sqrt((oldest.val - youngest.val)^2 + oldest.err^2 + youngest.err^2)
+    tmin_step = tmax_step = dt / length(analyses)
+
+    # Use oldest and youngest zircons for initial proposal
+    tminₚ = tmin = val(youngest)
+    tmaxₚ = tmax = val(oldest)
+
+    # Log likelihood of initial proposal
+    ll = llₚ = dist_ll(dist, ages, tmin, tmax) + logpdf(t0prior, t0)
+
+    # Burnin
+    for i = 1:burnin
+        tminₚ, tmaxₚ, t0ₚ = tmin, tmax, t0
+        # Adjust upper or lower bounds, or Pb-loss time
+        r = rand()
+        if r < 0.35
+            tminₚ += tmin_step * randn()
+        elseif r < 0.70
+            tmaxₚ += tmax_step * randn()
+        else
+            t0ₚ += t0step * randn()
+        end
+        # Flip bounds if reversed
+        (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
+
+        # Calculate log likelihood for new proposal
+        @. ages = upperintercept(t0ₚ, ellipses)
+        llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
+        llₚ += logpdf(t0prior, t0ₚ)
+        # Decide to accept or reject the proposal
+        if log(rand()) < (llₚ - ll)
+            if tminₚ != tmin
+                tmin_step = abs(tminₚ - tmin) * stepfactor
+            end
+            if tmaxₚ != tmax
+                tmax_step = abs(tmaxₚ - tmax) * stepfactor
+            end
+
+            ll = llₚ
+            tmin = tminₚ
+            tmax = tmaxₚ
+            t0 = t0ₚ
+        end
+    end
+    # Step through each of the N steps in the Markov chain
+    @inbounds for i in eachindex(tmindist, t0dist)
+        tminₚ, tmaxₚ, t0ₚ = tmin, tmax, t0
+        # Adjust upper or lower bounds, or Pb-loss time
+        r = rand()
+        if r < 0.35
+            tminₚ += tmin_step * randn()
+        elseif r < 0.70
+            tmaxₚ += tmax_step * randn()
+        else
+            t0ₚ += t0step * randn()
+        end
+        # Flip bounds if reversed
+        (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
+
+        # Calculate log likelihood for new proposal
+        @. ages = upperintercept(t0ₚ, ellipses)
+        llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
+        llₚ += logpdf(t0prior, t0ₚ)
+        # Decide to accept or reject the proposal
+        if log(rand()) < (llₚ - ll)
+            if tminₚ != tmin
+                tmin_step = abs(tminₚ - tmin) * stepfactor
+            end
+            if tmaxₚ != tmax
+                tmax_step = abs(tmaxₚ - tmax) * stepfactor
+            end
+
+            ll = llₚ
+            tmin = tminₚ
+            tmax = tmaxₚ
+            t0 = t0ₚ
+            acceptancedist[i]=true
+        end
+        tmindist[i] = tmin
+        tmaxdist[i] = tmax
+        t0dist[i] = t0
+        lldist[i] = ll
+    end
+    return tmindist, tmaxdist, t0dist, lldist, acceptancedist
 end
