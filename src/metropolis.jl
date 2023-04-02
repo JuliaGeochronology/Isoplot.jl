@@ -137,9 +137,9 @@ tmindist, t0dist = metropolis_min(2*10^5, HalfNormalDistribution, analyses, burn
 metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0) = metropolis_min(nsteps, dist, val.(data), err.(data); burnin)
 function metropolis_min(nsteps::Integer, dist::Collection, mu::Collection, sigma::Collection; burnin::Integer=0)
     # Allocate ouput array
-    tminDist = Array{float(eltype(mu))}(undef,nsteps)
+    tmindist = Array{float(eltype(mu))}(undef,nsteps)
     # Run Metropolis sampler
-    return metropolis_min!(tminDist, nsteps, dist, mu, sigma; burnin)
+    return metropolis_min!(tmindist, nsteps, dist, mu, sigma; burnin)
 end
 function metropolis_min(nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T}
     # Allocate ouput arrays
@@ -153,10 +153,10 @@ end
 
 """
 ```julia
-metropolis_min!(tminDist::DenseArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+metropolis_min!(tmindist::DenseArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
 metropolis_min!(tmindist::DenseArray, t0dist::DenseArray, nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer = 0) where {T}
 ```
-In-place (non-allocating) version of `metropolis_min`, fills existing array `tminDist`.
+In-place (non-allocating) version of `metropolis_min`, fills existing array `tmindist`.
 
 Run a Metropolis sampler to estimate the minimum of a finite-range source
 distribution `dist` using samples drawn from that distribution -- e.g., estimate
@@ -164,10 +164,10 @@ zircon eruption ages from a distribution of zircon crystallization ages.
 
 ### Examples
 ```julia
-metropolis_min!(tminDist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
+metropolis_min!(tmindist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-function metropolis_min!(tminDist::DenseArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+function metropolis_min!(tmindist::DenseArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
@@ -214,7 +214,7 @@ function metropolis_min!(tminDist::DenseArray, nsteps::Integer, dist::Collection
         end
     end
     # Step through each of the N steps in the Markov chain
-    @inbounds for i in eachindex(tminDist)
+    @inbounds for i in eachindex(tmindist)
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
@@ -238,9 +238,9 @@ function metropolis_min!(tminDist::DenseArray, nsteps::Integer, dist::Collection
             tmin = tminₚ
             tmax = tmaxₚ
         end
-        tminDist[i] = tmin
+        tmindist[i] = tmin
     end
-    return tminDist
+    return tmindist
 end
 function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer = 0) where {T}
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
@@ -359,17 +359,17 @@ tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolc
 metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0) = metropolis_minmax(nsteps, dist, val.(data), err.(data); burnin)
 function metropolis_minmax(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
     # Allocate ouput arrays
-    acceptanceDist = falses(nsteps)
-    llDist = Array{float(eltype(dist))}(undef,nsteps)
-    tmaxDist = Array{float(eltype(mu))}(undef,nsteps)
-    tminDist = Array{float(eltype(mu))}(undef,nsteps)
+    acceptancedist = falses(nsteps)
+    lldist = Array{float(eltype(dist))}(undef,nsteps)
+    tmaxdist = Array{float(eltype(mu))}(undef,nsteps)
+    tmindist = Array{float(eltype(mu))}(undef,nsteps)
     # Run metropolis sampler
-    return metropolis_minmax!(tminDist, tmaxDist, llDist, acceptanceDist, nsteps, dist, mu, sigma; burnin)
+    return metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, nsteps, dist, mu, sigma; burnin)
 end
 
 """
 ```julia
-metropolis_minmax!(tminDist, tmaxDist, llDist, acceptanceDist, nsteps::Integer, dist::AbstractArray, data::AbstractArray, uncert::AbstractArray; burnin::Integer=0)
+metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, nsteps::Integer, dist::AbstractArray, data::AbstractArray, uncert::AbstractArray; burnin::Integer=0)
 ```
 In-place (non-allocating) version of `metropolis_minmax`, filling existing arrays
 
@@ -383,7 +383,7 @@ crystallization ages.
 metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-function metropolis_minmax!(tminDist::AbstractArray, tmaxDist::AbstractArray, llDist::AbstractArray, acceptanceDist::AbstractArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+function metropolis_minmax!(tmindist::AbstractArray, tmaxdist::AbstractArray, lldist::AbstractArray, acceptancedist::AbstractArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
@@ -430,7 +430,7 @@ function metropolis_minmax!(tminDist::AbstractArray, tmaxDist::AbstractArray, ll
         end
     end
     # Step through each of the N steps in the Markov chain
-    @inbounds for i in eachindex(tminDist, tmaxDist, llDist, acceptanceDist)
+    @inbounds for i in eachindex(tmindist, tmaxdist, lldist, acceptancedist)
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
@@ -453,11 +453,11 @@ function metropolis_minmax!(tminDist::AbstractArray, tmaxDist::AbstractArray, ll
             ll = llₚ
             tmin = tminₚ
             tmax = tmaxₚ
-            acceptanceDist[i]=true
+            acceptancedist[i]=true
         end
-        tminDist[i] = tmin
-        tmaxDist[i] = tmax
-        llDist[i] = ll
+        tmindist[i] = tmin
+        tmaxdist[i] = tmax
+        lldist[i] = ll
     end
-    return tminDist, tmaxDist, llDist, acceptanceDist
+    return tmindist, tmaxdist, lldist, acceptancedist
 end
