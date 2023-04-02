@@ -23,7 +23,7 @@ end
 function Base.print(io::IO, x::CI)
     l = round(x.mean - x.lower, sigdigits=3)
     u = round(x.upper - x.mean, sigdigits=3)
-    d = floor(Int, log10(x.mean)) - floor(Int, log10(max(l,u)))
+    d = floor(Int, log10(abs(x.mean))) - floor(Int, log10(max(abs(l),abs(u))))
     m = round(x.mean, sigdigits=3+d)
     print(io, "$m +$u/-$l")
 end
