@@ -18,7 +18,9 @@ data = [1.1009 0.00093576 0.123906 0.00002849838 0.319
 # Turn into UPbAnalysis objects
 analyses = UPbAnalysis.(eachcol(data)...,)
 # Screen for discordance
-analyses = analyses[discordance.(analyses) .< 0.2]
+t = discordance.(analyses) .< 0.2
+@info "Excluding $(count(.!t)) discordant analyses"
+analyses = analyses[t]
 
 # Plot in Wetherill concordia space
 hdl = plot(xlabel="²⁰⁷Pb/²³⁵U", ylabel="²⁰⁶Pb/²³⁸U", grid=false, framestyle=:box)
@@ -30,7 +32,7 @@ display(hdl)
 ## --- Bayesian Pb-loss-aware eruption age estimation
 
 nsteps = 10^6
-tmindist, t0dist = metropolis_min(nsteps, HalfNormalDistribution, analyses; burnin=10^4)
+tmindist, t0dist = metropolis_min(nsteps, UniformDistribution, analyses; burnin=10^4)
 tpbloss = CI(t0dist)
 terupt = CI(tmindist)
 display(terupt)
@@ -46,7 +48,7 @@ terupt
 
 h = histogram(tmindist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Eruption age", color=:darkblue, alpha=0.65, linealpha=0.1, framestyle=:box)
 ylims!(h, 0, last(ylims()))
-savefig(h, "EruptionAge.svg")
+savefig(h, "EruptionAge.pdf")
 display(h)
 
 ## --- Show eruption age relative to distribution of upper intercepts
@@ -63,5 +65,5 @@ plot!(h,1:length(uis),fill(terupt.mean,length(uis)),linecolor=:black,linestyle=:
 h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", color=:darkblue, alpha=0.65, linealpha=0.1, framestyle=:box)
 xlims!(h, 0, last(xlims()))
 ylims!(h, 0, last(ylims()))
-savefig(h, "PbLoss.svg")
+savefig(h, "PbLoss.pdf")
 display(h)
