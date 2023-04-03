@@ -46,7 +46,10 @@ function concordiacurve!(hdl::Plots.Plot=Plots.current())
     # Plot the concordia curve
     xl, yl = Plots.xlims(hdl), Plots.ylims(hdl) # Note current size of figure
     tlim = age.(max.(xl, 0.0), λ235U_jaffey.val) # Calculate time range of current window
-    t = range(0.9*tlim[1], 1.1*tlim[2], length=1000) # Time vector, including padding
+    dt = tlim[2] - tlim[1]
+    tmin = max(tlim[1]-0.1dt, 0.0)
+    tmax = tlim[2]+0.1dt
+    t = range(tmin, tmax, length=1000) # Time vector, including padding
     r75t = ratio.(t, λ235U_jaffey.val) # X axis values
     r68t = ratio.(t, λ238U.val) # Y axis values
     x = [ratio.(t, λ235U_jaffey.val-σₜ*2); reverse(ratio.(t, λ235U_jaffey.val+σₜ*2))]
