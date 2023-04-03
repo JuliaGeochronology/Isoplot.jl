@@ -9,7 +9,7 @@ using Measurements
 
     ci = CI(1:10)
     @test ci == CI{Float64}(5.5, 3.0276503540974917, 5.5, 1.225, 9.775)
-    @test "$ci" === "5.5 +4.28/-4.28"
+    @test "$ci" === "5.5 +4.3/-4.3"
     @test display(ci) != NaN
 
     ci = CI(randn(100))
