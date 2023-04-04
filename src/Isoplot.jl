@@ -31,6 +31,7 @@ module Isoplot
     include("Sm-Nd.jl")
     include("Rb-Sr.jl")
     include("K-Ar.jl")
+    export UThAnalysis, ReOsAnalysis, LuHfAnalysis, SmNdAnalysis, RbSrAnalysis
 
     include("plotting.jl")
     export concordiacurve!, concordialine, concordialine!,

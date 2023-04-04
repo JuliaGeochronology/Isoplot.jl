@@ -88,6 +88,14 @@ end
     @test mean(lis) ≈ 1318.12 atol=0.1
     @test std(lis) ≈ 2.04 atol=0.1
 end
+@testset "Other systems" begin
+    μ, σ = rand(2), rand(2)
+    @test UThAnalysis(μ, σ) isa UThAnalysis
+    @test ReOsAnalysis(μ, σ) isa ReOsAnalysis
+    @test LuHfAnalysis(μ, σ) isa LuHfAnalysis
+    @test SmNdAnalysis(μ, σ) isa SmNdAnalysis
+    @test RbSrAnalysis(μ, σ) isa RbSrAnalysis
+end
 
 @testset "Weighted means" begin
     # Weighted means
