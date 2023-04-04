@@ -92,21 +92,20 @@ awmean(args...) = wmean(args...; corrected=false)
 gwmean(args...) = wmean(args...; corrected=true)
 
 
-function distwmean(a,b; corrected::Bool=true)
-    @assert eachindex(a) == eachindex(b)
-    σ₁, σ₂ = vstd(a), vstd(b)
-    w₁, w₂ = 1/σ₁^2, 1/σ₂^2
-    wₜ = w₁ + w₂
-    c = similar(a)
-    @inbounds for i in eachindex(a,b,c)
-        c[i] = (w₁*a[i] + w₂*b[i])/wₜ
+distwmean(x...; corrected::Bool=true) = distwmean(x; corrected)
+function distwmean(x::NTuple{N, <:AbstractVector}; corrected::Bool=true) where {N}
+    σₓ = vstd.(x)
+    wₓ = 1 ./ σₓ.^2
+    wₜ = sum(wₓ)
+    c = similar(first(x))
+    @inbounds for i in eachindex(x...)
+        c[i] = sum(getindex.(x, i) .* wₓ)/wₜ
         if corrected
-            c[i] += sqrt((w₁*abs2(a[i]-c[i]) + w₂*abs2(b[i]-c[i]))/wₜ) * randn()
+            c[i] += sqrt(sum(wₓ.*abs2.(getindex.(x,i).-c[i]))/(wₜ*(N-1))) * randn()
         end
     end
     return c
 end
-
 
 """
 ```julia
