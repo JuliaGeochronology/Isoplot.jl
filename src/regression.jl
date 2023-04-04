@@ -45,7 +45,7 @@ julia> wmean(x .± y./10, corrected=true)
 (-0.32 ± 0.29, 81.9217147788568)
 ```
 """
-function wmean(μ::Collection{T}, σ::Collection; corrected=false) where {T}
+function wmean(μ::Collection{T}, σ::Collection; corrected::Bool=false) where {T}
     sum_of_values = sum_of_weights = χ² = zero(float(T))
     @inbounds for i in eachindex(μ,σ)
         σ² = σ[i]^2
@@ -65,7 +65,7 @@ function wmean(μ::Collection{T}, σ::Collection; corrected=false) where {T}
     end
     return wμ, wσ, mswd
 end
-function wmean(x::Collection{Measurement{T}}; corrected=false) where {T}
+function wmean(x::Collection{Measurement{T}}; corrected::Bool=false) where {T}
     sum_of_values = sum_of_weights = χ² = zero(float(T))
     @inbounds for i in eachindex(x)
         μ, σ² = val(x[i]), err(x[i])^2
@@ -91,6 +91,21 @@ end
 awmean(args...) = wmean(args...; corrected=false)
 gwmean(args...) = wmean(args...; corrected=true)
 
+
+function distwmean(a,b; corrected::Bool=false)
+    @assert eachindex(a) == eachindex(b)
+    σ₁, σ₂ = vstd(a), vstd(b)
+    w₁, w₂ = 1/σ₁^2, 1/σ₂^2
+    wₜ = w₁ + w₂
+    c = similar(a)
+    @inbounds for i in eachindex(a,b,c)
+        c[i] = (w₁*a[i] + w₂*b[i])/wₜ
+        if corrected
+            c[i] += sqrt((w₁*abs2(a[i]-c[i]) + w₂*abs2(b[i]-c[i]))/wₜ) * randn()
+        end
+    end
+    return c
+end
 
 
 """

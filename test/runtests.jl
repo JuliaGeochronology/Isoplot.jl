@@ -89,7 +89,8 @@ end
     @test std(lis) ≈ 2.04 atol=0.1
 end
 
-@testset "Regression" begin
+@testset "Weighted means" begin
+    # Weighted means
     x = [-3.4699, -0.875, -1.4189, 1.2993, 1.1167, 0.8357, 0.9985, 1.2789, 0.5446, 0.5639]
     σx = ones(10)/4
     @test all(awmean(x, σx) .≈ (0.08737999999999996, 0.07905694150420949, 38.44179426844445))
@@ -101,6 +102,61 @@ end
     σx .*= 20 # Test underdispersed data
     @test gwmean(x, σx) == awmean(x, σx)
 
+    N = 10^6
+    a,b = randn(N), randn(N).+1
+    c = distwmean(a,b; corrected=false)
+    μ,σ,_ = wmean([0,1], [1,1]; corrected=false)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 0.1
+
+    b .+= 9
+    c = distwmean(a,b; corrected=false)
+    μ,σ,_ = wmean([0,10], [1,1]; corrected=false)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 0.1
+    c = distwmean(a,b; corrected=true)
+    μ,σ,_ = wmean([0,10], [1,1]; corrected=true)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 1
+
+    b .+= 90
+    c = distwmean(a,b; corrected=false)
+    μ,σ,_ = wmean([0,100], [1,1]; corrected=false)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 0.1
+    c = distwmean(a,b; corrected=true)
+    μ,σ,_ = wmean([0,100], [1,1]; corrected=true)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 1
+
+    a,b = 2randn(N), 3randn(N).+1
+    c = distwmean(a,b; corrected=false)
+    μ,σ,_ = wmean([0,1], [2,3]; corrected=false)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 0.1
+
+    b .+= 9
+    c = distwmean(a,b; corrected=false)
+    μ,σ,_ = wmean([0,10], [2,3]; corrected=false)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 0.1
+    c = distwmean(a,b; corrected=true)
+    μ,σ,_ = wmean([0,10], [2,3]; corrected=true)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 1
+
+    b .+= 90
+    c = distwmean(a,b; corrected=false)
+    μ,σ,_ = wmean([0,100], [2,3]; corrected=false)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 0.1
+    c = distwmean(a,b; corrected=true)
+    μ,σ,_ = wmean([0,100], [2,3]; corrected=true)
+    @test mean(c) ≈ μ atol = 0.1
+    @test std(c) ≈ σ atol = 1
+end
+
+@testset "Regression" begin
     # Simple linear regression
     ϕ = lsqfit(1:10, 1:10)
     @test ϕ[1] ≈ 0 atol=1e-12

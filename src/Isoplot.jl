@@ -16,7 +16,7 @@ module Isoplot
     export age, ratio, ellipse, CI, val, err
 
     include("regression.jl")
-    export wmean, awmean, gwmean, mswd
+    export wmean, awmean, gwmean, distwmean, mswd
     export lsqfit, yorkfit
 
     include("U-Pb.jl")
