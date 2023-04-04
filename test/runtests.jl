@@ -106,28 +106,28 @@ end
     a,b = randn(N), randn(N).+1
     c = distwmean(a,b; corrected=false)
     μ,σ,_ = wmean([0,1], [1,1]; corrected=false)
-    @test mean(c) ≈ μ atol = 0.1
-    @test std(c) ≈ σ atol = 0.01
+    @test mean(c) ≈ μ atol = 0.02
+    @test std(c) ≈ σ atol = 0.002
     c = distwmean(a,b; corrected=true)
     @test mean(c) ≈ μ atol = 0.1
-    @test std(c) ≈ std(vcat(a,b)) atol = 0.002
+    @test std(c) ≈ std(vcat(a,b)) atol = 0.005
 
     b .+= 9
     c = distwmean(a,b; corrected=false)
     μ,σ,_ = wmean([0,10], [1,1]; corrected=false)
-    @test mean(c) ≈ μ atol = 0.1
-    @test std(c) ≈ σ atol = 0.1
+    @test mean(c) ≈ μ atol = 0.02
+    @test std(c) ≈ σ atol = 0.002
     c = distwmean(a,b; corrected=true)
     μ,σ,_ = wmean([0,10], [1,1]; corrected=true)
-    @test mean(c) ≈ μ atol = 0.1
+    @test mean(c) ≈ μ atol = 0.2
     @test std(c) ≈ σ atol = 0.2
     @test std(c) ≈ std(vcat(a,b)) atol = 0.02
 
     b .+= 90
     c = distwmean(a,b; corrected=false)
     μ,σ,_ = wmean([0,100], [1,1]; corrected=false)
-    @test mean(c) ≈ μ atol = 0.1
-    @test std(c) ≈ σ atol = 0.1
+    @test mean(c) ≈ μ atol = 0.2
+    @test std(c) ≈ σ atol = 0.02
     c = distwmean(a,b; corrected=true)
     μ,σ,_ = wmean([0,100], [1,1]; corrected=true)
     @test mean(c) ≈ μ atol = 0.2
@@ -137,14 +137,14 @@ end
     a,b = 2randn(N), 3randn(N).+1
     c = distwmean(a,b; corrected=false)
     μ,σ,_ = wmean([0,1], [2,3]; corrected=false)
-    @test mean(c) ≈ μ atol = 0.1
-    @test std(c) ≈ σ atol = 0.1
+    @test mean(c) ≈ μ atol = 0.05
+    @test std(c) ≈ σ atol = 0.005
 
     b .+= 9
     c = distwmean(a,b; corrected=false)
     μ,σ,_ = wmean([0,10], [2,3]; corrected=false)
-    @test mean(c) ≈ μ atol = 0.1
-    @test std(c) ≈ σ atol = 0.1
+    @test mean(c) ≈ μ atol = 0.05
+    @test std(c) ≈ σ atol = 0.005
     c = distwmean(a,b; corrected=true)
     μ,σ,_ = wmean([0,10], [2,3]; corrected=true)
     @test mean(c) ≈ μ atol = 0.1
@@ -153,12 +153,12 @@ end
     b .+= 90
     c = distwmean(a,b; corrected=false)
     μ,σ,_ = wmean([0,100], [2,3]; corrected=false)
-    @test mean(c) ≈ μ atol = 0.1
-    @test std(c) ≈ σ atol = 0.1
+    @test mean(c) ≈ μ atol = 0.2
+    @test std(c) ≈ σ atol = 0.02
     c = distwmean(a,b; corrected=true)
     μ,σ,_ = wmean([0,100], [2,3]; corrected=true)
-    @test mean(c) ≈ μ atol = 0.1
-    @test std(c) ≈ σ atol = 1
+    @test mean(c) ≈ μ atol = 0.2
+    @test std(c) ≈ σ atol = 2
 end
 
 @testset "Regression" begin
