@@ -134,19 +134,19 @@ tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, bu
 tmindist, t0dist = metropolis_min(2*10^5, HalfNormalDistribution, analyses, burnin=10^5)
 ```
 """
-metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0) = metropolis_min(nsteps, dist, val.(data), err.(data); burnin)
-function metropolis_min(nsteps::Integer, dist::Collection, mu::Collection, sigma::Collection; burnin::Integer=0)
+metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_min(nsteps, dist, val.(data), err.(data); kwargs...)
+function metropolis_min(nsteps::Integer, dist::Collection, mu::Collection, sigma::Collection; kwargs...)
     # Allocate ouput array
     tmindist = Array{float(eltype(mu))}(undef,nsteps)
     # Run Metropolis sampler
-    return metropolis_min!(tmindist, nsteps, dist, mu, sigma; burnin)
+    return metropolis_min!(tmindist, nsteps, dist, mu, sigma; kwargs...)
 end
-function metropolis_min(nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T}
+function metropolis_min(nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; kwargs...) where {T}
     # Allocate ouput arrays
     tmindist = Array{T}(undef,nsteps)
     t0dist = Array{T}(undef,nsteps)
     # Run Metropolis sampler
-    metropolis_min!(tmindist, t0dist, nsteps, dist, analyses; burnin)
+    metropolis_min!(tmindist, t0dist, nsteps, dist, analyses; kwargs...)
     return tmindist, t0dist
 end
 
@@ -154,7 +154,7 @@ end
 """
 ```julia
 metropolis_min!(tmindist::DenseArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
-metropolis_min!(tmindist::DenseArray, t0dist::DenseArray, nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer = 0) where {T}
+metropolis_min!(tmindist::DenseArray, t0dist::DenseArray, nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer=0) where {T}
 ```
 In-place (non-allocating) version of `metropolis_min`, fills existing array `tmindist`.
 
@@ -372,17 +372,17 @@ crystallization ages.
 tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0) = metropolis_minmax(nsteps, dist, val.(data), err.(data); burnin)
-function metropolis_minmax(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_minmax(nsteps, dist, val.(data), err.(data); kwargs...)
+function metropolis_minmax(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; kwargs...)
     # Allocate ouput arrays
     acceptancedist = falses(nsteps)
     lldist = Array{float(eltype(dist))}(undef,nsteps)
     tmaxdist = Array{float(eltype(mu))}(undef,nsteps)
     tmindist = Array{float(eltype(mu))}(undef,nsteps)
     # Run metropolis sampler
-    return metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, nsteps, dist, mu, sigma; burnin)
+    return metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, nsteps, dist, mu, sigma; kwargs...)
 end
-function metropolis_minmax(nsteps::Integer, dist::Collection{T}, analyses::Collection{<:UPbAnalysis{T}}; burnin::Integer=0) where T
+function metropolis_minmax(nsteps::Integer, dist::Collection{T}, analyses::Collection{<:UPbAnalysis{T}}; kwargs...) where T
     # Allocate ouput arrays
     acceptancedist = falses(nsteps)
     lldist = Array{T}(undef,nsteps)
@@ -390,13 +390,13 @@ function metropolis_minmax(nsteps::Integer, dist::Collection{T}, analyses::Colle
     tmaxdist = Array{T}(undef,nsteps)
     tmindist = Array{T}(undef,nsteps)
     # Run metropolis sampler
-    return metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, nsteps, dist, analyses; burnin)
+    return metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, nsteps, dist, analyses; kwargs...)
 end
 
 """
 ```julia
 metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, nsteps::Integer, dist::AbstractArray, data::AbstractArray, uncert::AbstractArray; burnin::Integer=0)
-metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer = 0)
+metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer=0)
 ```
 In-place (non-allocating) version of `metropolis_minmax`, filling existing arrays
 
@@ -488,7 +488,7 @@ function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::
     end
     return tmindist, tmaxdist, lldist, acceptancedist
 end
-function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, t0dist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer = 0) where {T}
+function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, t0dist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T}
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
