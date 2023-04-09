@@ -242,7 +242,7 @@ function metropolis_min!(tmindist::DenseArray, nsteps::Integer, dist::Collection
     end
     return tmindist
 end
-function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, t0prior=Uniform(0,minimum(age68.(analyses))), lossprior=Uniform(0,1)) where {T}
+function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, t0prior=Uniform(0,minimum(age68.(analyses))), lossprior=Uniform(0,100)) where {T}
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
@@ -258,7 +258,7 @@ function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps:
     t0step = youngest.val/50
     # t0prior = Uniform(0, youngest.val)
     t0prior = truncated(t0prior, 0, minimum(age68.(analyses)))
-    lossprior = truncated(lossprior, 0, 1)
+    lossprior = truncated(lossprior, 0, 100)
 
     # Initial step sigma for Gaussian proposal distributions
     dt = sqrt((oldest.val - youngest.val)^2 + oldest.err^2 + youngest.err^2)
@@ -271,7 +271,7 @@ function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps:
     # Log likelihood of initial proposal
     ll = dist_ll(dist, ages, tmin, tmax) + logpdf(t0prior, t0)
     for i in eachindex(ages, ages68)
-        loss = max(one(T) - (ages68[i] - t0) / (val(ages[i]) - t0), zero(T))
+        loss = 100*max(one(T) - (ages68[i] - t0) / (val(ages[i]) - t0), zero(T))
         ll += logpdf(lossprior, loss)
     end
     llₚ = ll
@@ -296,7 +296,7 @@ function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps:
         llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
         llₚ += logpdf(t0prior, t0ₚ)
         for i in eachindex(ages, ages68)
-            loss = max(one(T) - (ages68[i] - t0ₚ) / (val(ages[i]) - t0ₚ), zero(T))
+            loss = 100*max(one(T) - (ages68[i] - t0ₚ) / (val(ages[i]) - t0ₚ), zero(T))
             llₚ += logpdf(lossprior, loss)
         end
         # Decide to accept or reject the proposal
@@ -334,7 +334,7 @@ function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps:
         llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
         llₚ += logpdf(t0prior, t0ₚ)
         for i in eachindex(ages, ages68)
-            loss = max(one(T) - (ages68[i] - t0ₚ) / (val(ages[i]) - t0ₚ), zero(T))
+            loss = 100*max(one(T) - (ages68[i] - t0ₚ) / (val(ages[i]) - t0ₚ), zero(T))
             llₚ += logpdf(lossprior, loss)
         end
         # Decide to accept or reject the proposal
