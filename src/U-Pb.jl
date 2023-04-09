@@ -69,6 +69,12 @@ function age(d::UPbAnalysis)
     return a75, a68
 end
 
+function age68(d::UPbAnalysis)
+    log(1 + d.μ[2] ± d.σ[2])/λ238U
+end
+function age75(d::UPbAnalysis)
+    log(1 + d.μ[1] ± d.σ[1])/λ235U
+end
 # Percent discordance
 function discordance(d::UPbAnalysis)
     μ75 = log(1 + d.μ[1])/λ235U.val

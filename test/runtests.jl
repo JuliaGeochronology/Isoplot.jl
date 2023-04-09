@@ -41,11 +41,13 @@ end
     @test d1.Σ ≈ d2.Σ ≈ d3.Σ
     @test !isnan(d1)
 
-    a76, a68 = age(d1)
-    @test a76.val ≈ 3209.725483265418
-    @test a76.err ≈ 1.9420875256761048
+    a75, a68 = age(d1)
+    @test a75.val ≈ 3209.725483265418
+    @test a75.err ≈ 1.9420875256761048
     @test a68.val ≈ 2208.7076248184017
     @test a68.err ≈ 1.422824131349332
+    @test age68(d1) == a68
+    @test age75(d1) == a75
     @test discordance(d1) ≈ 31.187024051310136
 
     @test rand(d1) isa Vector{Float64}

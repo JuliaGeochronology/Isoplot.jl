@@ -20,7 +20,7 @@ module Isoplot
     export lsqfit, yorkfit
 
     include("U-Pb.jl")
-    export UPbAnalysis, discordance
+    export UPbAnalysis, discordance, age68, age75
 
     include("concordia.jl")
     export upperintercept, lowerintercept, intercepts
