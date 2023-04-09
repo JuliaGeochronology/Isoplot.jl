@@ -9,7 +9,11 @@ module Isoplot
     import Plots
     export plot, plot!
 
+    # A type alias for array-ish types
     const Collection{T} = Union{AbstractArray{T}, NTuple{N,T}} where N
+
+    # Age of Earth and the Solar System
+    const t🜨 = 4.567e3
 
     # Abstract types which we'll subtype later
     include("analysis.jl")

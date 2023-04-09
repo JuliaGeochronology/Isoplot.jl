@@ -43,9 +43,10 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.44774683
     0 < slope₊ < Inf || return T(NaN) ± T(NaN)
 
     # Find the upper intercept of our Pb-loss arrays with Concordia
-    ui₀ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₀,r75₀,r68₀))
-    ui₋ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₋,r75₋,r68₋))
-    ui₊ = newton_zero(Δ68, dΔ68, 4.567e3, (slope₊,r75₊,r68₊))
+    ui₀ = newton_zero(Δ68, dΔ68, t🜨, (slope₀,r75₀,r68₀))
+    0 < ui₀ < t🜨 || return T(NaN) ± T(NaN)
+    ui₋ = newton_zero(Δ68, dΔ68, t🜨, (slope₋,r75₋,r68₋))
+    ui₊ = newton_zero(Δ68, dΔ68, t🜨, (slope₊,r75₊,r68₊))
     # Direct uncertainty, from spread in intercepts given size of ellipse
     σ = (val(ui₊) - val(ui₋))/2sigmalevel
     # Include also uncertainty, from lower intercept if tₗₗ (and ui) are `Measurement`s
@@ -74,7 +75,7 @@ function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Intege
     @inbounds for i in axes(samples,2)
         r75, r68 = view(samples, :, i)
         slope = (r68-r68ₗₗ)/(r75-r75ₗₗ)
-        ui[i] = newton_zero(Δ68, dΔ68, 4.567e3, (slope,r75,r68))
+        ui[i] = newton_zero(Δ68, dΔ68, t🜨, (slope,r75,r68))
     end
     return ui
 end
@@ -83,7 +84,7 @@ function upperintercept(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) wh
     ui = zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
     @inbounds for i in eachindex(ui, slopes, intercepts)
-        ui[i] = newton_zero(Δ68, dΔ68, 4.567e3, (slopes[i],zero(T),intercepts[i]))
+        ui[i] = newton_zero(Δ68, dΔ68, t🜨, (slopes[i],zero(T),intercepts[i]))
     end
     return ui
 end
@@ -92,7 +93,7 @@ function lowerintercept(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) wh
     li = zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
     @inbounds for i in eachindex(li, slopes, intercepts)
-        li[i] = newton_zero(Δ68, dΔ68, 0.0, (slopes[i],zero(T),intercepts[i]))
+        li[i] = newton_zero(Δ68, dΔ68, zero(T), (slopes[i],zero(T),intercepts[i]))
     end
     return li
 end
@@ -101,8 +102,8 @@ function intercepts(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) where 
     ui, li = zeros(T, nresamplings), zeros(T, nresamplings)
     slopes, intercepts = fit_lines(d, nresamplings)
     @inbounds for i in eachindex(ui, li, slopes, intercepts)
-        ui[i] = newton_zero(Δ68, dΔ68, 4.567e3, (slopes[i],zero(T),intercepts[i]))
-        li[i] = newton_zero(Δ68, dΔ68, 0.0, (slopes[i],zero(T),intercepts[i]))
+        ui[i] = newton_zero(Δ68, dΔ68, t🜨, (slopes[i],zero(T),intercepts[i]))
+        li[i] = newton_zero(Δ68, dΔ68, zero(T), (slopes[i],zero(T),intercepts[i]))
     end
     return ui, li
 end
