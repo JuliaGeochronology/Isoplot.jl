@@ -209,6 +209,14 @@ end
     @test fobj.slope.err ≈ 0.0035683808205783673
     @test fobj.mswd ≈ 1.1419901440278089
 
+    fobj = yorkfit(x, σx, y, σy, zeros(length(x)))
+    @test fobj isa Isoplot.YorkFit
+    @test fobj.intercept.val ≈-0.2446693790977319
+    @test fobj.intercept.err ≈ 0.2469541320914601
+    @test fobj.slope.val ≈ 1.0428730084538775
+    @test fobj.slope.err ≈ 0.039561084436542084
+    @test fobj.mswd ≈ 1.1417951538670306
+
     x = ((1:100) .+ randn.()) .± 1
     y = (2*(1:100) .+ randn.()) .± 1
     fobj = yorkfit(x, y)

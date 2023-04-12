@@ -235,79 +235,76 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}; iterations=10) = yorkfit(val.(x), err.(x), val.(y), err.(y); iterations)
-function yorkfit(x, σx, y, σy; iterations=10)
+yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}, r=0.0; iterations=10) = yorkfit(val.(x), err.(x), val.(y), err.(y), r; iterations)
+function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
 
-    ## 1. Ordinary linear regression (to get a first estimate of slope and intercept)
+    ## Check for and exclude missing data
+    t = (x.==x) .& (y.==y) .& (σx.==σx) .& (σy.==σy) .& (r.==r)
+    x, y = x[t], y[t]
+    σx, σy = σx[t], σy[t]
+    r isa Vector && (r = r[t])
 
-    # Check for missing data
-    t = (x.==x) .& (y.==y) .& (σx.==σx) .& (σy.==σy)
-    x = x[t]
-    y = y[t]
-    σx = σx[t]
-    σy = σy[t]
 
-    # Calculate the ordinary least-squares fit
-    # For the equation y=a+bx, m(1)=a, m(2)=b
+    ## For an initial estimate of slope and intercept, calculate the
+    # ordinary least-squares fit for the equation y=a+bx
     a, b = lsqfit(x, y)
 
-    ## 2. Now, let's define parameters needed by the York fit
-
-    # Weighting factors
-    ωx = 1.0 ./ σx.^2
-    ωy = 1.0 ./ σy.^2
-
-    # terms that don't depend on a or b
+    # Prepare for York fit
+    ∅ = zero(float(eltype(x)))
+    ωx = 1.0 ./ σx.^2           # x weights
+    ωy = 1.0 ./ σy.^2           # y weights
     α = sqrt.(ωx .* ωy)
 
-    x̄ = sum(x)/length(x)
-    ȳ = sum(y)/length(y)
-    r = sum((x .- x̄).*(y .- ȳ)) ./ (sqrt(sum((x .- x̄).^2)) * sqrt(sum((y .- ȳ).^2)))
-
-    ## 3. Perform the York fit (must iterate)
+    ## Perform the York fit (must iterate)
     W = ωx.*ωy ./ (b^2*ωy + ωx - 2*b*r.*α)
 
-    X̄ = sum(W.*x) / sum(W)
-    Ȳ = sum(W.*y) / sum(W)
+    X̄ = vsum(W.*x) / vsum(W)
+    Ȳ = vsum(W.*y) / vsum(W)
 
     U = x .- X̄
     V = y .- Ȳ
 
-    sV = W.^2 .* V .* (U./ωy + b.*V./ωx - r.*V./α)
-    sU = W.^2 .* U .* (U./ωy + b.*V./ωx - b.*r.*U./α)
-    b = sum(sV) ./ sum(sU)
+    sV = @. W^2 * V * (U/ωy + b*V/ωx - r*V/α)
+    sU = @. W^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
+    b = vsum(sV) / vsum(sU)
 
-    a = Ȳ - b .* X̄
-    for i = 2:iterations
-        W .= ωx.*ωy ./ (b^2*ωy + ωx - 2*b*r.*α)
+    a = @. Ȳ - b * X̄
+    for _ in 2:iterations
+        @. W = ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
 
-        X̄ = sum(W.*x) / sum(W)
-        Ȳ = sum(W.*y) / sum(W)
+        ΣW, ΣWx, ΣWy = ∅, ∅, ∅
+        @inbounds for i in eachindex(W,x,y)
+            ΣW += W[i]
+            ΣWx += W[i] * x[i]
+            ΣWy += W[i] * y[i]
+        end
+        X̄ = ΣWx / ΣW
+        Ȳ = ΣWy / ΣW
 
-        U .= x .- X̄
-        V .= y .- Ȳ
+        @. U = x - X̄
+        @. V = y - Ȳ
 
-        sV .= W.^2 .* V .* (U./ωy + b.*V./ωx - r.*V./α)
-        sU .= W.^2 .* U .* (U./ωy + b.*V./ωx - b.*r.*U./α)
-        b = sum(sV) ./ sum(sU)
+        @. sV = W^2 * V * (U/ωy + b*V/ωx - r*V/α)
+        @. sU = W^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
+        b = sum(sV) / sum(sU)
 
         a = Ȳ - b .* X̄
     end
 
     ## 4. Calculate uncertainties and MSWD
-    β = W .* (U./ωy + b.*V./ωx - (b.*U+V).*r./α)
+    β = @. W * (U/ωy + b*V/ωx - (b*U+V)*r/α)
 
     u = X̄ .+ β
     v = Ȳ .+ b.*β
 
-    xm = sum(W.*u)./sum(W)
-    ym = sum(W.*v)./sum(W)
+    xm = vsum(W.*u)./vsum(W)
+    ym = vsum(W.*v)./vsum(W)
 
-    σb = sqrt(1.0 ./ sum(W .* (u .- xm).^2))
-    σa = sqrt(1.0 ./ sum(W) + xm.^2 .* σb.^2)
+    σb = sqrt(1.0 ./ vsum(W .* (u .- xm).^2))
+    σa = sqrt(1.0 ./ vsum(W) + xm.^2 .* σb.^2)
 
     # MSWD (reduced chi-squared) of the fit
-    mswd = 1.0 ./ length(x) .* sum( (y .- a.-b.* x).^2 ./ (σy.^2 + b.^2 .* σx.^2) )
+    mswd = 1.0 ./ length(x) .* vsum( (y .- a.-b.* x).^2 ./ (σy.^2 + b.^2 .* σx.^2) )
 
     ## Results
     return YorkFit(a ± σa, b ± σb, mswd)
