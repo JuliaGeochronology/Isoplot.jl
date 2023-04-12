@@ -211,11 +211,11 @@ end
 
 """
 ```julia
-yorkfit(x, σx, y, σy)
+yorkfit(x, σx, y, σy, [r])
 ```
 Uses the York (1968) two-dimensional least-squares fit to calculate `a`, `b`,
-and uncertanties `σa`, `σb` for the equation `y = a + bx`, given `x`, `y` and
-uncertaintes `σx`, ``σy`.
+and uncertanties `σa`, `σb` for the equation `y = a + bx`, given `x`, `y`,
+uncertaintes `σx`, and `σy`, and optially covarances `r`.
 
 For further reference, see:
 York, Derek (1968) "Least squares fitting of a straight line with correlated errors"
