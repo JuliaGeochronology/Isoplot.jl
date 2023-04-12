@@ -191,8 +191,9 @@ julia> isapprox(b, 1, atol = 1e-12)
 true
 ```
 """
-function lsqfit(x::AbstractVector{T}, y::AbstractVector{<:Number}) where {T<:Number}
-    A = similar(x, length(x), 2)
+lsqfit(x::Collection{<:Number}, y::Collection{<:Number}) = lsqfit(x, collect(y))
+function lsqfit(x::Collection{T}, y::AbstractVector{<:Number}) where {T<:Number}
+    A = Array{T}(undef, length(x), 2)
     A[:,1] .= one(T)
     A[:,2] .= x
     return A\y
@@ -238,25 +239,15 @@ Least-squares linear fit of the form y = a + bx where
 ```
 """
 yorkfit(x::Vector{Measurement{T}}, y::Vector{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(val.(x), err.(x), val.(y), err.(y), r; iterations)
-function yorkfit(d::Vector{<:Analysis{T}}; iterations=10) where {T}
-    x, y, σx, σy, r = similar(d, T), similar(d, T), similar(d, T), similar(d, T), similar(d, T)
-    @inbounds for i in eachindex(d)
-        dᵢ = d[i]
-        x[i], y[i] = dᵢ.μ[1], dᵢ.μ[2]
-        σx[i], σy[i] = dᵢ.σ[1], dᵢ.σ[2]
-        r[i] = dᵢ.Σ[2,1]
-    end
+function yorkfit(d::Collection{<:Analysis{T}}; iterations=10) where {T}
+    x = ntuple(i->d[i].μ[1], length(d))
+    y = ntuple(i->d[i].μ[2], length(d))
+    σx = ntuple(i->d[i].σ[1], length(d))
+    σy = ntuple(i->d[i].σ[2], length(d))
+    r = ntuple(i->d[i].Σ[1,2], length(d))
     yorkfit(x, σx, y, σy, r; iterations)
 end
 function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
-
-    ## Check for and exclude missing data
-    t = (x.==x) .& (y.==y) .& (σx.==σx) .& (σy.==σy) .& (r.==r)
-    if any(t)
-        x, y = x[t], y[t]
-        σx, σy = σx[t], σy[t]
-        r isa Vector && (r = r[t])
-    end
 
     ## For an initial estimate of slope and intercept, calculate the
     # ordinary least-squares fit for the equation y=a+bx
@@ -269,7 +260,7 @@ function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
     α = sqrt.(ωx .* ωy)
 
     ## Perform the York fit (must iterate)
-    W = ωx.*ωy ./ (b^2*ωy + ωx - 2*b*r.*α)
+    W = @. ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
 
     X̄ = vsum(W.*x) / vsum(W)
     Ȳ = vsum(W.*y) / vsum(W)
@@ -277,16 +268,22 @@ function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
     U = x .- X̄
     V = y .- Ȳ
 
+    if W isa NTuple
+        W = collect(W)
+        U = collect(U)
+        V = collect(V)
+    end
+
     sV = @. W^2 * V * (U/ωy + b*V/ωx - r*V/α)
     sU = @. W^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
     b = vsum(sV) / vsum(sU)
 
-    a = @. Ȳ - b * X̄
+    a = Ȳ - b * X̄
     for _ in 2:iterations
         @. W = ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
 
         ΣW, ΣWx, ΣWy = ∅, ∅, ∅
-        @inbounds for i in eachindex(W,x,y)
+        @inbounds for i in eachindex(W)
             ΣW += W[i]
             ΣWx += W[i] * x[i]
             ΣWy += W[i] * y[i]
@@ -301,7 +298,7 @@ function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
         @. sU = W^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
         b = sum(sV) / sum(sU)
 
-        a = Ȳ - b .* X̄
+        a = Ȳ - b * X̄
     end
 
     ## 4. Calculate uncertainties and MSWD
@@ -317,7 +314,7 @@ function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
     σa = sqrt(1.0 ./ vsum(W) + xm.^2 .* σb.^2)
 
     # MSWD (reduced chi-squared) of the fit
-    mswd = 1.0 ./ length(x) .* vsum( (y .- a.-b.* x).^2 ./ (σy.^2 + b.^2 .* σx.^2) )
+    mswd = 1.0 ./ length(x) .* vsum(@. (y - a - b*x)^2 / (σy^2 + b^2 * σx^2) )
 
     ## Results
     return YorkFit(a ± σa, b ± σb, mswd)
