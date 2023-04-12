@@ -212,6 +212,8 @@ end
 """
 ```julia
 yorkfit(x, σx, y, σy, [r])
+yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}, [r])
+yorkfit(d::Vector{<:Analysis})
 ```
 Uses the York (1968) two-dimensional least-squares fit to calculate `a`, `b`,
 and uncertanties `σa`, `σb` for the equation `y = a + bx`, given `x`, `y`,
@@ -235,15 +237,26 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}, r=0.0; iterations=10) = yorkfit(val.(x), err.(x), val.(y), err.(y), r; iterations)
+yorkfit(x::Vector{Measurement{T}}, y::Vector{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(val.(x), err.(x), val.(y), err.(y), r; iterations)
+function yorkfit(d::Vector{<:Analysis{T}}; iterations=10) where {T}
+    x, y, σx, σy, r = similar(d, T), similar(d, T), similar(d, T), similar(d, T), similar(d, T)
+    @inbounds for i in eachindex(d)
+        dᵢ = d[i]
+        x[i], y[i] = dᵢ.μ[1], dᵢ.μ[2]
+        σx[i], σy[i] = dᵢ.σ[1], dᵢ.σ[2]
+        r[i] = dᵢ.Σ[2,1]
+    end
+    yorkfit(x, σx, y, σy, r; iterations)
+end
 function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
 
     ## Check for and exclude missing data
     t = (x.==x) .& (y.==y) .& (σx.==σx) .& (σy.==σy) .& (r.==r)
-    x, y = x[t], y[t]
-    σx, σy = σx[t], σy[t]
-    r isa Vector && (r = r[t])
-
+    if any(t)
+        x, y = x[t], y[t]
+        σx, σy = σx[t], σy[t]
+        r isa Vector && (r = r[t])
+    end
 
     ## For an initial estimate of slope and intercept, calculate the
     # ordinary least-squares fit for the equation y=a+bx
