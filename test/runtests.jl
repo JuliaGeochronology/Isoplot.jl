@@ -4,7 +4,7 @@ using Plots
 using Measurements
 
 @testset "Show" begin
-    yf = Isoplot.YorkFit(1±1, 1±1, 1.0)
+    yf = Isoplot.YorkFit(1±1, 1±1, 0.0, 1±1, 1.0)
     @test display(yf) != NaN
 
     ci = CI(1:10)
@@ -216,37 +216,41 @@ analyses = UPbAnalysis.(eachcol(data)...,)
     x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
     y = [0.8742, 2.1626, 3.042, 3.829, 5.0116, 5.5614, 6.7675, 7.8856, 9.6414, 10.4955]
     σx = σy = ones(10)/4
-    fobj = yorkfit(x, σx, y, σy)
-    @test fobj isa Isoplot.YorkFit
-    @test fobj.intercept.val ≈-0.23498964673701916
-    @test fobj.intercept.err ≈ 0.02250863813481163
-    @test fobj.slope.val ≈ 1.041124018512526
-    @test fobj.slope.err ≈ 0.0035683808205783673
-    @test fobj.mswd ≈ 1.1419901440278089
+    yf = yorkfit(x, σx, y, σy)
+    @test yf isa Isoplot.YorkFit
+    @test yf.intercept.val ≈-0.23498964673701916
+    @test yf.intercept.err ≈ 0.02250863813481163
+    @test yf.slope.val ≈ 1.041124018512526
+    @test yf.slope.err ≈ 0.0035683808205783673
+    @test yf.mswd ≈ 1.1419901440278089
 
-    fobj = yorkfit(x, σx, y, σy, zeros(length(x)))
-    @test fobj isa Isoplot.YorkFit
-    @test fobj.intercept.val ≈-0.2446693790977319
-    @test fobj.intercept.err ≈ 0.2469541320914601
-    @test fobj.slope.val ≈ 1.0428730084538775
-    @test fobj.slope.err ≈ 0.039561084436542084
-    @test fobj.mswd ≈ 1.1417951538670306
+    yf = yorkfit(x, σx, y, σy, zeros(length(x)))
+    @test yf isa Isoplot.YorkFit
+    @test yf.intercept.val ≈-0.2446693790977319
+    @test yf.intercept.err ≈ 0.2469541320914601
+    @test yf.slope.val ≈ 1.0428730084538775
+    @test yf.slope.err ≈ 0.039561084436542084
+    @test yf.mswd ≈ 1.1417951538670306
 
     x = ((1:100) .+ randn.()) .± 1
     y = (2*(1:100) .+ randn.()) .± 1
-    fobj = yorkfit(x, y)
-    @test fobj isa Isoplot.YorkFit
-    @test fobj.intercept.val ≈ 0 atol = 2
-    @test fobj.slope.val ≈ 2 atol = 0.1
-    @test fobj.mswd ≈ 1 atol = 0.5
+    yf = yorkfit(x, y)
+    @test yf isa Isoplot.YorkFit
+    @test yf.intercept.val ≈ 0 atol = 2
+    @test yf.slope.val ≈ 2 atol = 0.1
+    @test yf.mswd ≈ 1 atol = 0.5
 
-    fobj = yorkfit(analyses)
-    @test fobj isa Isoplot.YorkFit
-    @test fobj.intercept.val ≈ 0.0050701916562521515
-    @test fobj.intercept.err ≈ 0.004099648408656529
-    @test fobj.slope.val ≈ 0.1079872513087868
-    @test fobj.slope.err ≈ 0.0037392146940848233
-    @test fobj.mswd ≈ 0.41413597765872123
+    yf = yorkfit(analyses)
+    @test yf isa Isoplot.YorkFit
+    @test yf.intercept.val ≈ 0.0050701916562521515
+    @test yf.intercept.err ≈ 0.004099648408656529
+    @test yf.slope.val ≈ 0.1079872513087868
+    @test yf.slope.err ≈ 0.0037392146940848233
+    @test yf.xm ≈ 1.096376584184683
+    @test yf.ym.val ≈ 0.12346488538167279
+    @test yf.ym.err ≈ 2.235949353726133e-5
+    @test yf.mswd ≈ 0.41413597765872123
+
 end
 
 using ImageIO, FileIO

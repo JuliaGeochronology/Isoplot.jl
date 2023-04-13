@@ -207,6 +207,8 @@ end
 struct YorkFit{T<:Number}
     intercept::Measurement{T}
     slope::Measurement{T}
+    xm::T
+    ym::Measurement{T}
     mswd::T
 end
 
@@ -263,62 +265,63 @@ function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
     α = sqrt.(ωx .* ωy)
 
     ## Perform the York fit (must iterate)
-    W = @. ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
+    Z = @. ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
 
-    X̄ = vsum(W.*x) / vsum(W)
-    Ȳ = vsum(W.*y) / vsum(W)
+    x̄ = vsum(Z.*x) / vsum(Z)
+    ȳ = vsum(Z.*y) / vsum(Z)
 
-    U = x .- X̄
-    V = y .- Ȳ
+    U = x .- x̄
+    V = y .- ȳ
 
-    if W isa NTuple
-        W = collect(W)
+    if Z isa NTuple
+        Z = collect(Z)
         U = collect(U)
         V = collect(V)
     end
 
-    sV = @. W^2 * V * (U/ωy + b*V/ωx - r*V/α)
-    sU = @. W^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
+    sV = @. Z^2 * V * (U/ωy + b*V/ωx - r*V/α)
+    sU = @. Z^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
     b = vsum(sV) / vsum(sU)
 
-    a = Ȳ - b * X̄
+    a = ȳ - b * x̄
     for _ in 2:iterations
-        @. W = ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
+        @. Z = ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
 
-        ΣW, ΣWx, ΣWy = ∅, ∅, ∅
-        @inbounds for i in eachindex(W)
-            ΣW += W[i]
-            ΣWx += W[i] * x[i]
-            ΣWy += W[i] * y[i]
+        ΣZ, ΣZx, ΣZy = ∅, ∅, ∅
+        @inbounds for i in eachindex(Z)
+            ΣZ += Z[i]
+            ΣZx += Z[i] * x[i]
+            ΣZy += Z[i] * y[i]
         end
-        X̄ = ΣWx / ΣW
-        Ȳ = ΣWy / ΣW
+        x̄ = ΣZx / ΣZ
+        ȳ = ΣZy / ΣZ
 
-        @. U = x - X̄
-        @. V = y - Ȳ
+        @. U = x - x̄
+        @. V = y - ȳ
 
-        @. sV = W^2 * V * (U/ωy + b*V/ωx - r*V/α)
-        @. sU = W^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
+        @. sV = Z^2 * V * (U/ωy + b*V/ωx - r*V/α)
+        @. sU = Z^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
         b = sum(sV) / sum(sU)
 
-        a = Ȳ - b * X̄
+        a = ȳ - b * x̄
     end
 
     ## 4. Calculate uncertainties and MSWD
-    β = @. W * (U/ωy + b*V/ωx - (b*U+V)*r/α)
+    β = @. Z * (U/ωy + b*V/ωx - (b*U+V)*r/α)
 
-    u = X̄ .+ β
-    v = Ȳ .+ b.*β
+    u = x̄ .+ β
+    v = ȳ .+ b.*β
 
-    xm = vsum(W.*u)./vsum(W)
-    ym = vsum(W.*v)./vsum(W)
+    xm = vsum(Z.*u)./vsum(Z)
+    ym = vsum(Z.*v)./vsum(Z)
 
-    σb = sqrt(1.0 ./ vsum(W .* (u .- xm).^2))
-    σa = sqrt(1.0 ./ vsum(W) + xm.^2 .* σb.^2)
+    σb = sqrt(1.0 ./ vsum(Z .* (u .- xm).^2))
+    σa = sqrt(1.0 ./ vsum(Z) + xm.^2 .* σb.^2)
+    σym = sqrt(1.0 ./ vsum(Z))
 
     # MSWD (reduced chi-squared) of the fit
     mswd = 1.0 ./ length(x) .* vsum(@. (y - a - b*x)^2 / (σy^2 + b^2 * σx^2) )
 
     ## Results
-    return YorkFit(a ± σa, b ± σb, mswd)
+    return YorkFit(a ± σa, b ± σb, xm, ym ± σym, mswd)
 end
