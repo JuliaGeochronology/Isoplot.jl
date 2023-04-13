@@ -251,6 +251,20 @@ analyses = UPbAnalysis.(eachcol(data)...,)
     @test yf.ym.err ≈ 2.235949353726133e-5
     @test yf.mswd ≈ 0.41413597765872123
 
+    ui = upperintercept(analyses)
+    @test ui.val ≈ 752.6744316220871
+    @test ui.err ≈ 0.5288009504134864
+
+    li = lowerintercept(analyses)
+    @test li.val ≈ 115.83450556482211
+    @test li.err ≈ 94.4384248140631
+
+    ui, li = intercepts(analyses)
+    @test ui.val ≈ 752.6744316220871
+    @test ui.err ≈ 0.5288009504134864
+    @test li.val ≈ 115.83450556482211
+    @test li.err ≈ 94.4384248140631
+
 end
 
 using ImageIO, FileIO
