@@ -88,6 +88,10 @@ function upperintercept(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) wh
     end
     return ui
 end
+function upperintercept(d::Collection{UPbAnalysis{T}}) where {T}
+    yf = yorkfit(d)
+    return newton_zero(Δ68, dΔ68, t🜨, (yf.slope, yf.xm, yf.ym))
+end
 
 function lowerintercept(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     li = zeros(T, nresamplings)
@@ -97,6 +101,10 @@ function lowerintercept(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) wh
     end
     return li
 end
+function lowerintercept(d::Collection{UPbAnalysis{T}}) where {T}
+    yf = yorkfit(d)
+    return newton_zero(Δ68, dΔ68, zero(T), (yf.slope, yf.xm, yf.ym))
+end
 
 function intercepts(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) where {T}
     ui, li = zeros(T, nresamplings), zeros(T, nresamplings)
@@ -105,6 +113,12 @@ function intercepts(d::Collection{UPbAnalysis{T}}, nresamplings::Integer) where 
         ui[i] = newton_zero(Δ68, dΔ68, t🜨, (slopes[i],zero(T),intercepts[i]))
         li[i] = newton_zero(Δ68, dΔ68, zero(T), (slopes[i],zero(T),intercepts[i]))
     end
+    return ui, li
+end
+function intercepts(d::Collection{UPbAnalysis{T}}) where {T}
+    yf = yorkfit(d)
+    ui = newton_zero(Δ68, dΔ68, t🜨, (yf.slope, yf.xm, yf.ym))
+    li = newton_zero(Δ68, dΔ68, zero(T), (yf.slope, yf.xm, yf.ym))
     return ui, li
 end
 
