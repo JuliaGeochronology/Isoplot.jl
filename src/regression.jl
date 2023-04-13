@@ -240,6 +240,9 @@ Least-squares linear fit of the form y = a + bx where
 """
 yorkfit(x::Vector{Measurement{T}}, y::Vector{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(val.(x), err.(x), val.(y), err.(y), r; iterations)
 function yorkfit(d::Collection{<:Analysis{T}}; iterations=10) where {T}
+    # Using NTuples instead of Arrays here avoids allocations and should be
+    # much more efficient for relatively small N, but could be less efficient
+    # for large N (greater than ~100)
     x = ntuple(i->d[i].μ[1], length(d))
     y = ntuple(i->d[i].μ[2], length(d))
     σx = ntuple(i->d[i].σ[1], length(d))
