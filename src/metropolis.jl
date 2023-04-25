@@ -52,6 +52,8 @@ function dist_ll(dist::Collection, mu::Collection, sigma::Collection, tmin::Numb
     # (see Wendt and Carl, 1991, Chemical geology)
     f = length(mu) - 1
     Zf = exp((f/2-1)*log(mswd) - f/2*(mswd-1)) * (f > 0)
+    Zf = max(min(Zf, 1.0), 0.0)
+    @assert 0 <= Zf <= 1
     # To prevent instability / runaway of the MCMC for small datasets (low N),
     # favor the weighted mean interpretation at high Zf (MSWD close to 1) and
     # the youngest-zircon interpretation at low Zf (MSWD far from one). The
@@ -67,6 +69,8 @@ end
 function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Number, tmax::Number)
     old = maximum(analyses)
     yng = minimum(analyses)
+    @assert old.err > 0
+    @assert yng.err > 0
     nbins = length(dist) - 1
     dt = abs(tmax - tmin)
 
@@ -99,10 +103,14 @@ function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Nu
     end
     # Calculate a weighted mean and examine our MSWD
     (wm, mswd) = wmean(analyses, corrected=true)
+    @assert wm.err > 0
     # Height of MSWD distribution relative to height at MSWD = 1
     # (see Wendt and Carl, 1991, Chemical geology)
     f = length(analyses) - 1
     Zf = exp((f / 2 - 1) * log(mswd) - f / 2 * (mswd - 1)) * (f > 0)
+    Zf = max(min(Zf, 1.0), 0.0)
+    @assert 0 <= Zf <= 1
+
     # To prevent instability / runaway of the MCMC for small datasets (low N),
     # favor the weighted mean interpretation at high Zf (MSWD close to 1) and
     # the youngest-zircon interpretation at low Zf (MSWD far from one). The
