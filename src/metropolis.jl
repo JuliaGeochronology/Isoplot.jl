@@ -15,6 +15,9 @@ ll = dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100, 101)
 ```
 """
 function dist_ll(dist::Collection, mu::Collection, sigma::Collection, tmin::Number, tmax::Number)
+    tmax >= tmin || return NaN
+    any(isnan, mu) && return NaN
+    any(x->!(x>0), sigma) && return NaN
     @assert issorted(mu)
     mu₋, sigma₋ = first(mu), first(sigma)
     mu₊, sigma₊ = last(mu), last(sigma)
@@ -67,10 +70,11 @@ function dist_ll(dist::Collection, mu::Collection, sigma::Collection, tmin::Numb
     return loglikelihood
 end
 function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Number, tmax::Number)
+    tmax >= tmin || return NaN
+    any(isnan, analyses) && return NaN
+    any(x->!(err(x) > 0), analyses) && return NaN
     old = maximum(analyses)
     yng = minimum(analyses)
-    @assert old.err > 0
-    @assert yng.err > 0
     nbins = length(dist) - 1
     dt = abs(tmax - tmin)
 
