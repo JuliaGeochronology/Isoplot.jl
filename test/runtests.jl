@@ -89,6 +89,13 @@ end
     @test std(uis) ≈ 1.53 atol=0.1
     @test mean(lis) ≈ 1318.12 atol=0.1
     @test std(lis) ≈ 2.04 atol=0.1
+
+
+    # Stacey-Kramers common Pb model
+    @test stacey_kramers(0) == (18.7, 15.628)
+    @test stacey_kramers(3700) == (11.152, 12.998)
+    @test stacey_kramers(4567) == (9.314476625036953, 12.984667029161916)
+
 end
 @testset "Other systems" begin
     μ, σ = rand(2), rand(2)

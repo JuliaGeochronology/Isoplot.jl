@@ -86,3 +86,27 @@ end
 Base.rand(d::UPbAnalysis) = rand(MvNormal(d.μ, d.Σ))
 Base.rand(d::UPbAnalysis, n::Integer) = rand(MvNormal(d.μ, d.Σ), n)
 Base.rand(d::UPbAnalysis, dims::Dims) = rand(MvNormal(d.μ, d.Σ), dims)
+
+function stacey_kramers(t)
+    if 3700 <= t < 4570
+        t0 = 3700
+        r64 = 11.152
+        r74 = 12.998
+        U_Pb = 7.19
+    elseif t < 3700
+        t0 = 0
+        r64 = 18.700
+        r74 = 15.628
+        U_Pb = 9.74
+    else
+        t0 = NaN
+        r64 = NaN
+        r74 = NaN
+        U_Pb = NaN
+    end
+
+    r64 -= ((exp(val(λ238U)*t)-1) - (exp(val(λ238U)*t0)-1)) * U_Pb
+    r74 -= ((exp(val(λ238U)*t)-1) - (exp(val(λ238U)*t0)-1)) * U_Pb/137.818
+
+    return r64, r74
+end
