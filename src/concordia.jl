@@ -52,7 +52,7 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.44774683
     # Include also uncertainty, from lower intercept if tₗₗ (and ui) are `Measurement`s
     return val(ui₀) ± σcombined(ui₀, σ)
 end
-σcombined(m::Measurement, σ) = sqrt(σ1(m)^2 + σ^2)
+σcombined(m::Measurement, σ) = sqrt(err(m)^2 + σ^2)
 σcombined(m, σ) = σ # If m is not a Measurement
 
 upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, ellipse(d; npoints=50))
