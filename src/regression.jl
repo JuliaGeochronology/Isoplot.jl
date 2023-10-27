@@ -68,14 +68,14 @@ end
 function wmean(x::Collection{Measurement{T}}; corrected::Bool=true) where {T}
     sum_of_values = sum_of_weights = χ² = zero(float(T))
     @inbounds for i in eachindex(x)
-        μ, σ² = val(x[i]), err(x[i])^2
+        μ, σ² = val(x[i]), σ1(x[i])^2
         sum_of_values += μ / σ²
         sum_of_weights += one(T) / σ²
     end
     wμ = sum_of_values / sum_of_weights
 
     @inbounds for i in eachindex(x)
-        μ, σ = val(x[i]), err(x[i])
+        μ, σ = val(x[i]), σ1(x[i])
         χ² += (μ - wμ)^2 / σ^2
     end
     mswd = χ² / (length(x)-1)
@@ -155,14 +155,14 @@ function mswd(x::Collection{Measurement{T}}) where {T}
     sum_of_values = sum_of_weights = χ² = zero(float(T))
 
     @inbounds for i in eachindex(x)
-        w = 1 / err(x[i])^2
+        w = 1 / σ1(x[i])^2
         sum_of_values += w * val(x[i])
         sum_of_weights += w
     end
     wx = sum_of_values / sum_of_weights
 
     @inbounds for i in eachindex(x)
-        χ² += (val(x[i]) - wx)^2 / err(x[i])^2
+        χ² += (val(x[i]) - wx)^2 / σ1(x[i])^2
     end
 
     return χ² / (length(x)-1)
@@ -240,7 +240,7 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Vector{Measurement{T}}, y::Vector{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(val.(x), err.(x), val.(y), err.(y), r; iterations)
+yorkfit(x::Vector{Measurement{T}}, y::Vector{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(val.(x), σ1.(x), val.(y), σ1.(y), r; iterations)
 function yorkfit(d::Collection{<:Analysis{T}}; iterations=10) where {T}
     # Using NTuples instead of Arrays here avoids allocations and should be
     # much more efficient for relatively small N, but could be less efficient

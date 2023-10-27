@@ -29,6 +29,11 @@ concordiacurve!(hdl) # Add concordia curve
 savefig(hdl, "concordia.pdf")
 display(hdl)
 
+# Plot in rankorder plot
+age_06_38 = last.(age.(analyses))
+rankorder_plot = rankorder(val.(age_06_38), σ1.(age_06_38), ylabel="Age (Ma)")
+savefig(rankorder_plot, "rank_order.pdf")
+
 ## --- Bayesian Pb-loss-aware eruption age estimation
 
 nsteps = 10^6

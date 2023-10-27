@@ -82,7 +82,7 @@ end
 # Convenience methods for possibly obtaining values or uncertainties
 # Generic fallback methods for things that don't have uncertainties
 val(x) = x
-err(x::T) where {T} = zero(T)
+σ1(x::T) where {T} = zero(T)
 # Specialized methods for `Measurement`s
 val(m::Measurement{T}) where {T} = m.val::T
-err(m::Measurement{T}) where {T} = m.err::T
+σ1(m::Measurement{T}) where {T} = m.err::T

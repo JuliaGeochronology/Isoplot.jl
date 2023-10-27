@@ -72,7 +72,7 @@ end
 function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Number, tmax::Number)
     tmax >= tmin || return NaN
     any(isnan, analyses) && return NaN
-    any(x->!(err(x) > 0), analyses) && return NaN
+    any(x->!(σ1(x) > 0), analyses) && return NaN
     old = maximum(analyses)
     yng = minimum(analyses)
     nbins = length(dist) - 1
@@ -82,7 +82,7 @@ function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Nu
     loglikelihood = zero(float(eltype(dist)))
     @inbounds for j in eachindex(analyses)
         dⱼ = analyses[j]
-        μⱼ, σⱼ = val(dⱼ), err(dⱼ)
+        μⱼ, σⱼ = val(dⱼ), σ1(dⱼ)
 
         # Find equivalent index position of μⱼ in the `dist` array
         ix = (μⱼ - tmin) / dt * nbins + 1
@@ -146,7 +146,7 @@ tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, bu
 tmindist, t0dist = metropolis_min(2*10^5, HalfNormalDistribution, analyses, burnin=10^5)
 ```
 """
-metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_min(nsteps, dist, val.(data), err.(data); kwargs...)
+metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_min(nsteps, dist, val.(data), σ1.(data); kwargs...)
 function metropolis_min(nsteps::Integer, dist::Collection, mu::Collection, sigma::Collection; kwargs...)
     # Allocate ouput array
     tmindist = Array{float(eltype(mu))}(undef,nsteps)
@@ -384,7 +384,7 @@ crystallization ages.
 tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_minmax(nsteps, dist, val.(data), err.(data); kwargs...)
+metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_minmax(nsteps, dist, val.(data), σ1.(data); kwargs...)
 function metropolis_minmax(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; kwargs...)
     # Allocate ouput arrays
     acceptancedist = falses(nsteps)

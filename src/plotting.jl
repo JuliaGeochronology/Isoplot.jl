@@ -25,7 +25,7 @@ function concordialine!(hdl::Plots.Plot, t₀::Number, t₁::Number; truncate::B
         range(xl..., length=50)
     end
     y = intercept .+ slope .* x
-    plot!(hdl, x, val.(y); ribbon=err.(y), kwargs...)
+    plot!(hdl, x, val.(y); ribbon=σ1.(y), kwargs...)
     Plots.xlims!(hdl, xl)
 end
 function concordialine!(hdl::Plots.Plot, t₀::Collection, t₁::Collection; truncate::Bool=false, label="", color=:black, alpha=0.05, kwargs...)

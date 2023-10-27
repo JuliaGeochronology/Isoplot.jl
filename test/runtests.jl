@@ -18,9 +18,9 @@ end
 
 @testset "General" begin
     @test Isoplot.val(1±1) === 1.0
-    @test Isoplot.err(1±1) === 1.0
+    @test Isoplot.σ1(1±1) === 1.0
     @test Isoplot.val(1) === 1
-    @test Isoplot.err(1) === 0
+    @test Isoplot.σ1(1) === 0
 end
 
 @testset "U-Pb" begin
