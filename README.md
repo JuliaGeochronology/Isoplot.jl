@@ -46,8 +46,9 @@ display(hdl)
 
 ```julia
 # Rank-order plot of 6/8 ages
-hdl = plot(ylabel="²⁰⁶Pb/²³⁸U Age [Ma]", framestyle=:box)
-rankorder!(hdl, age68.(analyses))
+hdl = plot(framestyle=:box, layout=(1,2), size=(800,400), ylims=(748, 754))
+rankorder!(hdl[1], age68.(analyses), ylabel="²⁰⁶Pb/²³⁸U Age [Ma]", color=:darkblue, mscolor=:darkblue)
+rankorder!(hdl[2], age75.(analyses), ylabel="²⁰⁷Pb/²³⁵U Age [Ma]", color=:darkblue, mscolor=:darkblue)
 savefig(hdl, "rankorder.svg")
 display(hdl)
 ```
