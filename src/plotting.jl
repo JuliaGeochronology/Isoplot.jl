@@ -1,15 +1,19 @@
+const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
+
 # Plot 2d uncertainty ellipses of any sort
 Plots.Shape(e::Ellipse{T}) where {T} = Shape{T,T}(e.x, e.y)
 
 Plots.plot(e::Union{Data,Vector{<:Data}}, args...; kwargs...) = plot!(plot(), e, args...; kwargs...)
-Plots.plot!(hdl::Plots.Plot, a::Analysis, args...; kwargs...) = plot!(hdl, ellipse(a), args...; kwargs...)
-Plots.plot!(hdl::Plots.Plot, a::Vector{<:Analysis}, args...; kwargs...) = plot!(hdl, ellipse.(a), args...; kwargs...)
-Plots.plot!(hdl::Plots.Plot, e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(e), args...; kwargs...)
-Plots.plot!(hdl::Plots.Plot, e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
+for P in (Plots.Plot, Plots.Subplot)
+    @eval Plots.plot!(hdl::($P), a::Analysis, args...; kwargs...) = plot!(hdl, ellipse(a), args...; kwargs...)
+    @eval Plots.plot!(hdl::($P), a::Vector{<:Analysis}, args...; kwargs...) = plot!(hdl, ellipse.(a), args...; kwargs...)
+    @eval Plots.plot!(hdl::($P), e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(e), args...; kwargs...)
+    @eval Plots.plot!(hdl::($P), e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
+end
 
 # Plot a line between two times in Wetherill Concordia space
 concordialine(t₀, t₁; framestyle=:box, kwargs...) = concordialine!(plot(xlims=ratio.((first(t₀), first(t₁)), λ235U.val)), t₀, t₁; framestyle, kwargs...)
-function concordialine!(hdl::Plots.Plot, t₀::Number, t₁::Number; truncate::Bool=false, kwargs...)
+function concordialine!(hdl::PlotOrSubplot, t₀::Number, t₁::Number; truncate::Bool=false, kwargs...)
     xl = Plots.xlims(hdl)
     r75₀ = ratio(t₀, λ235U.val)
     r68₀ = ratio(t₀, λ238U.val)
@@ -28,7 +32,7 @@ function concordialine!(hdl::Plots.Plot, t₀::Number, t₁::Number; truncate::B
     plot!(hdl, x, val.(y); ribbon=err.(y), kwargs...)
     Plots.xlims!(hdl, xl)
 end
-function concordialine!(hdl::Plots.Plot, t₀::Collection, t₁::Collection; truncate::Bool=false, label="", color=:black, alpha=0.05, kwargs...)
+function concordialine!(hdl::PlotOrSubplot, t₀::Collection, t₁::Collection; truncate::Bool=false, label="", color=:black, alpha=0.05, kwargs...)
     xl = Plots.xlims(hdl)
     r75₀ = ratio.(t₀, λ235U.val)
     r68₀ = ratio.(t₀, λ238U.val)
@@ -51,7 +55,7 @@ function concordialine!(hdl::Plots.Plot, t₀::Collection, t₁::Collection; tru
 end
 
 # Plot the Wetherill Concordia curve
-function concordiacurve!(hdl::Plots.Plot=Plots.current())
+function concordiacurve!(hdl::PlotOrSubplot=Plots.current())
     # Uncertainty of 235 decay constant relative to the 238 decay constant
     σₜ = λ235U_jaffey.val .* sqrt((λ238U.err/λ238U.val).^2 + (λ235U_jaffey.err/λ235U_jaffey.val).^2) # 1/Years
 
@@ -96,8 +100,8 @@ end
 
 # Rank-order plots
 rankorder(args...; framestyle=:box, kwargs...) = rankorder!(plot(), args...; framestyle, kwargs...)
-rankorder!(h::Plots.Plot, data, sigma, i0::Number=0; kwargs...) = rankorder!(h, data .± sigma, i0; kwargs...)
-function rankorder!(h::Plots.Plot, data::Vector{<:Measurement}, i0::Number=0;
+rankorder!(h::PlotOrSubplot, data, sigma, i0::Number=0; kwargs...) = rankorder!(h, data .± sigma, i0; kwargs...)
+function rankorder!(h::PlotOrSubplot, data::Vector{<:Measurement}, i0::Number=0;
         scale=1,
         label="",
         mscolor=:auto,
