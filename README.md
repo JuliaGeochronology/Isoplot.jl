@@ -16,7 +16,7 @@ pkg> add Isoplot
 using Isoplot, Plots
 
 # Example U-Pb dataset (MacLennan et al. 2020)
-#       207/235  1σ abs   206/236     1σ abs     correlation
+#       207/235  1σ abs   206/238     1σ abs     correlation
 data = [1.1009 0.00093576 0.123906 0.00002849838 0.319
         1.1003 0.00077021 0.123901 0.00003531178 0.415
         1.0995 0.00049477 0.123829 0.00002538494 0.434
