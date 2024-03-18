@@ -17,10 +17,24 @@ using Measurements
 end
 
 @testset "General" begin
-    @test Isoplot.val(1±1) === 1.0
-    @test Isoplot.err(1±1) === 1.0
+    @test Age(0) isa Age{Float64}
+    @test Age(0, 1) isa Age{Float64}
+    @test Interval(0, 1) isa Interval{Float64}
+    @test Interval(0, 1) === Interval(0,0, 1,0)
+    @test min(Interval(0, 1)) isa Age{Float64}
+    @test max(Interval(0, 1)) isa Age{Float64}
+    @test min(Interval(0, 1)) === Age(0,0) === Age(0)
+    @test max(Interval(0, 1)) === Age(1,0) === Age(1)
     @test Isoplot.val(1) === 1
     @test Isoplot.err(1) === 0
+    @test Isoplot.val(1±1) === 1.0
+    @test Isoplot.err(1±1) === 1.0
+    ci = CI(1:10)
+    @test Isoplot.val(ci) ≈ 5.5
+    @test Isoplot.err(ci) ≈ 3.0276503540974917
+    a = Age(ci)
+    @test Isoplot.val(a) ≈ 5.5
+    @test Isoplot.err(a) ≈ 3.0276503540974917
 end
 
 @testset "U-Pb" begin

@@ -9,6 +9,27 @@ ratio(t::Number, λ::Number) = exp(λ*t) - 1
 # Extend Base.isnan to return true if any component of the Analysis is NaN
 Base.isnan(a::Analysis) = any(isnan, a.μ) || any(isnan, a.σ) || any(isnan, a.Σ)
 
+# A moment in time
+struct Age{T<:AbstractFloat}
+    mean::T
+    sigma::T
+end
+Age(μ, σ) = Age(float(μ), float(σ))
+Age(x) = Age(val(x), err(x))
+
+# A duration of time
+struct Interval{T<:AbstractFloat}
+    min::T
+    min_sigma::T
+    max::T
+    max_sigma::T
+end
+Interval(lμ, lσ, uμ, uσ) = Interval(float(lμ), float(lσ), float(uμ), float(uσ))
+Interval(l, u) = Interval(val(l), err(l), val(u), err(u))
+Base.min(x::Interval{T}) where {T} = Age{T}(x.min, x.min_sigma) 
+Base.max(x::Interval{T}) where {T} = Age{T}(x.max, x.max_sigma)
+
+# A confidence or credible interval with 95% bounds
 struct CI{T<:AbstractFloat}
     mean::T
     sigma::T
@@ -83,6 +104,12 @@ end
 # Generic fallback methods for things that don't have uncertainties
 val(x) = x
 err(x::T) where {T} = zero(T)
+# Specialized methods for `CI`s
+val(x::CI{T}) where {T} = x.mean::T
+err(x::CI{T}) where {T} = x.sigma::T
+# Specialized methods for `Age`s
+val(x::Age{T}) where {T} = x.mean::T
+err(x::Age{T}) where {T} = x.sigma::T
 # Specialized methods for `Measurement`s
-val(m::Measurement{T}) where {T} = m.val::T
-err(m::Measurement{T}) where {T} = m.err::T
+val(x::Measurement{T}) where {T} = x.val::T
+err(x::Measurement{T}) where {T} = x.err::T

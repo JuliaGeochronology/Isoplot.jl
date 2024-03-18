@@ -17,7 +17,7 @@ module Isoplot
 
     # Abstract types which we'll subtype later
     include("analysis.jl")
-    export age, ratio, ellipse, CI
+    export age, ratio, ellipse, CI, Age, Interval
 
     include("regression.jl")
     export wmean, awmean, gwmean, distwmean, mswd
