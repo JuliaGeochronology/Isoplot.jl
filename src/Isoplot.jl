@@ -5,9 +5,7 @@ module Isoplot
     using LinearAlgebra
     using Distributions
     using Measurements
-    using Plots: Shape, plot, plot!
-    import Plots
-    export plot, plot!
+    
 
     # A type alias for array-ish types
     const Collection{T} = Union{AbstractArray{T}, NTuple{N,T}} where N
@@ -37,7 +35,7 @@ module Isoplot
     include("K-Ar.jl")
     export UThAnalysis, ReOsAnalysis, LuHfAnalysis, SmNdAnalysis, RbSrAnalysis
 
-    include("plotting.jl")
+    include("generic_plotting.jl")
     export concordiacurve!, concordialine, concordialine!,
     rankorder, rankorder!
 
