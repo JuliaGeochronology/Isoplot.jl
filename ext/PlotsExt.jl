@@ -1,9 +1,14 @@
-module IsoplotPlotting
-    const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
+module PlotsEx
+    
     using Plots: Shape, plot, plot!
-    using Isoplot
+    
     import Plots
-    export plot, plot!
+    # export plot, plot!
+
+    using Isoplot
+
+    const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
+    Base.retry_load_extensions() 
     # Plot 2d uncertainty ellipses of any sort
     Plots.Shape(e::Ellipse{T}) where {T} = Shape{T,T}(e.x, e.y)
 
