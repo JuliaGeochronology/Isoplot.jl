@@ -1,8 +1,8 @@
-using Isoplot
 using Test, Statistics
 using Plots
 using Measurements
-
+using Isoplot
+Base.retry_load_extensions()
 @testset "Show" begin
     yf = Isoplot.YorkFit(1±1, 1±1, 0.0, 1±1, 1.0)
     @test display(yf) != NaN

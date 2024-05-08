@@ -1,11 +1,9 @@
-module PlotsEx
-    
-    using Plots: Shape, plot, plot!
-    
-    import Plots
-    # export plot, plot!
+module PlotsExt
 
     using Isoplot
+    using Plots: Shape, plot, plot!
+    import Plots
+    # export plot, plot!
 
     const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
     Base.retry_load_extensions() 
