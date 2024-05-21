@@ -36,7 +36,7 @@ module Isoplot
     export UThAnalysis, ReOsAnalysis, LuHfAnalysis, SmNdAnalysis, RbSrAnalysis
 
     include("generic_plotting.jl")
-    export concordiacurve!, concordialine, concordialine!,
+    export concordiacurve, concordiacurve!, concordialine, concordialine!,
     rankorder, rankorder!
 
     include("metropolis.jl")
@@ -51,6 +51,6 @@ module Isoplot
     include("show.jl")
 
     #extra exports for pkg extenstions
-    export Data, Analysis, Collection, val, err, vminimum, vmaximum
+    export Data, Analysis, Collection, val, err, vminimum, vmaximum, datalimits
 
 end # module Isoplot

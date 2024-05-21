@@ -100,6 +100,21 @@ function ellipseparameters(d::Analysis{T}, sigmalevel::Number) where T
     return a, b, θ
 end
 
+function datalimits(ellipses::Array{<:Ellipse})
+    xmin = minimum(minimum.(x.(ellipses)))
+    xmax = maximum(maximum.(x.(ellipses)))
+    ymin = minimum(minimum.(y.(ellipses)))
+    ymax = maximum(maximum.(y.(ellipses)))
+
+    return xmin, xmax, ymin, ymax
+end
+
+datalimits(analyses::Array{<:Analysis}) = datalimits(ellipse.(analyses))
+
+x(e::Ellipse) = e.x
+y(e::Ellipse) = e.y
+
+
 # Convenience methods for possibly obtaining values or uncertainties
 # Generic fallback methods for things that don't have uncertainties
 val(x) = x

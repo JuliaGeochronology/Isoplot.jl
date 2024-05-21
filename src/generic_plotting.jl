@@ -1,3 +1,5 @@
+function concordiacurve() end
+
 function concordiacurve!() end
 
 function concordialine() end
