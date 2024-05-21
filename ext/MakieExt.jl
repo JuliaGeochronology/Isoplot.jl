@@ -4,7 +4,7 @@ module MakieExt
     using Makie
     using Measurements
     import Isoplot: concordialine, concordialine!, concordiacurve, concordiacurve!
-    
+
     Makie.convert_arguments(P::Type{<:Poly},e::Ellipse) = convert_arguments(P,as_points(e.x,e.y))
     Makie.convert_arguments(P::Type{<:Poly},a::Analysis) = convert_arguments(P,ellipse(a))
     Makie.plottype(::Ellipse) = Poly
@@ -16,7 +16,7 @@ module MakieExt
 
 
 
-    function as_points(v1::Array{<:Number},v2::Array{<:Number})
+    function as_points(v1,v2)
         
         if length(v1) == length(v2)
             pointList = Point2f[]
