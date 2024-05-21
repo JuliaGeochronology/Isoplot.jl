@@ -13,8 +13,8 @@ module PlotsExt
 
     Plots.plot(e::Union{Data,Vector{<:Data}}, args...; kwargs...) = plot!(plot(), e, args...; kwargs...)
     for P in (Plots.Plot, Plots.Subplot)
-        @eval Plots.plot!(hdl::($P), a::Analysis, args...; kwargs...) = plot!(hdl, ellipse(a), args...; kwargs...)
-        @eval Plots.plot!(hdl::($P), a::Vector{<:Analysis}, args...; kwargs...) = plot!(hdl, ellipse.(a), args...; kwargs...)
+        @eval Plots.plot!(hdl::($P), a::Analysis, args...; kwargs...) = plot!(hdl, Ellipse(a), args...; kwargs...)
+        @eval Plots.plot!(hdl::($P), a::Vector{<:Analysis}, args...; kwargs...) = plot!(hdl, Ellipse.(a), args...; kwargs...)
         @eval Plots.plot!(hdl::($P), e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(e), args...; kwargs...)
         @eval Plots.plot!(hdl::($P), e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
     end

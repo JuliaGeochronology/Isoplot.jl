@@ -55,7 +55,7 @@ end
 σcombined(m::Measurement, σ) = sqrt(err(m)^2 + σ^2)
 σcombined(m, σ) = σ # If m is not a Measurement
 
-upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, ellipse(d; npoints=50))
+upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, Ellipse(d; npoints=50))
 
 function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integer) where T
     # Get ratios
