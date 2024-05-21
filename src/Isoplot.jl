@@ -50,4 +50,7 @@ module Isoplot
 
     include("show.jl")
 
+    #extra exports for pkg extenstions
+    export Data, Analysis, Collection, val, err, vminimum, vmaximum
+
 end # module Isoplot

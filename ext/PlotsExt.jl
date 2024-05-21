@@ -3,6 +3,7 @@ module PlotsExt
     using Isoplot
     using Plots: Shape, plot, plot!
     import Plots
+    using Measurements
     # export plot, plot!
 
     const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
