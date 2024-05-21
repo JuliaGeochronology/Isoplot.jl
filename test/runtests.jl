@@ -362,7 +362,7 @@ module PlotsTest
 
     import ..BaseTests: analyses
 
-    Base.retry_load_extensions()
+    # Base.retry_load_extensions()
     @testset "Plotting" begin
         # Plot single concordia ellipse
         h = plot(analyses[1], color=:blue, alpha=0.3, label="", framestyle=:box)
@@ -432,8 +432,8 @@ module MakieTest
     using ColorTypes
 
     import ..BaseTests: analyses
-    
-    Base.retry_load_extensions()
+
+    # Base.retry_load_extensions()
     @testset "Makie Plotting" begin
         f = Figure()
         ax = Axis(f[1,1])
