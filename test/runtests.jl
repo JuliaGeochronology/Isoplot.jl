@@ -1,8 +1,9 @@
+module BaseTests
+
 using Test, Statistics
-using Plots
 using Measurements
 using Isoplot
-Base.retry_load_extensions()
+
 @testset "Show" begin
     yf = Isoplot.YorkFit(1±1, 1±1, 0.0, 1±1, 1.0)
     @test display(yf) != NaN
@@ -290,7 +291,78 @@ analyses = UPbAnalysis.(eachcol(data)...,)
 
 end
 
-using ImageIO, FileIO
+@testset "Concordia Metropolis" begin
+    data = upperintercept.(0, analyses)
+    @test Isoplot.dist_ll(ones(10), data, 751, 755) ≈ -20.09136536048026
+    @test Isoplot.dist_ll(ones(10), data, 750, 760) ≈ -30.459633175497830
+    @test Isoplot.dist_ll(ones(10), data, 752, 753) ≈ -15.305463167234748
+    @test Isoplot.dist_ll(ones(10), data, 751, 752) ≈ -47.386667785224034
+
+    tmindist, t0dist = metropolis_min(1000, ones(10), analyses; burnin=200)
+    @test tmindist isa Vector{Float64}
+    @test mean(tmindist) ≈ 751.85 atol = 1.5
+    @test std(tmindist) ≈ 0.40 rtol = 0.6
+    @test t0dist isa Vector{Float64}
+    @test mean(t0dist) ≈ 80. atol = 90
+    @test std(t0dist) ≈ 50. rtol = 0.6
+
+    tmindist, tmaxdist, t0dist, lldist, acceptancedist = metropolis_minmax(10000, ones(10), analyses; burnin=200)
+    @test tmindist isa Vector{Float64}
+    @test mean(tmindist) ≈ 751.85 atol = 1.5
+    @test std(tmindist) ≈ 0.40 rtol = 0.6
+    @test tmaxdist isa Vector{Float64}
+    @test mean(tmaxdist) ≈ 753.32 atol = 1.5
+    @test std(tmaxdist) ≈ 0.60 rtol = 0.6
+    @test t0dist isa Vector{Float64}
+    @test mean(t0dist) ≈ 80. atol = 90
+    @test std(t0dist) ≈ 50. rtol = 0.6
+    @test lldist isa Vector{Float64}
+    @test acceptancedist isa BitVector
+    @test mean(acceptancedist) ≈ 0.6 atol=0.2
+
+    terupt = CI(tmindist)
+    @test terupt isa CI{Float64}
+    @test terupt.mean ≈ 751.85 atol = 1.5
+    @test terupt.sigma ≈ 0.40 rtol = 0.6
+    @test terupt.median ≈ 751.83 atol = 1.5
+    @test terupt.lower ≈ 750.56 atol = 1.5
+    @test terupt.upper ≈ 752.52 atol = 1.5
+end
+
+@testset "General Metropolis" begin
+    mu, sigma = collect(100:0.1:101), 0.01*ones(11);
+    @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100,101) ≈ -3.6933372932657607
+
+    tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
+    @test mean(tmindist) ≈ 99.9228 atol=0.015
+
+    tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
+    @test mean(tmindist) ≈ 99.9228  atol=0.015
+    @test mean(tmaxdist) ≈ 101.08  atol=0.015
+    @test lldist isa Vector{Float64}
+    @test acceptancedist isa BitVector
+    @test mean(acceptancedist) ≈ 0.6 atol=0.2
+
+    @test mean(UniformDistribution) ≈ 1
+    @test mean(TriangularDistribution) ≈ 1
+    @test mean(HalfNormalDistribution) ≈ 1
+    @test mean(ExponentialDistribution) ≈ 1.03 atol=0.01
+    @test mean(MeltsZirconDistribution) ≈ 1 atol=0.01
+    @test mean(MeltsVolcanicZirconDistribution) ≈ 1 atol=0.01
+end
+
+end
+
+module PlotsTest
+
+using Test, Statistics
+using Measurements
+using Isoplot
+using ImageIO, FileIO,Plots
+
+import ..BaseTests: analyses
+
+Base.retry_load_extensions()
 @testset "Plotting" begin
     # Plot single concordia ellipse
     h = plot(analyses[1], color=:blue, alpha=0.3, label="", framestyle=:box)
@@ -350,62 +422,4 @@ using ImageIO, FileIO
     rm("rankorder.png")
 end
 
-@testset "Concordia Metropolis" begin
-    data = upperintercept.(0, analyses)
-    @test Isoplot.dist_ll(ones(10), data, 751, 755) ≈ -20.09136536048026
-    @test Isoplot.dist_ll(ones(10), data, 750, 760) ≈ -30.459633175497830
-    @test Isoplot.dist_ll(ones(10), data, 752, 753) ≈ -15.305463167234748
-    @test Isoplot.dist_ll(ones(10), data, 751, 752) ≈ -47.386667785224034
-
-    tmindist, t0dist = metropolis_min(1000, ones(10), analyses; burnin=200)
-    @test tmindist isa Vector{Float64}
-    @test mean(tmindist) ≈ 751.85 atol = 1.5
-    @test std(tmindist) ≈ 0.40 rtol = 0.6
-    @test t0dist isa Vector{Float64}
-    @test mean(t0dist) ≈ 80. atol = 90
-    @test std(t0dist) ≈ 50. rtol = 0.6
-
-    tmindist, tmaxdist, t0dist, lldist, acceptancedist = metropolis_minmax(10000, ones(10), analyses; burnin=200)
-    @test tmindist isa Vector{Float64}
-    @test mean(tmindist) ≈ 751.85 atol = 1.5
-    @test std(tmindist) ≈ 0.40 rtol = 0.6
-    @test tmaxdist isa Vector{Float64}
-    @test mean(tmaxdist) ≈ 753.32 atol = 1.5
-    @test std(tmaxdist) ≈ 0.60 rtol = 0.6
-    @test t0dist isa Vector{Float64}
-    @test mean(t0dist) ≈ 80. atol = 90
-    @test std(t0dist) ≈ 50. rtol = 0.6
-    @test lldist isa Vector{Float64}
-    @test acceptancedist isa BitVector
-    @test mean(acceptancedist) ≈ 0.6 atol=0.2
-
-    terupt = CI(tmindist)
-    @test terupt isa CI{Float64}
-    @test terupt.mean ≈ 751.85 atol = 1.5
-    @test terupt.sigma ≈ 0.40 rtol = 0.6
-    @test terupt.median ≈ 751.83 atol = 1.5
-    @test terupt.lower ≈ 750.56 atol = 1.5
-    @test terupt.upper ≈ 752.52 atol = 1.5
-end
-
-@testset "General Metropolis" begin
-    mu, sigma = collect(100:0.1:101), 0.01*ones(11);
-    @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100,101) ≈ -3.6933372932657607
-
-    tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
-    @test mean(tmindist) ≈ 99.9228 atol=0.015
-
-    tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
-    @test mean(tmindist) ≈ 99.9228  atol=0.015
-    @test mean(tmaxdist) ≈ 101.08  atol=0.015
-    @test lldist isa Vector{Float64}
-    @test acceptancedist isa BitVector
-    @test mean(acceptancedist) ≈ 0.6 atol=0.2
-
-    @test mean(UniformDistribution) ≈ 1
-    @test mean(TriangularDistribution) ≈ 1
-    @test mean(HalfNormalDistribution) ≈ 1
-    @test mean(ExponentialDistribution) ≈ 1.03 atol=0.01
-    @test mean(MeltsZirconDistribution) ≈ 1 atol=0.01
-    @test mean(MeltsVolcanicZirconDistribution) ≈ 1 atol=0.01
 end
