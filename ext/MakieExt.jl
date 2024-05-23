@@ -33,8 +33,8 @@ module MakieExt
             concordiaType = :Wetherril,
             color = :black,
             linewidth = 1,
-            errorcolor = :black,
-            erroralpha = 0.15
+            errorcolor = (:black,0.15)
+            
             
 
         )
@@ -67,7 +67,7 @@ module MakieExt
         upperError = as_points(x[],y_val[] .+ y_err)
         lowerError = as_points(reverse(x[]),reverse(y_val[] .- y_err))
         errorPoly = Observable([upperError;lowerError])
-        poly!(cline,errorPoly,color=cline[:errorcolor][],alpha = cline[:erroralpha][],strokewidth =0)
+        poly!(cline,errorPoly,color=cline[:errorcolor][],strokewidth =0)
         lines!(cline,x,y_val,color = cline[:color][], linewidth = cline[:linewidth][])
         return cline
     end
@@ -77,8 +77,7 @@ module MakieExt
             concordiaType = :Wetherril,
             color = :black,
             linewidth = 1,
-            errorcolor = :black,
-            erroralpha = 0.15,
+            errorcolor = (:black,0.15),
             agefontsize = 10,
             ageticksize = 5,
             agetickcolor = :black
@@ -138,7 +137,7 @@ module MakieExt
             throw(ArgumentError("concordiaType must be :Wetherril or :TeraWasserburg"))
         end
         errorPts = Observable(as_points(errx,erry))
-        poly!(ccurve,errorPts,color=ccurve[:errorcolor][],alpha=ccurve[:erroralpha][],strokewidth =0)
+        poly!(ccurve,errorPts,color=ccurve[:errorcolor][],strokewidth =0)
         lines!(ccurve,xratio, yratio,color = ccurve[:color][], linewidth = ccurve[:linewidth][])
         
         # # Plot age markers with text labels

@@ -428,7 +428,7 @@ module MakieTest
     using Test, Statistics
     using Measurements
     using Isoplot
-    using ImageIO, FileIO, GLMakie
+    using ImageIO, FileIO, CairoMakie
     using ColorTypes
 
     import ..BaseTests: analyses
@@ -437,17 +437,17 @@ module MakieTest
     @testset "Makie Plotting" begin
         f = Figure()
         ax = Axis(f[1,1])
-        plot!(analyses[1], color=:blue, alpha=0.3)
+        plot!(analyses[1], color=(:blue,0.3))
         save("concordia.png",f)
         img = load("concordia.png")
-        @test size(img) == (562,750)
-        @test sum(img)/length(img) ≈ RGB{Float64}(0.8522594561905432,0.8522594561905432,0.988571925662317) rtol = 0.02
+        @test size(img) == (900, 1200)
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.8524913580246877,0.8524913580246877,0.9885884168482209) rtol = 0.02
         rm("concordia.png")
     
         # Plot many concordia ellipses and concordia curve
         f2 = Figure()
         ax2 = Axis(f2[1,1])
-        plot!.(analyses, color=:blue, alpha=0.3)
+        plot!.(analyses, color=(:blue, 0.3))
         ages = age.(analyses)
         concordiacurve!(minimum(ages)[1].val-5,maximum(ages)[1].val+5)
         
@@ -455,7 +455,7 @@ module MakieTest
         limits!(ax2,xmin,xmax,ymin,ymax)
         save("concordia.png",f2)
         img = load("concordia.png")
-        @test size(img) == (562, 750)
+        @test size(img) == (900, 1200)
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9523360547065816,0.9523360547065816,0.9661779080315414) rtol = 0.01
         rm("concordia.png")
     
@@ -466,7 +466,7 @@ module MakieTest
         concordiacurve!(0,100)
         save("concordia.png",f3)
         img = load("concordia.png")
-        @test size(img) == (562, 750)
+        @test size(img) == (900, 1200)
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9845678970995279,0.9845678970995279,0.9845678970995279) rtol = 0.01
         rm("concordia.png")
        
