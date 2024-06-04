@@ -60,15 +60,15 @@ struct Ellipse{T} <: Data{T}
 end
 
 # Make an ellipse from a Analysis object
-function ellipse(d::Analysis;
+function Ellipse(d::Analysis;
         sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
         npoints::Integer=50,
     )
     a, b, θ = ellipseparameters(d, sigmalevel)
-    return ellipse(d, a, b, θ; npoints)
+    return Ellipse(d, a, b, θ; npoints)
 end
 # Make an ellipse if given x and y positions, major and minor axes, and rotation
-function ellipse(d::Analysis, a, b, θ; npoints::Integer=50)
+function Ellipse(d::Analysis, a, b, θ; npoints::Integer=50)
     x₀, y₀ = d.μ[1], d.μ[2]
     t = range(0, 2π, length=npoints)
     x = a*cos(θ)*cos.(t) .- b*sin(θ)*sin.(t) .+ x₀
@@ -99,6 +99,21 @@ function ellipseparameters(d::Analysis{T}, sigmalevel::Number) where T
 
     return a, b, θ
 end
+
+function datalimits(ellipses::Array{<:Ellipse})
+    xmin = minimum(minimum.(x.(ellipses)))
+    xmax = maximum(maximum.(x.(ellipses)))
+    ymin = minimum(minimum.(y.(ellipses)))
+    ymax = maximum(maximum.(y.(ellipses)))
+
+    return xmin, xmax, ymin, ymax
+end
+
+datalimits(analyses::Array{<:Analysis}) = datalimits(Ellipse.(analyses))
+
+x(e::Ellipse) = e.x
+y(e::Ellipse) = e.y
+
 
 # Convenience methods for possibly obtaining values or uncertainties
 # Generic fallback methods for things that don't have uncertainties

@@ -261,7 +261,7 @@ function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps:
 
     # These quantities will be used more than once
     t0ₚ = t0 = 0.0
-    ellipses = ellipse.(analyses)
+    ellipses = Ellipse.(analyses)
     ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./val(λ238U)
     ages = similar(ellipses, Measurement{T})
     @. ages = upperintercept(t0ₚ, ellipses)
@@ -507,7 +507,7 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, t0
 
     # These quantities will be used more than once
     t0ₚ = t0 = 0.0
-    ellipses = ellipse.(analyses)
+    ellipses = Ellipse.(analyses)
     ages = similar(ellipses, Measurement{T})
     @. ages = upperintercept(t0ₚ, ellipses)
     youngest = minimum(ages)
