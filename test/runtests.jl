@@ -178,7 +178,6 @@ module BaseTests
         @test mean(d) ≈ μ atol = 0.2
         @test std(d) ≈ σ atol = 2
 
-
         a,b = 2randn(N), 3randn(N).+1
         d = distwmean(a,b; corrected=false)
         μ,σ,_ = wmean([0,1], [2,3]; corrected=false)
@@ -213,6 +212,18 @@ module BaseTests
         μ,σ,_ = wmean([0,50,100], [2,1,3]; corrected=true)
         @test mean(d) ≈ μ atol = 0.2
         @test std(d) ≈ σ atol = 2
+
+        # test chauvenet criterion
+        x = [1.2, 1.5, 1.3, 2.4, 2.0, 2.1, 1.9, 2.2, 8.0, 2.3]
+        xσ = [1,1,1,1,1,1,1,1,1,1.]
+        expected = [true, true, true, true, true, true, true, true, false, true]
+        @test Isoplot.chauvenet_func(x, xσ) == expected
+        μ,σ,MSWD = wmean(x, xσ;chauvenet=true)
+        @test μ ≈ 1.877777777777778
+        @test MSWD ≈ 0.19444444444444445
+        μ, MSWD = wmean((x .± xσ);chauvenet=true)
+        @test Isoplot.val(μ) ≈ 1.877777777777778
+        @test MSWD ≈ 0.19444444444444445
     end
 
     data = [1.1009 0.00093576 0.123906 0.00002849838 0.319
@@ -443,14 +454,14 @@ module MakieTest
         @test size(img) == (900, 1200)
         @test sum(img)/length(img) ≈ RGB{Float64}(0.8524913580246877,0.8524913580246877,0.9885884168482209) rtol = 0.02
         rm("concordia.png")
-    
+
         # Plot many concordia ellipses and concordia curve
         f2 = Figure()
         ax2 = Axis(f2[1,1])
         plot!.(analyses, color=(:blue, 0.3))
         ages = age.(analyses)
         concordiacurve!(minimum(ages)[1].val-5,maximum(ages)[1].val+5)
-        
+
         xmin, xmax, ymin, ymax = datalimits(analyses)
         limits!(ax2,xmin,xmax,ymin,ymax)
         save("concordia.png",f2)
@@ -458,7 +469,7 @@ module MakieTest
         @test size(img) == (900, 1200)
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9523360547065816,0.9523360547065816,0.9661779080315414) rtol = 0.01
         rm("concordia.png")
-    
+
         # Plot single concordia line
         f3 = Figure()
         ax3 = Axis(f3[1,1])
@@ -469,6 +480,7 @@ module MakieTest
         @test size(img) == (900, 1200)
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9845678970995279,0.9845678970995279,0.9845678970995279) rtol = 0.01
         rm("concordia.png")
-       
+
     end
 end
+
