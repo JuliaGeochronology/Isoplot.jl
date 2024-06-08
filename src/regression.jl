@@ -102,6 +102,7 @@ function wmean(x::Collection{Measurement{T}}; corrected::Bool=true, chauvenet::B
     if chauvenet
         not_outliers = chauvenet_func(μ, σ)
         x = x[not_outliers]
+        μ, σ = val.(x), err.(x)
     end
 
     sum_of_values = sum_of_weights = χ² = zero(float(T))
@@ -172,7 +173,13 @@ julia> mswd(x, ones(10))
 1.3901517474017941
 ```
 """
-function mswd(μ::Collection{T}, σ::Collection) where {T}
+function mswd(μ::Collection{T}, σ::Collection; chauvenet=false) where {T}
+    if chauvenet
+        not_outliers = chauvenet_func(μ, σ)
+        μ = μ[not_outliers]
+        σ = σ[not_outliers]
+    end
+
     sum_of_values = sum_of_weights = χ² = zero(float(T))
 
     @inbounds for i in eachindex(μ,σ)
@@ -189,7 +196,13 @@ function mswd(μ::Collection{T}, σ::Collection) where {T}
     return χ² / (length(μ)-1)
 end
 
-function mswd(x::Collection{Measurement{T}}) where {T}
+function mswd(x::Collection{Measurement{T}}; chauvenet=false) where {T}
+
+    if chauvenet
+        not_outliers = chauvenet_func(val.(x), err.(x))
+        x = x[not_outliers]
+    end
+
     sum_of_values = sum_of_weights = χ² = zero(float(T))
 
     @inbounds for i in eachindex(x)
