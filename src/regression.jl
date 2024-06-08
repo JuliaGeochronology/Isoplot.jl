@@ -97,9 +97,9 @@ function wmean(μ::Collection{T}, σ::Collection; corrected::Bool=true, chauvene
 end
 
 function wmean(x::Collection{Measurement{T}}; corrected::Bool=true, chauvenet::Bool=false) where {T}
-    μ, σ = val.(x), err.(x)
 
     if chauvenet
+        μ, σ = val.(x), err.(x)
         not_outliers = chauvenet_func(μ, σ)
         x = x[not_outliers]
         μ, σ = val.(x), err.(x)
