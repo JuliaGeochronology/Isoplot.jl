@@ -102,7 +102,6 @@ function wmean(x::Collection{Measurement{T}}; corrected::Bool=true, chauvenet::B
         μ, σ = val.(x), err.(x)
         not_outliers = chauvenet_func(μ, σ)
         x = x[not_outliers]
-        μ, σ = val.(x), err.(x)
     end
 
     sum_of_values = sum_of_weights = χ² = zero(float(T))

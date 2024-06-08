@@ -214,12 +214,15 @@ module BaseTests
         @test std(d) ≈ σ atol = 2
 
         # test chauvenet criterion
-        μ = [1.2, 1.5, 1.3, 2.4, 2.0, 2.1, 1.9, 2.2, 8.0, 2.3]
-        σ = [1,1,1,1,1,1,1,1,1,1.]
+        x = [1.2, 1.5, 1.3, 2.4, 2.0, 2.1, 1.9, 2.2, 8.0, 2.3]
+        xσ = [1,1,1,1,1,1,1,1,1,1.]
         expected = [true, true, true, true, true, true, true, true, false, true]
-        @test Isoplot.chauvenet_func(μ, σ) == expected
-        μ,σ,MSWD = wmean(μ, σ;chauvenet=true)
+        @test Isoplot.chauvenet_func(x, xσ) == expected
+        μ,σ,MSWD = wmean(x, xσ;chauvenet=true)
         @test μ ≈ 1.877777777777778
+        @test MSWD ≈ 0.19444444444444445
+        μ, MSWD = wmean((x .± xσ);chauvenet=true)
+        @test Isoplot.val(μ) ≈ 1.877777777777778
         @test MSWD ≈ 0.19444444444444445
     end
 
