@@ -129,8 +129,14 @@ module BaseTests
         σx = ones(10)/4
         @test all(awmean(x, σx) .≈ (0.08737999999999996, 0.07905694150420949, 38.44179426844445))
         @test all(gwmean(x, σx) .≈ (0.08737999999999996, 0.49016447665837415, 38.44179426844445))
-        @test awmean(x .± σx) == (0.08737999999999999 ± 0.07905694150420949, 38.44179426844445)
-        @test gwmean(x .± σx) == (0.08737999999999999 ± 0.49016447665837415, 38.44179426844445)
+        wm, m = awmean(x .± σx)
+        @test wm.val ≈ 0.08737999999999996
+        @test wm.err ≈ 0.07905694150420949
+        @test m ≈ 38.44179426844445
+        wm, m = gwmean(x .± σx)
+        @test wm.val ≈ 0.08737999999999996
+        @test wm.err ≈ 0.49016447665837415
+        @test m ≈ 38.44179426844445
         @test mswd(x, σx) ≈ 38.44179426844445
         @test mswd(x .± σx) ≈ 38.44179426844445
         σx .*= 20 # Test underdispersed data
@@ -300,7 +306,10 @@ module BaseTests
         @test li.val ≈ 115.83450556482211
         @test li.err ≈ 94.4384248140631
 
-        @test wmean(age68.(analyses[1:10])) == (752.2453179272093 ± 1.4781473739306696, 13.15644886325888)
+        wm, m = wmean(age68.(analyses[1:10]))
+        @test wm.val ≈ 752.2453179272093
+        @test wm.err ≈ 1.4781473739306696
+        @test m ≈ 13.15644886325888
     end
 
     @testset "Concordia Metropolis" begin
