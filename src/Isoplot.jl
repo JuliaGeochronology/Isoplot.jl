@@ -9,6 +9,7 @@ module Isoplot
 
     # A type alias for array-ish types
     const Collection{T} = Union{AbstractArray{T}, NTuple{N,T}} where N
+    const Collection1D{T} = Union{AbstractVector{T}, NTuple{N,T}} where N
 
     # Age of Earth and the Solar System
     const t🜨 = 4.567e3 #Myr
@@ -50,7 +51,7 @@ module Isoplot
 
     include("show.jl")
 
-    #extra exports for pkg extenstions
+    # extra exports for pkg extensions
     export Data, Analysis, Collection, val, err, vminimum, vmaximum, datalimits
 
 end # module Isoplot
