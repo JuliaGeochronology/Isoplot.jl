@@ -310,6 +310,9 @@ module BaseTests
         @test wm.val ≈ 752.2453179272093
         @test wm.err ≈ 1.4781473739306696
         @test m ≈ 13.15644886325888
+
+        m = mswd(age68.(analyses[1:10]))
+        @test m ≈ 13.15644886325888
     end
 
     @testset "Concordia Metropolis" begin

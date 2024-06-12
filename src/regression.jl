@@ -198,27 +198,16 @@ function mswd(μ::Collection{T}, σ::Collection; chauvenet=false) where {T}
     return χ² / (length(μ)-1)
 end
 
-function mswd(x::Collection{Measurement{T}}; chauvenet=false) where {T}
+function mswd(x::AbstractVector{Measurement{T}}; chauvenet=false) where {T}
 
     if chauvenet
         not_outliers = chauvenet_func(val.(x), err.(x))
         x = x[not_outliers]
     end
 
-    sum_of_values = sum_of_weights = χ² = zero(float(T))
+    wμ, wσ, mswd = wmean(val.(x), Measurements.cov(x))
 
-    @inbounds for i in eachindex(x)
-        w = 1 / err(x[i])^2
-        sum_of_values += w * val(x[i])
-        sum_of_weights += w
-    end
-    wx = sum_of_values / sum_of_weights
-
-    @inbounds for i in eachindex(x)
-        χ² += (val(x[i]) - wx)^2 / err(x[i])^2
-    end
-
-    return χ² / (length(x)-1)
+    return mswd
 end
 
 ## ---  Simple linear regression
