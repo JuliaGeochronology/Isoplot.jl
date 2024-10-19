@@ -49,8 +49,8 @@ module PlotsExt
         slope = @. (r68₁-r68₀)/(r75₁-r75₀)
         intercept = @. r68₀ - r75₀*slope
         x = if truncate
-            xmin = max(first(xl), vminimum(r75₀))
-            xmax = min(last(xl), vmaximum(r75₁))
+            xmin = max(first(xl), minimum(r75₀))
+            xmax = min(last(xl), maximum(r75₁))
             collect(range(xmin, xmax, length=50))
         else
             collect(range(xl..., length=50))

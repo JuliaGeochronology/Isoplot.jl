@@ -40,12 +40,12 @@ end
 function CI(x::AbstractVector{T}) where {T}
     xₜ = copy(x)
     Tₒ = float(T)
-    mean = vmean(xₜ)
+    mean = nanmean(xₜ)
     CI{Tₒ}(mean,
-           vstd(xₜ; mean),
-           vmedian!(xₜ),
-           vpercentile!(xₜ, 2.5),
-           vpercentile!(xₜ, 97.5),
+        nanstd(xₜ; mean),
+        nanmedian!(xₜ),
+        nanpctile!(xₜ, 2.5),
+        nanpctile!(xₜ, 97.5),
     )
 end
 

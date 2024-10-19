@@ -135,7 +135,7 @@ gwmean(args...) = wmean(args...; corrected=true)
 
 distwmean(x...; corrected::Bool=true) = distwmean(x; corrected)
 function distwmean(x::NTuple{N, <:AbstractVector}; corrected::Bool=true) where {N}
-    σₓ = vstd.(x)
+    σₓ = nanstd.(x)
     wₓ = 1 ./ σₓ.^2
     wₜ = sum(wₓ)
     c = similar(first(x))
@@ -294,7 +294,7 @@ function yorkfit(d::Collection{<:Analysis{T}}; iterations=10) where {T}
     r = ntuple(i->d[i].Σ[1,2], length(d))
     yorkfit(x, σx, y, σy, r; iterations)
 end
-function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
+function yorkfit(x, σx, y, σy, r=nancor(x,y); iterations=10)
 
     ## For an initial estimate of slope and intercept, calculate the
     # ordinary least-squares fit for the equation y=a+bx
@@ -309,8 +309,8 @@ function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
     ## Perform the York fit (must iterate)
     Z = @. ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
 
-    x̄ = vsum(Z.*x) / vsum(Z)
-    ȳ = vsum(Z.*y) / vsum(Z)
+    x̄ = sum(Z.*x) / sum(Z)
+    ȳ = sum(Z.*y) / sum(Z)
 
     U = x .- x̄
     V = y .- ȳ
@@ -323,7 +323,7 @@ function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
 
     sV = @. Z^2 * V * (U/ωy + b*V/ωx - r*V/α)
     sU = @. Z^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
-    b = vsum(sV) / vsum(sU)
+    b = sum(sV) / sum(sU)
 
     a = ȳ - b * x̄
     for _ in 2:iterations
@@ -354,15 +354,15 @@ function yorkfit(x, σx, y, σy, r=vcor(x,y); iterations=10)
     u = x̄ .+ β
     v = ȳ .+ b.*β
 
-    xm = vsum(Z.*u)./vsum(Z)
-    ym = vsum(Z.*v)./vsum(Z)
+    xm = sum(Z.*u)./sum(Z)
+    ym = sum(Z.*v)./sum(Z)
 
-    σb = sqrt(1.0 ./ vsum(Z .* (u .- xm).^2))
-    σa = sqrt(1.0 ./ vsum(Z) + xm.^2 .* σb.^2)
-    σym = sqrt(1.0 ./ vsum(Z))
+    σb = sqrt(1.0 ./ sum(Z .* (u .- xm).^2))
+    σa = sqrt(1.0 ./ sum(Z) + xm.^2 .* σb.^2)
+    σym = sqrt(1.0 ./ sum(Z))
 
     # MSWD (reduced chi-squared) of the fit
-    mswd = 1.0 ./ length(x) .* vsum(@. (y - a - b*x)^2 / (σy^2 + b^2 * σx^2) )
+    mswd = 1.0 ./ length(x) .* sum(@. (y - a - b*x)^2 / (σy^2 + b^2 * σx^2) )
 
     ## Results
     return YorkFit(a ± σa, b ± σb, xm, ym ± σym, mswd)
