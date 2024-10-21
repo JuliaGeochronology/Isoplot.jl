@@ -1,6 +1,7 @@
 module Isoplot
 
     using NaNStatistics
+    using LoopVectorization: @turbo
     using LinearAlgebra
     using Distributions
     using Measurements

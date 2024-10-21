@@ -42,7 +42,7 @@ function dist_ll(dist::Collection, mu::Collection, sigma::Collection, tmin::Numb
             𝑖 = 1:length(dist)
             likelihood = zero(float(eltype(dist)))
             normconst = 1/(length(dist) * σⱼ * sqrt(2 * pi))
-            @inbounds @fastmath @simd ivdep for i in eachindex(dist, 𝑖)
+            @turbo for i in eachindex(dist, 𝑖)
                 distx = tmin + dt * (𝑖[i] - 1) / nbins # time-position of distribution point
                 # Likelihood curve follows a Gaussian PDF. Note: dt cancels
                 likelihood += dist[i] * normconst * exp(-(distx - μⱼ)^2 / (2 * σⱼ * σⱼ))
