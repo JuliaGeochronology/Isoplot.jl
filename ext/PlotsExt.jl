@@ -8,10 +8,15 @@ module PlotsExt
 
     const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
     Base.retry_load_extensions() 
+
+    # Generic redirect from `plot` to `plot!` (only implement methods for `plot!` subsequently)
+    Plots.plot(d::Union{Data,Vector{<:Data}}, args...; framestyle=:box, kwargs...) = plot!(plot(), d, args...; framestyle, kwargs...)
+    Plots.plot(x, y::Union{Data,Vector{<:Data}}, args...; framestyle=:box, kwargs...) = plot!(plot(), x, y, args...; framestyle, kwargs...)
+    Plots.plot(x::Union{Data,Vector{<:Data}}, y, args...; framestyle=:box, kwargs...) = plot!(plot(), x, y, args...; framestyle, kwargs...)
+    Plots.plot(x::Union{Data,Vector{<:Data}}, y::Union{Data,Vector{<:Data}}, args...; framestyle=:box, kwargs...) = plot!(plot(), x, y, args...; framestyle, kwargs...)
+
     # Plot 2d uncertainty ellipses of any sort
     Plots.Shape(e::Ellipse{T}) where {T} = Shape{T,T}(e.x, e.y)
-
-    Plots.plot(e::Union{Data,Vector{<:Data}}, args...; kwargs...) = plot!(plot(), e, args...; kwargs...)
     for P in (Plots.Plot, Plots.Subplot)
         @eval Plots.plot!(hdl::($P), a::Analysis, args...; kwargs...) = plot!(hdl, Ellipse(a), args...; kwargs...)
         @eval Plots.plot!(hdl::($P), a::Vector{<:Analysis}, args...; kwargs...) = plot!(hdl, Ellipse.(a), args...; kwargs...)
@@ -106,6 +111,12 @@ module PlotsExt
         return hdl
     end
 
+    # Plot confidence intervals
+    Plots.plot!(h::PlotOrSubplot, y::Vector{<:CI}, args...; kwargs...) = plot!(h, y.|>c->c.mean, args...; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), kwargs...)
+    Plots.plot!(h::PlotOrSubplot, x, y::Vector{<:CI}, args...; kwargs...) = plot!(h, x, y.|>c->c.mean, args...; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), kwargs...)
+    Plots.plot!(h::PlotOrSubplot, x::Vector{<:CI}, y, args...; kwargs...) = plot!(h, x.|>c->c.mean, y, args...; xerror=(x.|>c->c.upper-c.mean, x.|>c->c.mean-c.lower), kwargs...)
+    Plots.plot!(h::PlotOrSubplot, x::Vector{<:CI}, y::Vector{<:CI}, args...; kwargs...) = plot!(h, x.|>c->c.mean, y.|>c->c.mean, args...; xerror=(x.|>c->c.upper-c.mean, x.|>c->c.mean-c.lower), yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), kwargs...)
+
     # Rank-order plots
     Isoplot.rankorder(args...; framestyle=:box, kwargs...) = rankorder!(plot(), args...; framestyle, kwargs...)
     Isoplot.rankorder!(h::PlotOrSubplot, data, sigma, i0::Number=0; kwargs...) = rankorder!(h, data .± sigma, i0; kwargs...)
@@ -120,4 +131,17 @@ module PlotsExt
         x = i0 .+ scale.*(1:length(data))
         plot!(h, x, sort(data); label, mscolor, seriestype, xticks, kwargs...)
     end
+    function Isoplot.rankorder!(h::PlotOrSubplot, data::Vector{<:CI}, i0::Number=0;
+            scale=1,
+            label="",
+            mscolor=:auto,
+            seriestype=:scatter,
+            xticks=Float64[],
+            kwargs...
+        )
+        x = i0 .+ scale.*(1:length(data))
+        y = sort(data)
+        plot!(h, x, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), label, mscolor, seriestype, xticks, kwargs...)
+    end
+
 end

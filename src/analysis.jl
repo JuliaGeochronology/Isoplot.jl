@@ -1,6 +1,7 @@
+abstract type Data{T} end
+
 # Our overarching analysis type.
 # Must contain a vector of means μ, standard deviations σ, and a covariance matrix Σ
-abstract type Data{T} end
 abstract type Analysis{T<:AbstractFloat} <: Data{T} end
 
 age(r::Number, λ::Number) = log(1+r)/λ
@@ -10,15 +11,16 @@ ratio(t::Number, λ::Number) = exp(λ*t) - 1
 Base.isnan(a::Analysis) = any(isnan, a.μ) || any(isnan, a.σ) || any(isnan, a.Σ)
 
 # A moment in time
-struct Age{T<:AbstractFloat}
+struct Age{T<:AbstractFloat} <: Data{T}
     mean::T
     sigma::T
 end
 Age(μ, σ) = Age(float(μ), float(σ))
 Age(x) = Age(val(x), err(x))
+Base.isless(x::Age, y::Age) = isless(x.mean, y.mean)
 
 # A duration of time
-struct Interval{T<:AbstractFloat}
+struct Interval{T<:AbstractFloat} <: Data{T}
     min::T
     min_sigma::T
     max::T
@@ -30,7 +32,7 @@ Base.min(x::Interval{T}) where {T} = Age{T}(x.min, x.min_sigma)
 Base.max(x::Interval{T}) where {T} = Age{T}(x.max, x.max_sigma)
 
 # A confidence or credible interval with 95% bounds
-struct CI{T<:AbstractFloat}
+struct CI{T<:AbstractFloat} <: Data{T}
     mean::T
     sigma::T
     median::T
@@ -48,6 +50,7 @@ function CI(x::AbstractVector{T}) where {T}
         nanpctile!(xₜ, 97.5),
     )
 end
+Base.isless(x::CI, y::CI) = isless(x.mean, y.mean)
 
 # A type to hold a 2d covariance ellipse for any pair of measurements
 struct Ellipse{T} <: Data{T}
