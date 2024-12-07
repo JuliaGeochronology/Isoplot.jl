@@ -12,7 +12,6 @@ module PlotsExt
     # Generic redirect from `plot` to `plot!` (only implement methods for `plot!` subsequently)
     Plots.plot(d::Union{Data,Vector{<:Data}}, args...; framestyle=:box, kwargs...) = plot!(plot(), d, args...; framestyle, kwargs...)
     Plots.plot(x, y::Union{Data,Vector{<:Data}}, args...; framestyle=:box, kwargs...) = plot!(plot(), x, y, args...; framestyle, kwargs...)
-    Plots.plot(x::Union{Data,Vector{<:Data}}, y, args...; framestyle=:box, kwargs...) = plot!(plot(), x, y, args...; framestyle, kwargs...)
     Plots.plot(x::Union{Data,Vector{<:Data}}, y::Union{Data,Vector{<:Data}}, args...; framestyle=:box, kwargs...) = plot!(plot(), x, y, args...; framestyle, kwargs...)
 
     # Plot 2d uncertainty ellipses of any sort
@@ -112,10 +111,12 @@ module PlotsExt
     end
 
     # Plot confidence intervals
-    Plots.plot!(h::PlotOrSubplot, y::Vector{<:CI}, args...; kwargs...) = plot!(h, y.|>c->c.mean, args...; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), kwargs...)
-    Plots.plot!(h::PlotOrSubplot, x, y::Vector{<:CI}, args...; kwargs...) = plot!(h, x, y.|>c->c.mean, args...; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), kwargs...)
-    Plots.plot!(h::PlotOrSubplot, x::Vector{<:CI}, y, args...; kwargs...) = plot!(h, x.|>c->c.mean, y, args...; xerror=(x.|>c->c.upper-c.mean, x.|>c->c.mean-c.lower), kwargs...)
-    Plots.plot!(h::PlotOrSubplot, x::Vector{<:CI}, y::Vector{<:CI}, args...; kwargs...) = plot!(h, x.|>c->c.mean, y.|>c->c.mean, args...; xerror=(x.|>c->c.upper-c.mean, x.|>c->c.mean-c.lower), yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), kwargs...)
+    for P in (Plots.Plot, Plots.Subplot)
+        @eval Plots.plot!(hdl::($P), y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), mscolor, kwargs...)
+        @eval Plots.plot!(hdl::($P), x, y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, x, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), mscolor, kwargs...)
+        @eval Plots.plot!(hdl::($P), x::Vector{<:CI}, y; mscolor=:auto, kwargs...) = plot!(hdl, x.|>c->c.mean, y; xerror=(x.|>c->c.upper-c.mean, x.|>c->c.mean-c.lower), mscolor, kwargs...)
+        @eval Plots.plot!(hdl::($P), x::Vector{<:CI}, y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, x.|>c->c.mean, y.|>c->c.mean; xerror=(x.|>c->c.upper-c.mean, x.|>c->c.mean-c.lower), yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), mscolor, kwargs...)
+    end
 
     # Rank-order plots
     Isoplot.rankorder(args...; framestyle=:box, kwargs...) = rankorder!(plot(), args...; framestyle, kwargs...)

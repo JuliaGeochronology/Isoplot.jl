@@ -451,6 +451,41 @@ module PlotsTest
         @test size(img) == (400,600)
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9842757843137254,0.9882103758169932,0.9906218464052285) rtol = 0.01
         rm("rankorder.png")
+
+        h = rankorder((1:10) .± (2*ones(10)), label="")
+        savefig(h, "rankorder.png")
+        img = load("rankorder.png")
+        @test size(img) == (400,600)
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.9842757843137254,0.9882103758169932,0.9906218464052285) rtol = 0.01
+        rm("rankorder.png")
+
+        h = rankorder([CI(1:10) for _ in 1:10], label="")
+        savefig(h, "CIa.png")
+        img = load("CIa.png")
+        @test size(img) == (400,600)
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.973667565359477,0.9838965359477125,0.9901668300653594) rtol = 0.01
+        rm("CIa.png")
+
+        h = plot([CI(1:10) for _ in 1:10], label="")
+        savefig(h, "CIb.png")
+        img = load("CIb.png")
+        @test size(img) == (400,600)
+        @test sum(img)/length(img) ≈  RGB{Float64}(0.9728901143790849,0.9831728594771241,0.9894754738562094) rtol = 0.01
+        rm("CIb.png")
+
+        h = plot([CI(1:10) for _ in 1:10], 1:10, label="")
+        savefig(h, "CIc.png")
+        img = load("CIc.png")
+        @test size(img) == (400,600)
+        @test sum(img)/length(img) ≈  RGB{Float64}(0.9661086437908494,0.9805500816993463,0.9894015849673207) rtol = 0.01
+        rm("CIc.png")
+
+        h = plot([CI(1:10) for _ in 1:10], [CI(1:10) for _ in 1:10], label="")
+        savefig(h, "CId.png")
+        img = load("CId.png")
+        @test size(img) == (400,600)
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.9829569444444444,0.9866916666666666,0.9890226307189541) rtol = 0.01
+        rm("CId.png")
     end
 
 end
