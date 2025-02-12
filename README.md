@@ -104,5 +104,5 @@ with in this example perhaps only a slight _increase_ in precision when more dat
 [docs-dev-url]: https://JuliaGeochronology.github.io/Isoplot.jl/dev/
 [ci-img]: https://github.com/JuliaGeochronology/Isoplot.jl/workflows/CI/badge.svg
 [ci-url]: https://github.com/JuliaGeochronology/Isoplot.jl/actions/workflows/CI.yml
-[codecov-img]: http://codecov.io/github/JuliaGeochronology/Isoplot.jl/coverage.svg?branch=main
+[codecov-img]: https://codecov.io/gh/JuliaGeochronology/Isoplot.jl/branch/main/graph/badge.svg
 [codecov-url]: http://app.codecov.io/github/JuliaGeochronology/Isoplot.jl?branch=main
