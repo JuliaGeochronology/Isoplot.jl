@@ -180,6 +180,8 @@ metropolis_min!(tmindist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, bu
 ```
 """
 function metropolis_min!(tmindist::DenseArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+    @assert length(tmindist) == nsteps
+
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
@@ -255,6 +257,8 @@ function metropolis_min!(tmindist::DenseArray, nsteps::Integer, dist::Collection
     return tmindist
 end
 function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, t0prior=Uniform(0,minimum(age68.(analyses))), lossprior=Uniform(0,100)) where {T}
+    @assert length(tmindist) == length(t0dist) == nsteps
+
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
@@ -423,6 +427,8 @@ metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, 2*10^5, MeltsVolc
 ```
 """
 function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::DenseArray, acceptancedist::BitVector, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+    @assert length(tmindist) == length(tmaxdist) == length(lldist) == length(acceptancedist ) == nsteps
+
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
@@ -443,7 +449,7 @@ function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::
     llₚ = ll = dist_ll(dist, mu_sorted, sigma_sorted, tmin, tmax)
 
     # Burnin
-    for i=1:nsteps
+    for i=1:burnin
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
@@ -501,6 +507,8 @@ function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::
     return tmindist, tmaxdist, lldist, acceptancedist
 end
 function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, t0dist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T}
+    @assert length(tmindist) == length(tmaxdist) == length(t0dist) == length(lldist) == length(acceptancedist ) == nsteps
+
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
     # Sort the dataset from youngest to oldest
