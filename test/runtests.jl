@@ -507,7 +507,7 @@ module MakieTest
         save("concordia.png",f)
         img = load("concordia.png")
         @test size(img) == (900, 1200)
-        @test sum(img)/length(img) ≈ RGB{Float64}(0.8524913580246877,0.8524913580246877,0.9885884168482209) rtol = 0.02
+        @test sum(img)/length(img) ≈ RGBA{Float64}(0.8524913580246877, 0.8524913580246877, 0.9885884168482209, 1.0) rtol = 0.02
         rm("concordia.png")
 
         # Plot many concordia ellipses and concordia curve
@@ -522,7 +522,7 @@ module MakieTest
         save("concordia.png",f2)
         img = load("concordia.png")
         @test size(img) == (900, 1200)
-        @test sum(img)/length(img) ≈ RGB{Float64}(0.9523360547065816,0.9523360547065816,0.9661779080315414) rtol = 0.01
+        @test sum(img)/length(img) ≈ RGBA{Float64}(0.9525158605664497, 0.9525158605664497, 0.9663422004357308, 1.0) rtol = 0.01
         rm("concordia.png")
 
         # Plot single concordia line
@@ -533,7 +533,7 @@ module MakieTest
         save("concordia.png",f3)
         img = load("concordia.png")
         @test size(img) == (900, 1200)
-        @test sum(img)/length(img) ≈ RGB{Float64}(0.9845678970995279,0.9845678970995279,0.9845678970995279) rtol = 0.01
+        @test sum(img)/length(img) ≈ RGBA{Float64}(0.9847984095860566, 0.9847984095860566, 0.9847984095860566, 1.0) rtol = 0.01
         rm("concordia.png")
 
     end
