@@ -151,22 +151,22 @@ function metropolis_min(nsteps::Integer, dist::Collection, mu::Collection, sigma
     # Allocate ouput array
     tmindist = Array{float(eltype(mu))}(undef,nsteps)
     # Run Metropolis sampler
-    return metropolis_min!(tmindist, nsteps, dist, mu, sigma; kwargs...)
+    return metropolis_min!(tmindist, dist, mu, sigma; kwargs...)
 end
 function metropolis_min(nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; kwargs...) where {T}
     # Allocate ouput arrays
     tmindist = Array{T}(undef,nsteps)
     t0dist = Array{T}(undef,nsteps)
     # Run Metropolis sampler
-    metropolis_min!(tmindist, t0dist, nsteps, dist, analyses; kwargs...)
+    metropolis_min!(tmindist, t0dist, dist, analyses; kwargs...)
     return tmindist, t0dist
 end
 
 
 """
 ```julia
-metropolis_min!(tmindist::DenseArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
-metropolis_min!(tmindist::DenseArray, t0dist::DenseArray, nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer=0) where {T}
+metropolis_min!(tmindist::DenseArray, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
+metropolis_min!(tmindist::DenseArray, t0dist::DenseArray, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer=0) where {T}
 ```
 In-place (non-allocating) version of `metropolis_min`, fills existing array `tmindist`.
 
@@ -179,8 +179,7 @@ zircon eruption ages from a distribution of zircon crystallization ages.
 metropolis_min!(tmindist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-function metropolis_min!(tmindist::DenseArray, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
-    @assert length(tmindist) == nsteps
+function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Number}, mu::AbstractArray{<:Number}, sigma::AbstractArray{<:Number}; burnin::Integer=0)
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
@@ -256,8 +255,8 @@ function metropolis_min!(tmindist::DenseArray, nsteps::Integer, dist::Collection
     end
     return tmindist
 end
-function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, t0prior=Uniform(0,minimum(age68.(analyses))), lossprior=Uniform(0,100)) where {T}
-    @assert length(tmindist) == length(t0dist) == nsteps
+function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, t0prior=Uniform(0,minimum(age68.(analyses))), lossprior=Uniform(0,100)) where {T<:AbstractFloat}
+    @assert eachindex(tmindist) == eachindex(t0dist)
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
@@ -396,9 +395,9 @@ function metropolis_minmax(nsteps::Integer, dist::Collection, mu::AbstractArray,
     tmaxdist = Array{float(eltype(mu))}(undef,nsteps)
     tmindist = Array{float(eltype(mu))}(undef,nsteps)
     # Run metropolis sampler
-    return metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, nsteps, dist, mu, sigma; kwargs...)
+    return metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, dist, mu, sigma; kwargs...)
 end
-function metropolis_minmax(nsteps::Integer, dist::Collection{T}, analyses::Collection{<:UPbAnalysis{T}}; kwargs...) where T
+function metropolis_minmax(nsteps::Integer, dist::Collection{T}, analyses::Collection{<:UPbAnalysis{T}}; kwargs...) where {T<:AbstractFloat}
     # Allocate ouput arrays
     acceptancedist = falses(nsteps)
     lldist = Array{T}(undef,nsteps)
@@ -406,7 +405,7 @@ function metropolis_minmax(nsteps::Integer, dist::Collection{T}, analyses::Colle
     tmaxdist = Array{T}(undef,nsteps)
     tmindist = Array{T}(undef,nsteps)
     # Run metropolis sampler
-    return metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, nsteps, dist, analyses; kwargs...)
+    return metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, dist, analyses; kwargs...)
 end
 
 """
@@ -426,8 +425,8 @@ crystallization ages.
 metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::DenseArray, acceptancedist::BitVector, nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
-    @assert length(tmindist) == length(tmaxdist) == length(lldist) == length(acceptancedist ) == nsteps
+function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::DenseArray, acceptancedist::BitVector, dist::Collection{<:Number}, mu::AbstractArray{<:Number}, sigma::AbstractArray{<:Number}; burnin::Integer=0)
+    @assert eachindex(tmindist) == eachindex(tmaxdist) == eachindex(lldist) == eachindex(acceptancedist) 
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
@@ -506,8 +505,8 @@ function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::
     end
     return tmindist, tmaxdist, lldist, acceptancedist
 end
-function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, t0dist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T}
-    @assert length(tmindist) == length(tmaxdist) == length(t0dist) == length(lldist) == length(acceptancedist ) == nsteps
+function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, t0dist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T <: AbstractFloat}
+    @assert eachindex(tmindist) == eachindex(tmaxdist) == eachindex(t0dist) == eachindex(lldist) == eachindex(acceptancedist)
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
