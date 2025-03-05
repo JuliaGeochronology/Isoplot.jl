@@ -1,4 +1,4 @@
-using Isoplot, Plots, VectorizedStatistics
+using Isoplot, Plots
 
 # Example U-Pb dataset (MacLennan et al. 2020)
 #       207/235  1σ abs   206/236     1σ abs     correlation
@@ -84,4 +84,4 @@ display(teruptold)
 # h = plot(ccfiltered,cc, layout=(2,1), size=(500,660), left_margin=(4,:mm))
 # savefig(h, "filteredunfiltered.pdf")
 
-## ---
+## --- End of File

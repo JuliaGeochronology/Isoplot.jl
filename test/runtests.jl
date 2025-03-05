@@ -10,7 +10,7 @@ module BaseTests
 
         ci = CI(1:10)
         @test ci == CI{Float64}(5.5, 3.0276503540974917, 5.5, 1.225, 9.775)
-        @test "$ci" === "5.5 +4.3/-4.3"
+        @test "$ci" === "5.5 +4.28/-4.28"
         @test display(ci) != NaN
 
         ci = CI(randn(10_000))
@@ -324,10 +324,32 @@ module BaseTests
 
     @testset "Concordia Metropolis" begin
         data = upperintercept.(0, analyses)
-        @test Isoplot.dist_ll(ones(10), data, 751, 755) ≈ -20.09136536048026
-        @test Isoplot.dist_ll(ones(10), data, 750, 760) ≈ -30.459633175497830
-        @test Isoplot.dist_ll(ones(10), data, 752, 753) ≈ -15.305463167234748
-        @test Isoplot.dist_ll(ones(10), data, 751, 752) ≈ -47.386667785224034
+        @test Isoplot.dist_ll(ones(10), data, 751, 755) + Isoplot.prior_ll(data, 751, 755) ≈ -20.09136536048026
+        @test Isoplot.dist_ll(ones(10), data, 750, 760) + Isoplot.prior_ll(data, 750, 760) ≈ -30.459633175497830
+        @test Isoplot.dist_ll(ones(10), data, 752, 753) + Isoplot.prior_ll(data, 752, 753) ≈ -15.305463167234748
+        @test Isoplot.dist_ll(ones(10), data, 751, 752) + Isoplot.prior_ll(data, 751, 752) ≈ -47.386667785224034
+
+        tmindist, t0dist = metropolis_min(1000, ones(100), analyses; burnin=200, method=:bivariate)
+        @test tmindist isa Vector{Float64}
+        @test mean(tmindist) ≈ 751.85 atol = 1.5
+        @test std(tmindist) ≈ 0.40 rtol = 0.6
+        @test t0dist isa Vector{Float64}
+        @test mean(t0dist) ≈ 80. atol = 90
+        @test std(t0dist) ≈ 50. rtol = 0.6
+
+        tmindist, tmaxdist, t0dist, lldist, acceptancedist = metropolis_minmax(10000, ones(10), analyses; burnin=200, method=:bivariate)
+        @test tmindist isa Vector{Float64}
+        @test mean(tmindist) ≈ 751.85 atol = 1.5
+        @test std(tmindist) ≈ 0.40 rtol = 0.6
+        @test tmaxdist isa Vector{Float64}
+        @test mean(tmaxdist) ≈ 753.32 atol = 1.5
+        @test std(tmaxdist) ≈ 0.60 rtol = 0.6
+        @test t0dist isa Vector{Float64}
+        @test mean(t0dist) ≈ 80. atol = 90
+        @test std(t0dist) ≈ 50. rtol = 0.6
+        @test lldist isa Vector{Float64}
+        @test acceptancedist isa BitVector
+        @test mean(acceptancedist) ≈ 0.6 atol=0.2
 
         tmindist, t0dist = metropolis_min(1000, ones(10), analyses; burnin=200)
         @test tmindist isa Vector{Float64}

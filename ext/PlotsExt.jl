@@ -104,7 +104,7 @@ module PlotsExt
         xoffset = (xl[2]-xl[1])/200
         yoffset = (yl[2]-yl[1])/100
         t = (xl[1]+8*xoffset) .< r75tticks .< xl[2]
-        ticklabels = Plots.text.(string.(round.(Int, tticks[t])), 10, :right)
+        ticklabels = Plots.text.(string.(round.(tticks[t], digits=1)), 10, :right)
         Plots.annotate!(hdl, r75tticks[t].-xoffset,r68tticks[t].+yoffset,ticklabels)
 
         return hdl

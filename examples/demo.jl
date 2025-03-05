@@ -1,4 +1,4 @@
-using Isoplot, Plots, VectorizedStatistics
+using Isoplot, Plots
 
 cd(@__DIR__)
 
@@ -33,7 +33,7 @@ display(hdl)
 
 # Plot in rankorder plot
 age_06_38 = last.(age.(analyses))
-rankorder_plot = rankorder(val.(age_06_38), σ1.(age_06_38), ylabel="Age (Ma)")
+rankorder_plot = rankorder(Isoplot.val.(age_06_38), 2*Isoplot.err.(age_06_38), ylabel="Age (Ma)")
 savefig(rankorder_plot, "rank_order.pdf")
 display(rankorder_plot)
 
@@ -61,17 +61,16 @@ display(h)
 
 ## --- Show eruption age relative to distribution of upper intercepts
 
-uis = upperintercept.(vmean(t0dist), analyses)
-h = rankorder(Isoplot.val.(uis), Isoplot.err.(uis))
+uis = upperintercept.(nanmean(t0dist), analyses)
+h = rankorder(Isoplot.val.(uis), 2*Isoplot.err.(uis))
 plot!(h,1:length(uis),fill(terupt.lower,length(uis)),fillto=terupt.upper,color=:blue,fillalpha=0.5,linealpha=0, label="Model ($terupt Ma, 95% CI)")
 plot!(h,1:length(uis),fill(terupt.mean,length(uis)),linecolor=:black,linestyle=:dot,label="",legend=:topleft,fg_color_legend=:white,framestyle=:box)
-
-
 
 ## --- Histogram of distribution of time of Pb-loss
 
 h = histogram(t0dist, xlabel="Age [Ma]", ylabel="Probability Density", normalize=true, label="Time of Pb-loss", color=:darkblue, alpha=0.65, linealpha=0.1, framestyle=:box)
-xlims!(h, 0, last(xlims()))
-ylims!(h, 0, last(ylims()))
+plot!(h, xlims=(0,last(xlims())), ylims=(0, last(ylims())))
 savefig(h, "PbLoss.pdf")
 display(h)
+
+## --- End of File

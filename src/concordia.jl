@@ -61,9 +61,9 @@ function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Intege
     # Get ratios
     r75₀, r68₀ = d.μ
     # Return early if our lead loss time is too old or anything is NaN'd
-    tₗₗ < log(r68₀+1)/λ238U.val || return fill!(uis, T(NaN))
-    tₗₗ < log(r75₀+1)/λ235U.val || return fill!(uis, T(NaN))
-
+    tₗₗ < log(r68₀+1)/λ238U.val || return fill(T(NaN), nresamplings)
+    tₗₗ < log(r75₀+1)/λ235U.val || return fill(T(NaN), nresamplings)
+    
     # Calculate isotopic ratios of our time of Pb-loss
     r75ₗₗ = exp(λ235U.val*tₗₗ) - 1
     r68ₗₗ = exp(λ238U.val*tₗₗ) - 1

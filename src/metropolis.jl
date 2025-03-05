@@ -14,124 +14,171 @@ mu, sigma = collect(100:0.1:101), 0.01*ones(11)
 ll = dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100, 101)
 ```
 """
-function dist_ll(dist::Collection, mu::Collection, sigma::Collection, tmin::Number, tmax::Number)
+function dist_ll(dist::Collection, mu::Collection{<:Number}, sigma::Collection{<:Number}, tmin::Number, tmax::Number)
     tmax >= tmin || return NaN
     any(isnan, mu) && return NaN
     any(x->!(x>0), sigma) && return NaN
-    @assert issorted(mu)
-    mu₋, sigma₋ = first(mu), first(sigma)
-    mu₊, sigma₊ = last(mu), last(sigma)
     nbins = length(dist) - 1
-    dt = abs(tmax-tmin)
+    Δt = abs(tmax-tmin)
+    dt = Δt/nbins
 
     # Cycle through each datum in dataset
-    loglikelihood = zero(float(eltype(dist)))
+    ll = zero(float(eltype(dist)))
     @inbounds for j in eachindex(mu, sigma)
         μⱼ, σⱼ = mu[j], sigma[j]
 
         # Find equivalent index position of μⱼ in the `dist` array
-        ix = (μⱼ - tmin) / dt * nbins + 1
+        ix = (μⱼ - tmin) / Δt * nbins + 1
         # If possible, prevent aliasing problems by interpolation
-        if (σⱼ < dt / nbins) && 1 < ix < length(dist)
+        if (σⱼ < Δt / nbins) && 1 < ix < length(dist)
             # Interpolate corresponding distribution value
             f = floor(Int, ix)
             δ = ix - f
-            likelihood = (dist[f+1]*δ + dist[f]*(1-δ)) / dt
+            likelihood = (dist[f+1]*δ + dist[f]*(1-δ)) / Δt
         else
             # Otherwise, sum contributions from Gaussians at each point in distribution
             𝑖 = 1:length(dist)
             likelihood = zero(float(eltype(dist)))
             normconst = 1/(length(dist) * σⱼ * sqrt(2 * pi))
             @turbo for i in eachindex(dist, 𝑖)
-                distx = tmin + dt * (𝑖[i] - 1) / nbins # time-position of distribution point
-                # Likelihood curve follows a Gaussian PDF. Note: dt cancels
+                distx = tmin + dt * (𝑖[i] - 1) # time-position of distribution point
+                # Likelihood curve follows a Gaussian PDF. Note: Δt cancels
                 likelihood += dist[i] * normconst * exp(-(distx - μⱼ)^2 / (2 * σⱼ * σⱼ))
             end
         end
-        loglikelihood += log(likelihood)
+        ll += log(likelihood)
     end
-    # Calculate a weighted mean and examine our MSWD
-    (wm, wsigma, mswd) = wmean(mu, sigma, corrected=true) # Height of MSWD distribution relative to height at MSWD = 1
-    # (see Wendt and Carl, 1991, Chemical geology)
-    f = length(mu) - 1
-    Zf = exp((f/2-1)*log(mswd) - f/2*(mswd-1)) * (f > 0)
-    Zf = max(min(Zf, 1.0), 0.0)
-    @assert 0 <= Zf <= 1
-    # To prevent instability / runaway of the MCMC for small datasets (low N),
-    # favor the weighted mean interpretation at high Zf (MSWD close to 1) and
-    # the youngest-zircon interpretation at low Zf (MSWD far from one). The
-    # penalty factors used here are determined by training against synthetic datasets.
-    # In other words, these are just context-dependent prior distributions on tmax and tmin
-    loglikelihood -= (2/log(1+length(mu))) * (          # Scaling factor that decreases with log number of data points (i.e., no penalty at high N)
-      log((abs(tmin - wm)+wsigma)/wsigma)*Zf +          # Penalty for proposing tmin too far from the weighted mean at low MSWD (High Zf)
-      log((abs(tmax - wm)+wsigma)/wsigma)*Zf +          # Penalty for proposing tmax too far from the weighted mean at low MSWD (High Zf)
-      log((abs(tmin - mu₋)+sigma₋)/sigma₋)*(1-Zf) +     # Penalty for proposing tmin too far from youngest zircon at high MSWD (low Zf)
-      log((abs(tmax - mu₊)+sigma₊)/sigma₊)*(1-Zf) )     # Penalty for proposing tmax too far from oldest zircon at high MSWD (low Zf)
-    return loglikelihood
+    return ll
 end
 function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Number, tmax::Number)
     tmax >= tmin || return NaN
     any(isnan, analyses) && return NaN
     any(x->!(err(x) > 0), analyses) && return NaN
-    old = maximum(analyses)
-    yng = minimum(analyses)
     nbins = length(dist) - 1
-    dt = abs(tmax - tmin)
+    Δt = abs(tmax - tmin)
+    dt = Δt/nbins
 
     # Cycle through each datum in dataset
-    loglikelihood = zero(float(eltype(dist)))
+    ll = zero(float(eltype(dist)))
     @inbounds for j in eachindex(analyses)
         dⱼ = analyses[j]
         μⱼ, σⱼ = val(dⱼ), err(dⱼ)
 
         # Find equivalent index position of μⱼ in the `dist` array
-        ix = (μⱼ - tmin) / dt * nbins + 1
+        ix = (μⱼ - tmin) / Δt * nbins + 1
         # If possible, prevent aliasing problems by interpolation
-        if (σⱼ < dt / nbins) && 1 < ix < length(dist)
+        if (σⱼ < Δt / nbins) && 1 < ix < length(dist)
             # Interpolate corresponding distribution value
             f = floor(Int, ix)
             δ = ix - f
-            likelihood = (dist[f+1]*δ + dist[f]*(1-δ)) / dt
+            likelihood = (dist[f+1]*δ + dist[f]*(1-δ)) / Δt
         else
             # Otherwise, sum contributions from Gaussians at each point in distribution
             𝑖 = 1:length(dist)
             likelihood = zero(float(eltype(dist)))
             normconst = 1/(length(dist) * σⱼ * sqrt(2 * pi))
             @inbounds @fastmath @simd ivdep for i in eachindex(dist, 𝑖)
-                distx = tmin + dt * (𝑖[i] - 1) / nbins # time-position of distribution point
-                # Likelihood curve follows a Gaussian PDF. Note: dt cancels
+                distx = tmin + dt * (𝑖[i] - 1) # time-position of distribution point
+                # Likelihood curve follows a Gaussian PDF. Note: Δt cancels
                 likelihood += dist[i] * normconst * exp(-(distx - μⱼ)^2 / (2 * σⱼ * σⱼ))
             end
         end
-        loglikelihood += log(likelihood)
+        ll += log(likelihood)
     end
+    return ll
+end
+function dist_ll(dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}, tmin::Number, tmax::Number, tll::Number) where {T<:AbstractFloat}
+    tmax >= tmin || return T(NaN)
+    any(isnan, analyses) && return T(NaN)
+
+    tbinedges = range(tmin, tmax, length=length(dist))
+    @assert eachindex(tbinedges) == eachindex(dist)
+    dt = step(tbinedges)
+    Σdist = sum(dist)
+    r75ₗₗ = ratio(tll, λ235U.val)
+    r68ₗₗ = ratio(tll, λ238U.val)
+    μₗₗ = SVector(r75ₗₗ, r68ₗₗ)
+
+    # Cycle through each datum in dataset
+    ll = zero(float(eltype(dist)))
+    @inbounds for j in eachindex(analyses)
+        d = analyses[j]
+        μⱼ = SVector{2}(d.μ)
+        Σⱼ = SMatrix{2,2}(d.Σ)
+
+        # Cycle through each time step
+        likelihood = zero(T)
+        r75ᵢ = ratio(first(tbinedges)-step(tbinedges), λ235U.val)
+        r68ᵢ = ratio(first(tbinedges)-step(tbinedges), λ238U.val)
+        for i in eachindex(dist)
+            μlast = SVector(r75ᵢ, r68ᵢ)
+
+            # Rotation matrix that would rotate discordia line between tll and tbinedges[i] to vertical
+            r75ᵢ = ratio(tbinedges[i], λ235U.val)
+            r68ᵢ = ratio(tbinedges[i], λ238U.val)
+            R = RotMatrix(π/2 - atan(r68ᵢ-r68ₗₗ, r75ᵢ-r75ₗₗ))
+
+            # Rotate means and covariance matrix, with proposed time of Pb-loss at origin
+            μlastᵣ = R * (μlast-μₗₗ)
+            μᵣ = R * (μⱼ-μₗₗ)
+            Σᵣ = R * Σⱼ * R'
+            μ₁, σ₁ = first(μᵣ), sqrt(first(Σᵣ))
+
+            # Product of PDF of marginal disribution of rotated bivariate Gaussian and `dist`
+            dμ₁ = abs(first(μlastᵣ)*last(μᵣ)/last(μlastᵣ))
+            likelihood += pdf(Normal(μ₁, σ₁), zero(T))*dμ₁*dist[i]/(dt*Σdist)
+        end
+        ll += log(likelihood)
+    end
+    return ll
+end
+
+
+# Encoding of additional prior assumptions about likely age given observed dispersion
+function prior_ll(mu::Collection, sigma::Collection, tmin::Number, tmax::Number)
+    i₋ = argmin(mu)
+    mu₋, sigma₋ = mu[i₋], sigma[i₋]
+    i₊ = argmax(mu)
+    mu₊, sigma₊ = mu[i₊], sigma[i₊]
+    # Calculate a weighted mean and examine our MSWD
+    (wm, wsigma, mswd) = wmean(mu, sigma, corrected=true) 
+    # Degrees of freedom
+    f = length(mu) - 1
+    return prior_ll(wm, wsigma, mswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
+end
+function prior_ll(analyses::Collection{<:Measurement}, tmin::Number, tmax::Number)
+    a₋ = minimum(analyses)
+    a₊ = maximum(analyses)
     # Calculate a weighted mean and examine our MSWD
     (wm, mswd) = wmean(analyses, corrected=true)
-    @assert wm.err > 0
-    # Height of MSWD distribution relative to height at MSWD = 1
-    # (see Wendt and Carl, 1991, Chemical geology)
+    # Degrees of freedom
     f = length(analyses) - 1
-    Zf = exp((f / 2 - 1) * log(mswd) - f / 2 * (mswd - 1)) * (f > 0)
+    return prior_ll(wm.val, wm.err, mswd, a₋.val, a₋.err, a₊.val, a₊.err, f, tmin, tmax)
+end
+function prior_ll(wm, wsigma, mswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
+    # Height of MSWD distribution relative to height at MSWD = 1
+    # (see Wendt and Carl, 1991, Chemical Geology)
+    Zf = exp((f/2-1)*log(mswd) - f/2*(mswd-1)) * (f > 0)
     Zf = max(min(Zf, 1.0), 0.0)
-    @assert 0 <= Zf <= 1
-
-    # To prevent instability / runaway of the MCMC for small datasets (low N),
+    # To avoid instability of the MCMC for small datasets (low N),
     # favor the weighted mean interpretation at high Zf (MSWD close to 1) and
     # the youngest-zircon interpretation at low Zf (MSWD far from one). The
-    # penalties used here were determined by training against synthetic datasets.
-    # In other words, these are just context-dependent prior distributions on tmax and tmin
-    loglikelihood -= (2 / log(1 + length(analyses))) * (                    # Scaling factor that decreases with log number of analyses points (i.e., no penalty at high N)
-      log((abs(tmin - wm.val) + wm.err) / wm.err) * Zf +            # Penalty for proposing tmin too far from the weighted mean at low MSWD (High Zf)
-      log((abs(tmax - wm.val) + wm.err) / wm.err) * Zf +            # Penalty for proposing tmax too far from the weighted mean at low MSWD (High Zf)
-      log((abs(tmin - yng.val) + yng.err) / yng.err) * (1 - Zf) +   # Penalty for proposing tmin too far from youngest zircon at high MSWD (low Zf)
-      log((abs(tmax - old.val) + old.err) / old.err) * (1 - Zf))    # Penalty for proposing tmax too far from oldest zircon at high MSWD (low Zf)
-    return loglikelihood
+    # specific penalty factors applied here were determined by training  
+    # against synthetic datasets in Keller et al. 2018.
+    # In other words, these are basically context-dependent prior distributions on tmax and tmin
+    ll = -(2/log(2+f)) * (                                # Scaling factor that decreases with log number of data points (i.e., no penalty at high N)
+        log((abs(tmin - wm)+wsigma)/wsigma)*Zf +          # Penalty for proposing tmin too far from the weighted mean at low MSWD (High Zf)
+        log((abs(tmax - wm)+wsigma)/wsigma)*Zf +          # Penalty for proposing tmax too far from the weighted mean at low MSWD (High Zf)
+        log((abs(tmin - mu₋)+sigma₋)/sigma₋)*(1-Zf) +     # Penalty for proposing tmin too far from youngest zircon at high MSWD (low Zf)
+        log((abs(tmax - mu₊)+sigma₊)/sigma₊)*(1-Zf)       # Penalty for proposing tmax too far from oldest zircon at high MSWD (low Zf)
+    )
+    return ll
 end
 
 
 """
 ```julia
-metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0, t0prior=Uniform(0,minimum(age68.(analyses))), lossprior=Uniform(0,100))
+metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0, t0prior=Uniform(0,minimum(val.(age68.(analyses)))), lossprior=Uniform(0,100))
 metropolis_min(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
 metropolis_min(nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis; burnin::Integer=0)
 ```
@@ -183,42 +230,38 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
-    # Sort the dataset from youngest to oldest
-    sI = sortperm(mu)
-    mu_sorted = mu[sI] # Sort means
-    sigma_sorted = sigma[sI] # Sort uncertainty
-    youngest, oldest = first(mu_sorted), last(mu_sorted)
 
-    # Step sigma for Gaussian proposal distributions
-    dt = oldest - youngest + first(sigma_sorted) + last(sigma_sorted)
-    tmin_step = dt / length(mu)
-    tmax_step = dt / length(mu)
+    # Initial step sigma for Gaussian proposal distributions
+    youngest, oldest = minimum(mu), maximum(mu)
+    Δt = (oldest - youngest) + sqrt(sigma[argmin(mu)]^2 + sigma[argmax(mu)]^2)
+    tminstep = tmaxstep = Δt / length(mu)
+
     # Use oldest and youngest zircons for initial proposal
-    tminₚ = tmin = youngest - first(sigma_sorted)
-    tmaxₚ = tmax = oldest + last(sigma_sorted)
+    tminₚ = tmin = youngest - sigma[argmin(mu)]
+    tmaxₚ = tmax = oldest + sigma[argmax(mu)]
 
     # Log likelihood of initial proposal
-    llₚ = ll = dist_ll(dist, mu_sorted, sigma_sorted, tmin, tmax)
+    llₚ = ll = dist_ll(dist, mu, sigma, tmin, tmax) + prior_ll(mu, sigma, tmin, tmax)
 
     # Burnin
     for i=1:burnin
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tmin_step*randn())
-        (r > 0.5) && (tminₚ += tmax_step*randn())
+        (r < 0.5) && (tmaxₚ += tminstep*randn())
+        (r > 0.5) && (tminₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, mu_sorted, sigma_sorted, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(mu, sigma, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
-                tmin_step = abs(tminₚ-tmin)*stepfactor
+                tminstep = abs(tminₚ-tmin)*stepfactor
             end
             if tmaxₚ != tmax
-                tmax_step = abs(tmaxₚ-tmax)*stepfactor
+                tmaxstep = abs(tmaxₚ-tmax)*stepfactor
             end
 
             ll = llₚ
@@ -231,20 +274,20 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tmin_step*randn())
-        (r > 0.5) && (tminₚ += tmax_step*randn())
+        (r < 0.5) && (tmaxₚ += tminstep*randn())
+        (r > 0.5) && (tminₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, mu_sorted, sigma_sorted, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(mu, sigma, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
-                tmin_step = abs(tminₚ-tmin)*stepfactor
+                tminstep = abs(tminₚ-tmin)*stepfactor
             end
             if tmaxₚ != tmax
-                tmax_step = abs(tmaxₚ-tmax)*stepfactor
+                tmaxstep = abs(tmaxₚ-tmax)*stepfactor
             end
 
             ll = llₚ
@@ -255,119 +298,134 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
     end
     return tmindist
 end
-function metropolis_min!(tmindist::DenseArray{T}, t0dist::DenseArray{T}, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, t0prior=Uniform(0,minimum(age68.(analyses))), lossprior=Uniform(0,100)) where {T<:AbstractFloat}
-    @assert eachindex(tmindist) == eachindex(t0dist)
+function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, tllprior=Uniform(0,minimum(val.(age68.(analyses)))), lossprior=Uniform(0,100), method=:projection) where {T<:AbstractFloat}
+    @assert eachindex(tmindist) == eachindex(tlldist)
+    @assert (method === :projection || method === :bivariate) "Allowed methods are `:projection` or `:bivariate`"
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
-    # Sort the dataset from youngest to oldest
 
-    # These quantities will be used more than once
-    t0ₚ = t0 = 0.0
+    # Process input analyses
     ellipses = Ellipse.(analyses)
     ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./val(λ238U)
-    ages = similar(ellipses, Measurement{T})
-    @. ages = upperintercept(t0ₚ, ellipses)
-    youngest = minimum(ages)
-    oldest = maximum(ages)
-    t0step = youngest.val/50
-    # t0prior = Uniform(0, youngest.val)
-    t0prior = truncated(t0prior, 0, minimum(age68.(analyses)))
-    lossprior = truncated(lossprior, 0, 100)
+    ages = @. upperintercept(zero(T), ellipses)
 
     # Initial step sigma for Gaussian proposal distributions
-    dt = sqrt((oldest.val - youngest.val)^2 + oldest.err^2 + youngest.err^2)
-    tmin_step = tmax_step = dt / length(analyses)
+    youngest, oldest = minimum(ages), maximum(ages)
+    Δt = (oldest.val - youngest.val) + sqrt(+ oldest.err^2 + youngest.err^2)
+    tminstep = tmaxstep = Δt / length(analyses)
+    tllstep = youngest.val/50
 
     # Use oldest and youngest zircons for initial proposal
     tminₚ = tmin = val(youngest)
     tmaxₚ = tmax = val(oldest)
+    tllₚ = tll = zero(T)
+
+    # Ensure priors for time and amount of lead loss are appropriately truncated
+    tllprior = truncated(tllprior, 0, minimum(ages68))
+    lossprior = truncated(lossprior, 0, 100) # percent
 
     # Log likelihood of initial proposal
-    ll = dist_ll(dist, ages, tmin, tmax) + logpdf(t0prior, t0)
+    ll = logpdf(tllprior, tll)
+    if method === :projection
+        ll += dist_ll(dist, ages, tmin, tmax) 
+    elseif method === :bivariate
+        ll += dist_ll(dist, analyses, tmin, tmax, tll) 
+    end
+    ll += prior_ll(ages, tmin, tmax)
     for i in eachindex(ages, ages68)
-        loss = 100*max(one(T) - (ages68[i] - t0) / (val(ages[i]) - t0), zero(T))
+        loss = 100*max(one(T) - (ages68[i] - tll) / (val(ages[i]) - tll), zero(T))
         ll += logpdf(lossprior, loss)
     end
     llₚ = ll
 
     # Burnin
     for i = 1:burnin
-        tminₚ, tmaxₚ, t0ₚ = tmin, tmax, t0
+        tminₚ, tmaxₚ, tllₚ = tmin, tmax, tll
         # Adjust upper or lower bounds, or Pb-loss time
         r = rand()
         if r < 0.35
-            tminₚ += tmin_step * randn()
+            tminₚ += tminstep * randn()
         elseif r < 0.70
-            tmaxₚ += tmax_step * randn()
+            tmaxₚ += tmaxstep * randn()
         else
-            t0ₚ += t0step * randn()
+            tllₚ += tllstep * randn()
         end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        @. ages = upperintercept(t0ₚ, ellipses)
-        llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
-        llₚ += logpdf(t0prior, t0ₚ)
+        @. ages = upperintercept(tllₚ, ellipses)
+        llₚ = logpdf(tllprior, tllₚ)
+        if method === :projection
+            llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
+        elseif method === :bivariate
+            llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+        end
+        llₚ += prior_ll(ages, tminₚ, tmaxₚ)
         for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - t0ₚ) / (val(ages[i]) - t0ₚ), zero(T))
+            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (val(ages[i]) - tllₚ), zero(T))
             llₚ += logpdf(lossprior, loss)
         end
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
             if tminₚ != tmin
-                tmin_step = abs(tminₚ - tmin) * stepfactor
+                tminstep = abs(tminₚ - tmin) * stepfactor
             end
             if tmaxₚ != tmax
-                tmax_step = abs(tmaxₚ - tmax) * stepfactor
+                tmaxstep = abs(tmaxₚ - tmax) * stepfactor
             end
 
             ll = llₚ
             tmin = tminₚ
             tmax = tmaxₚ
-            t0 = t0ₚ
+            tll = tllₚ
         end
     end
     # Step through each of the N steps in the Markov chain
-    @inbounds for i in eachindex(tmindist, t0dist)
-        tminₚ, tmaxₚ, t0ₚ = tmin, tmax, t0
+    @inbounds for i in eachindex(tmindist, tlldist)
+        tminₚ, tmaxₚ, tllₚ = tmin, tmax, tll
         # Adjust upper or lower bounds, or Pb-loss time
         r = rand()
         if r < 0.35
-            tminₚ += tmin_step * randn()
+            tminₚ += tminstep * randn()
         elseif r < 0.70
-            tmaxₚ += tmax_step * randn()
+            tmaxₚ += tmaxstep * randn()
         else
-            t0ₚ += t0step * randn()
+            tllₚ += tllstep * randn()
         end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        @. ages = upperintercept(t0ₚ, ellipses)
-        llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
-        llₚ += logpdf(t0prior, t0ₚ)
+        @. ages = upperintercept(tllₚ, ellipses)
+        llₚ = logpdf(tllprior, tllₚ)
+        if method === :projection
+            llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
+        elseif method === :bivariate
+            llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+        end
+        llₚ += prior_ll(ages, tminₚ, tmaxₚ)
         for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - t0ₚ) / (val(ages[i]) - t0ₚ), zero(T))
+            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (val(ages[i]) - tllₚ), zero(T))
             llₚ += logpdf(lossprior, loss)
         end
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
             if tminₚ != tmin
-                tmin_step = abs(tminₚ - tmin) * stepfactor
+                tminstep = abs(tminₚ - tmin) * stepfactor
             end
             if tmaxₚ != tmax
-                tmax_step = abs(tmaxₚ - tmax) * stepfactor
+                tmaxstep = abs(tmaxₚ - tmax) * stepfactor
             end
 
             ll = llₚ
             tmin = tminₚ
             tmax = tmaxₚ
-            t0 = t0ₚ
+            tll = tllₚ
         end
         tmindist[i] = tmin
-        t0dist[i] = t0
+        tlldist[i] = tll
     end
     return tmindist
 end
@@ -430,42 +488,38 @@ function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
-    # Sort the dataset from youngest to oldest
-    sI = sortperm(mu)
-    mu_sorted = mu[sI] # Sort means
-    sigma_sorted = sigma[sI] # Sort uncertainty
-    youngest, oldest = first(mu_sorted), last(mu_sorted)
 
-    # Step sigma for Gaussian proposal distributions
-    dt = oldest - youngest + first(sigma_sorted) + last(sigma_sorted)
-    tmin_step = tmax_step = dt / length(mu)
+    # Initial step sigma for Gaussian proposal distributions
+    youngest, oldest = minimum(mu), maximum(mu)
+    Δt = (oldest - youngest) + sqrt(sigma[argmin(mu)]^2 + sigma[argmax(mu)]^2)
+    tminstep = tmaxstep = Δt / length(mu)
 
     # Use oldest and youngest zircons for initial proposal
-    tminₚ = tmin = youngest - first(sigma_sorted)
-    tmaxₚ = tmax = oldest + last(sigma_sorted)
+    tminₚ = tmin = youngest - sigma[argmin(mu)]
+    tmaxₚ = tmax = oldest + sigma[argmax(mu)]
 
     # Log likelihood of initial proposal
-    llₚ = ll = dist_ll(dist, mu_sorted, sigma_sorted, tmin, tmax)
+    llₚ = ll = dist_ll(dist, mu, sigma, tmin, tmax) + prior_ll(mu, sigma, tmin, tmax)
 
     # Burnin
     for i=1:burnin
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tmin_step*randn())
-        (r > 0.5) && (tminₚ += tmax_step*randn())
+        (r < 0.5) && (tmaxₚ += tminstep*randn())
+        (r > 0.5) && (tminₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, mu_sorted, sigma_sorted, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(mu, sigma, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
-                tmin_step = abs(tminₚ-tmin)*stepfactor
+                tminstep = abs(tminₚ-tmin)*stepfactor
             end
             if tmaxₚ != tmax
-                tmax_step = abs(tmaxₚ-tmax)*stepfactor
+                tmaxstep = abs(tmaxₚ-tmax)*stepfactor
             end
 
             ll = llₚ
@@ -478,20 +532,20 @@ function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tmin_step*randn())
-        (r > 0.5) && (tminₚ += tmax_step*randn())
+        (r < 0.5) && (tmaxₚ += tminstep*randn())
+        (r > 0.5) && (tminₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, mu_sorted, sigma_sorted, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(mu, sigma, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
-                tmin_step = abs(tminₚ-tmin)*stepfactor
+                tminstep = abs(tminₚ-tmin)*stepfactor
             end
             if tmaxₚ != tmax
-                tmax_step = abs(tmaxₚ-tmax)*stepfactor
+                tmaxstep = abs(tmaxₚ-tmax)*stepfactor
             end
 
             ll = llₚ
@@ -505,106 +559,137 @@ function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::
     end
     return tmindist, tmaxdist, lldist, acceptancedist
 end
-function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, t0dist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0) where {T <: AbstractFloat}
-    @assert eachindex(tmindist) == eachindex(tmaxdist) == eachindex(t0dist) == eachindex(lldist) == eachindex(acceptancedist)
+function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tlldist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, tllprior=Uniform(0,minimum(val.(age68.(analyses)))), lossprior=Uniform(0,100), method=:projection) where {T <: AbstractFloat}
+    @assert eachindex(tmindist) == eachindex(tmaxdist) == eachindex(tlldist) == eachindex(lldist) == eachindex(acceptancedist)
+    @assert (method === :projection || method === :bivariate) "Allowed methods are `:projection` or `:bivariate`"
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
-    # Sort the dataset from youngest to oldest
 
-    # These quantities will be used more than once
-    t0ₚ = t0 = 0.0
+    # Process input analyses
     ellipses = Ellipse.(analyses)
-    ages = similar(ellipses, Measurement{T})
-    @. ages = upperintercept(t0ₚ, ellipses)
-    youngest = minimum(ages)
-    oldest = maximum(ages)
-    t0step = youngest.val/50
-    t0prior = Uniform(0, youngest.val)
+    ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./val(λ238U)
+    ages = @. upperintercept(zero(T), ellipses)
 
     # Initial step sigma for Gaussian proposal distributions
-    dt = sqrt((oldest.val - youngest.val)^2 + oldest.err^2 + youngest.err^2)
-    tmin_step = tmax_step = dt / length(analyses)
+    youngest, oldest = minimum(ages), maximum(ages)
+    Δt = (oldest.val - youngest.val) + sqrt(+ oldest.err^2 + youngest.err^2)
+    tminstep = tmaxstep = Δt / length(analyses)
+    tllstep = youngest.val/50
 
-    # Use oldest and youngest zircons for initial proposal
+    # Use oldest and youngest upper intercept ages for initial proposal
     tminₚ = tmin = val(youngest)
     tmaxₚ = tmax = val(oldest)
+    tllₚ = tll = zero(T)
+
+    # Ensure priors for time and amount of lead loss are appropriately truncated
+    tllprior = truncated(tllprior, 0, minimum(ages68))
+    lossprior = truncated(lossprior, 0, 100) # percent
 
     # Log likelihood of initial proposal
-    ll = llₚ = dist_ll(dist, ages, tmin, tmax) + logpdf(t0prior, t0)
+    ll = logpdf(tllprior, tll)
+    if method === :projection
+        ll += dist_ll(dist, ages, tmin, tmax) 
+    elseif method === :bivariate
+        ll += dist_ll(dist, analyses, tmin, tmax, tll) 
+    end
+    ll += prior_ll(ages, tmin, tmax)
+    for i in eachindex(ages, ages68)
+        loss = 100*max(one(T) - (ages68[i] - tll) / (val(ages[i]) - tll), zero(T))
+        ll += logpdf(lossprior, loss)
+    end
+    llₚ = ll
 
     # Burnin
     for i = 1:burnin
-        tminₚ, tmaxₚ, t0ₚ = tmin, tmax, t0
+        tminₚ, tmaxₚ, tllₚ = tmin, tmax, tll
         # Adjust upper or lower bounds, or Pb-loss time
         r = rand()
         if r < 0.35
-            tminₚ += tmin_step * randn()
+            tminₚ += tminstep * randn()
         elseif r < 0.70
-            tmaxₚ += tmax_step * randn()
+            tmaxₚ += tmaxstep * randn()
         else
-            t0ₚ += t0step * randn()
+            tllₚ += tllstep * randn()
         end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        @. ages = upperintercept(t0ₚ, ellipses)
-        llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
-        llₚ += logpdf(t0prior, t0ₚ)
+        @. ages = upperintercept(tllₚ, ellipses)
+        llₚ = logpdf(tllprior, tllₚ)
+        if method === :projection
+            llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
+        elseif method === :bivariate
+            llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+        end
+        llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+        for i in eachindex(ages, ages68)
+            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (val(ages[i]) - tllₚ), zero(T))
+            llₚ += logpdf(lossprior, loss)
+        end
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
             if tminₚ != tmin
-                tmin_step = abs(tminₚ - tmin) * stepfactor
+                tminstep = abs(tminₚ - tmin) * stepfactor
             end
             if tmaxₚ != tmax
-                tmax_step = abs(tmaxₚ - tmax) * stepfactor
+                tmaxstep = abs(tmaxₚ - tmax) * stepfactor
             end
 
             ll = llₚ
             tmin = tminₚ
             tmax = tmaxₚ
-            t0 = t0ₚ
+            tll = tllₚ
         end
     end
     # Step through each of the N steps in the Markov chain
-    @inbounds for i in eachindex(tmindist, t0dist)
-        tminₚ, tmaxₚ, t0ₚ = tmin, tmax, t0
+    @inbounds for i in eachindex(tmindist, tlldist)
+        tminₚ, tmaxₚ, tllₚ = tmin, tmax, tll
         # Adjust upper or lower bounds, or Pb-loss time
         r = rand()
         if r < 0.35
-            tminₚ += tmin_step * randn()
+            tminₚ += tminstep * randn()
         elseif r < 0.70
-            tmaxₚ += tmax_step * randn()
+            tmaxₚ += tmaxstep * randn()
         else
-            t0ₚ += t0step * randn()
+            tllₚ += tllstep * randn()
         end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        @. ages = upperintercept(t0ₚ, ellipses)
-        llₚ = dist_ll(dist, ages, tminₚ, tmaxₚ)
-        llₚ += logpdf(t0prior, t0ₚ)
+        @. ages = upperintercept(tllₚ, ellipses)
+        llₚ = logpdf(tllprior, tllₚ)
+        if method === :projection
+            llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
+        elseif method === :bivariate
+            llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+        end
+        llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+        for i in eachindex(ages, ages68)
+            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (val(ages[i]) - tllₚ), zero(T))
+            llₚ += logpdf(lossprior, loss)
+        end
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
             if tminₚ != tmin
-                tmin_step = abs(tminₚ - tmin) * stepfactor
+                tminstep = abs(tminₚ - tmin) * stepfactor
             end
             if tmaxₚ != tmax
-                tmax_step = abs(tmaxₚ - tmax) * stepfactor
+                tmaxstep = abs(tmaxₚ - tmax) * stepfactor
             end
 
             ll = llₚ
             tmin = tminₚ
             tmax = tmaxₚ
-            t0 = t0ₚ
+            tll = tllₚ
             acceptancedist[i]=true
         end
         tmindist[i] = tmin
         tmaxdist[i] = tmax
-        t0dist[i] = t0
+        tlldist[i] = tll
         lldist[i] = ll
     end
-    return tmindist, tmaxdist, t0dist, lldist, acceptancedist
+    return tmindist, tmaxdist, tlldist, lldist, acceptancedist
 end

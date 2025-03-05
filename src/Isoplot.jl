@@ -1,10 +1,14 @@
 module Isoplot
 
-    using NaNStatistics
-    using LoopVectorization: @turbo
-    using LinearAlgebra
+    using Reexport
+    @reexport using NaNStatistics
     using Distributions
+    using LoopVectorization: @turbo
+    using LogExpFunctions
+    using LinearAlgebra
     using Measurements
+    using StaticArrays
+    using Rotations
     
 
     # A type alias for array-ish types
