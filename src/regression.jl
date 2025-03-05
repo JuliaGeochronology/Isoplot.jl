@@ -246,7 +246,7 @@ end
     # as commonly used in isochrons
 
 # Custom type to hold York fit resutls
-struct YorkFit{T<:Number}
+struct YorkFit{T<:Number} <: Data{T}
     intercept::Measurement{T}
     slope::Measurement{T}
     xm::T

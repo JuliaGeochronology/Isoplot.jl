@@ -1,4 +1,20 @@
+# Is it data?
 abstract type Data{T} end
+
+# Generic methods to allow broadcasting and comparison
+Base.length(x::Data) = 1
+Base.iterate(x::Data) = (x, nothing)
+Base.iterate(x::Data, state) = nothing
+Base.:(==)(x::Data, y::Data) = false
+function Base.:(==)(x::T, y::T) where {T<:Data}
+    for n in fieldnames(T)
+        isequal(getfield(x, n), getfield(y, n)) || return false
+    end
+    return true
+end
+
+# Type for raw data of all sorts derived from mass spectrometry
+abstract type RawData{T<:AbstractFloat} <: Data{T} end 
 
 # Our overarching analysis type.
 # Must contain a vector of means μ, standard deviations σ, and a covariance matrix Σ
