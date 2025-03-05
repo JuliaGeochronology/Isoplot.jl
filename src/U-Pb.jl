@@ -35,9 +35,9 @@ If `σ` is not provided, it will be automatically calculated from `Σ`,
 given that `σ.^2 = diag(Σ)`.
 """
 struct UPbAnalysis{T} <: Analysis{T}
-    μ::Vector{T}
-    σ::Vector{T}
-    Σ::Matrix{T}
+    μ::SVector{2, T}
+    σ::SVector{2, T}
+    Σ::SMatrix{2,2,T,4}
 end
 
 """
@@ -54,13 +54,13 @@ UPbAnalysis{Float64}([22.6602, 0.40864], [0.00030625000000000004 2.4746942500000
 """
 function UPbAnalysis(r²⁰⁷Pb²³⁵U::Number, σ²⁰⁷Pb²³⁵U::Number, r²⁰⁶Pb²³⁸U::Number, σ²⁰⁶Pb²³⁸U::Number, correlation::Number; T=Float64)
     cov = σ²⁰⁷Pb²³⁵U * σ²⁰⁶Pb²³⁸U * correlation
-    Σ = T[σ²⁰⁷Pb²³⁵U^2  cov
-          cov  σ²⁰⁶Pb²³⁸U^2]
-    σ = T[σ²⁰⁷Pb²³⁵U, σ²⁰⁶Pb²³⁸U]
-    μ = T[r²⁰⁷Pb²³⁵U, r²⁰⁶Pb²³⁸U]
+    Σ = SMatrix{2,2,T}(σ²⁰⁷Pb²³⁵U^2, cov, cov, σ²⁰⁶Pb²³⁸U^2)
+    σ = SVector{2,T}(σ²⁰⁷Pb²³⁵U, σ²⁰⁶Pb²³⁸U)
+    μ = SVector{2,T}(r²⁰⁷Pb²³⁵U, r²⁰⁶Pb²³⁸U)
     UPbAnalysis(μ, σ, Σ)
 end
-UPbAnalysis(μ::Vector{T}, Σ::Matrix{T}) where {T} = UPbAnalysis{T}(μ, sqrt.(diag(Σ)), Σ)
+UPbAnalysis(μ::Vector{T}, σ::Vector, Σ::Matrix) where {T} = UPbAnalysis{T}(SVector{2,T}(μ), SVector{2,T}(σ), SMatrix{2,2,T,4}(Σ))
+UPbAnalysis(μ::Vector{T}, Σ::Matrix) where {T} = UPbAnalysis{T}(SVector{2,T}(μ), SVector{2,T}(sqrt.(diag(Σ))), SMatrix{2,2,T,4}(Σ))
 
 # 75 and 68 ages
 function age(d::UPbAnalysis)
