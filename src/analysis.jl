@@ -1,24 +1,30 @@
-# Is it data?
-abstract type Data{T} end
-
-# Generic methods to allow broadcasting and comparison
-Base.length(x::Data) = 1
-Base.iterate(x::Data) = (x, nothing)
-Base.iterate(x::Data, state) = nothing
-Base.:(==)(x::Data, y::Data) = false
-function Base.:(==)(x::T, y::T) where {T<:Data}
-    for n in fieldnames(T)
-        isequal(getfield(x, n), getfield(y, n)) || return false
-    end
-    return true
-end
-
-# Type for raw data of all sorts derived from mass spectrometry
-abstract type RawData{T<:AbstractFloat} <: Data{T} end 
-
 # Our overarching analysis type.
 # Must contain a vector of means μ, standard deviations σ, and a covariance matrix Σ
 abstract type Analysis{T<:AbstractFloat} <: Data{T} end
+
+# Generic concrete implementation
+struct BivariateAnalysis{T} <: Analysis{T}
+    μ::SVector{2,T}
+    σ::SVector{2,T}
+    Σ::SMatrix{2,2,T,4}
+end
+function BivariateAnalysis(r1::Number, σ1::Number, r2::Number, σ2::Number, correlation::Number; T=Float64)
+    cov = σ1 * σ2 * correlation
+    Σ = SMatrix{2,2,T}(σ1^2, cov, cov, σ2^2)
+    σ = SVector{2,T}(σ1, σ2)
+    μ = SVector{2,T}(r1, r2)
+    BivariateAnalysis(μ, σ, Σ)
+end
+BivariateAnalysis(μ::AbstractVector{T}, σ::AbstractVector, Σ::AbstractMatrix) where {T} = BivariateAnalysis{T}(SVector{2,T}(μ), SVector{2,T}(σ), SMatrix{2,2,T,4}(Σ))
+BivariateAnalysis(μ::AbstractVector{T}, Σ::AbstractMatrix) where {T} = BivariateAnalysis{T}(SVector{2,T}(μ), SVector{2,T}(sqrt.(diag(Σ))), SMatrix{2,2,T,4}(Σ))
+function BivariateAnalysis(x1::AbstractVector, x2::AbstractVector)
+    μ1, μ2 = nanmean(x1), nanmean(x2)
+    σ1, σ2 = nanstd(x1, mean=μ1), nanstd(x2, mean=μ2)
+    σ12 = nancov(x1,x2)
+    Σ = SMatrix{2,2}(σ1, σ12, σ12, σ2)
+    BivariateAnalysis(SVector(μ1, μ2), SVector(σ1, σ2), Σ)
+end
+
 
 age(r::Number, λ::Number) = log(1+r)/λ
 ratio(t::Number, λ::Number) = exp(λ*t) - 1

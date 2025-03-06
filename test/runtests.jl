@@ -406,6 +406,24 @@ module BaseTests
         @test mean(MeltsVolcanicZirconDistribution) ≈ 1 atol=0.01
     end
 
+    @testset "Import" begin
+        # Try to import and calibrate a SIMS U-Pb dataset
+        data = importsimsdata("../examples/data")
+        standardages = fill(1099., length(data))
+        calib = calibrate(data, standardages)
+
+        @test calib isa Isoplot.UPbSIMSCalibration{Float64}
+        @test calib.yf isa Isoplot.YorkFit{Float64}
+        @test calib.yf.xm ≈ 3.557959284409158
+        @test calib.yf.ym.val ≈ 2.816658925589477
+        @info calib.yf.ym.err ≈ 0.06332465613608829
+        @info calib.yf.slope.val ≈ 1.2194577062052983
+        @info calib.yf.slope.err ≈ 0.43885219141660564
+        @info calib.yf.intercept.val ≈ -1.522121942147959
+        @info calib.yf.intercept.err ≈ 1.56270179424041
+
+    end
+
 end
 
 module PlotsTest

@@ -2,13 +2,14 @@ module Isoplot
 
     using Reexport
     @reexport using NaNStatistics
-    using Distributions
     using LoopVectorization: @turbo
+    using DelimitedFiles: readdlm
     using LogExpFunctions
     using LinearAlgebra
+    using Distributions
     using Measurements
-    using StaticArrays
-    using Rotations
+    using StaticArrays: SVector, SMatrix
+    using Rotations: RotMatrix
     
 
     # A type alias for array-ish types
@@ -18,10 +19,25 @@ module Isoplot
     # Age of Earth and the Solar System
     const t🜨 = 4.567e3 #Myr
 
-    # Abstract types which we'll subtype later
+    # Is it data?
+    abstract type Data{T} end
+    # Generic methods to allow broadcasting and comparison
+    Base.length(x::Data) = 1
+    Base.iterate(x::Data) = (x, nothing)
+    Base.iterate(x::Data, state) = nothing
+    Base.:(==)(x::Data, y::Data) = false
+    function Base.:(==)(x::T, y::T) where {T<:Data}
+        for n in fieldnames(T)
+            isequal(getfield(x, n), getfield(y, n)) || return false
+        end
+        return true
+    end
+
+    # Reduced data
     include("analysis.jl")
     export age, ratio, CI, Age, Interval, Ellipse
 
+    # Fitting and interpreting data
     include("regression.jl")
     export wmean, awmean, gwmean, distwmean, mswd
     export lsqfit, yorkfit
@@ -39,6 +55,10 @@ module Isoplot
     include("Rb-Sr.jl")
     include("K-Ar.jl")
     export UThAnalysis, ReOsAnalysis, LuHfAnalysis, SmNdAnalysis, RbSrAnalysis
+
+    # Raw data
+    include("datareduction.jl")
+    export reduce
 
     include("generic_plotting.jl")
     export concordiacurve, concordiacurve!, concordialine, concordialine!,
