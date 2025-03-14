@@ -33,7 +33,7 @@ display(hdl)
 
 # Plot in rankorder plot
 age_06_38 = last.(age.(analyses))
-rankorder_plot = rankorder(Isoplot.val.(age_06_38), 2*Isoplot.err.(age_06_38), ylabel="Age (Ma)")
+rankorder_plot = rankorder(value.(age_06_38), 2*stdev.(age_06_38), ylabel="Age (Ma)")
 savefig(rankorder_plot, "rank_order.pdf")
 display(rankorder_plot)
 
@@ -62,7 +62,7 @@ display(h)
 ## --- Show eruption age relative to distribution of upper intercepts
 
 uis = upperintercept.(nanmean(t0dist), analyses)
-h = rankorder(Isoplot.val.(uis), 2*Isoplot.err.(uis))
+h = rankorder(value.(uis), 2*stdev.(uis))
 plot!(h,1:length(uis),fill(terupt.lower,length(uis)),fillto=terupt.upper,color=:blue,fillalpha=0.5,linealpha=0, label="Model ($terupt Ma, 95% CI)")
 plot!(h,1:length(uis),fill(terupt.mean,length(uis)),linecolor=:black,linestyle=:dot,label="",legend=:topleft,fg_color_legend=:white,framestyle=:box)
 
