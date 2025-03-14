@@ -33,16 +33,16 @@ module BaseTests
         @test max(Interval(0, 1)) isa Age{Float64}
         @test min(Interval(0, 1)) === Age(0,0) === Age(0)
         @test max(Interval(0, 1)) === Age(1,0) === Age(1)
-        @test Isoplot.val(1) === 1
-        @test Isoplot.err(1) === 0
-        @test Isoplot.val(1±1) === 1.0
-        @test Isoplot.err(1±1) === 1.0
+        @test value(1) === 1
+        @test stdev(1) === 0
+        @test value(1±1) === 1.0
+        @test stdev(1±1) === 1.0
         ci = CI(1:10)
-        @test Isoplot.val(ci) ≈ 5.5
-        @test Isoplot.err(ci) ≈ 3.0276503540974917
+        @test value(ci) ≈ 5.5
+        @test stdev(ci) ≈ 3.0276503540974917
         a = Age(ci)
-        @test Isoplot.val(a) ≈ 5.5
-        @test Isoplot.err(a) ≈ 3.0276503540974917
+        @test value(a) ≈ 5.5
+        @test stdev(a) ≈ 3.0276503540974917
     end
 
     @testset "U-Pb" begin
@@ -237,7 +237,7 @@ module BaseTests
         @test μ ≈ 1.877777777777778
         @test MSWD ≈ 0.19444444444444445
         μ, MSWD = wmean((x .± xσ);chauvenet=true)
-        @test Isoplot.val(μ) ≈ 1.877777777777778
+        @test value(μ) ≈ 1.877777777777778
         @test MSWD ≈ 0.19444444444444445
     end
 
@@ -416,11 +416,11 @@ module BaseTests
         @test calib.yf isa Isoplot.YorkFit{Float64}
         @test calib.yf.xm ≈ 3.557959284409158
         @test calib.yf.ym.val ≈ 2.816658925589477
-        @info calib.yf.ym.err ≈ 0.06332465613608829
-        @info calib.yf.slope.val ≈ 1.2194577062052983
-        @info calib.yf.slope.err ≈ 0.43885219141660564
-        @info calib.yf.intercept.val ≈ -1.522121942147959
-        @info calib.yf.intercept.err ≈ 1.56270179424041
+        @test calib.yf.ym.err ≈ 0.06332465613608829
+        @test calib.yf.slope.val ≈ 1.2194577062052983
+        @test calib.yf.slope.err ≈ 0.43885219141660564
+        @test calib.yf.intercept.val ≈ -1.522121942147959
+        @test calib.yf.intercept.err ≈ 1.56270179424041
 
     end
 

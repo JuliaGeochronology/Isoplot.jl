@@ -1,6 +1,6 @@
 
-Δ68(t,(slope,r75,r68)) = slope * (exp(λ235U.val*t) - 1 - r75) + r68 - exp(λ238U.val*t) + 1
-dΔ68(t,(slope,r75,r68)) = slope * λ235U.val*exp(λ235U.val*t) - λ238U.val*exp(λ238U.val*t)
+Δ68(t,(slope,r75,r68)) = slope * (exp(value(λ235U)*t) - 1 - r75) + r68 - exp(value(λ238U)*t) + 1
+dΔ68(t,(slope,r75,r68)) = slope * value(λ235U)*exp(value(λ235U)*t) - value(λ238U)*exp(value(λ238U)*t)
 
 function newton_zero(f, df, x0, args::Tuple, iterations=10)
     for i in 1:iterations
@@ -18,19 +18,19 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.44774683
     r75₀, r68₀ = s.x₀, s.y₀
     σ75₀, σ68₀ = s.σx₀, s.σy₀
     # Return early if our lead loss time is too old or anything is NaN'd
-    tₗₗ < age(r68₀,λ238U.val) || return T(NaN) ± T(NaN)
-    tₗₗ < age(r75₀,λ235U.val) || return T(NaN) ± T(NaN)
+    tₗₗ < age(r68₀,value(λ238U)) || return T(NaN) ± T(NaN)
+    tₗₗ < age(r75₀,value(λ235U)) || return T(NaN) ± T(NaN)
 
     # If reversely discordant, move to the closest point on Concordia rather
     # than projecting down a fictive "lead gain" array, increasing uncertainty
     # by sqrt(MSWD) if discordance is large
-    age68 = age(r68₀ ± σ68₀, λ238U.val)
-    age75 = age(r75₀ ± σ75₀, λ235U.val)
+    age68 = age(r68₀ ± σ68₀, value(λ238U))
+    age75 = age(r75₀ ± σ75₀, value(λ235U))
     age75.val > age68.val || return first(wmean([age68, age75], corrected=true))
 
     # Calculate isotopic ratios of our time of Pb-loss
-    r75ₗₗ = ratio(tₗₗ, λ235U.val)
-    r68ₗₗ = ratio(tₗₗ, λ238U.val)
+    r75ₗₗ = ratio(tₗₗ, value(λ235U))
+    r68ₗₗ = ratio(tₗₗ, value(λ238U))
     slope₀ = (r68₀-r68ₗₗ)/(r75₀-r75ₗₗ)
 
     # Find the values on the margin of the ellipse with the
@@ -48,11 +48,11 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.44774683
     ui₋ = newton_zero(Δ68, dΔ68, t🜨, (slope₋,r75₋,r68₋))
     ui₊ = newton_zero(Δ68, dΔ68, t🜨, (slope₊,r75₊,r68₊))
     # Direct uncertainty, from spread in intercepts given size of ellipse
-    σ = (val(ui₊) - val(ui₋))/2sigmalevel
+    σ = (value(ui₊) - value(ui₋))/2sigmalevel
     # Include also uncertainty, from lower intercept if tₗₗ (and ui) are `Measurement`s
-    return val(ui₀) ± σcombined(ui₀, σ)
+    return value(ui₀) ± σcombined(ui₀, σ)
 end
-σcombined(m::Measurement, σ) = sqrt(err(m)^2 + σ^2)
+σcombined(m::Measurement, σ) = sqrt(stdev(m)^2 + σ^2)
 σcombined(m, σ) = σ # If m is not a Measurement
 
 upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, Ellipse(d; npoints=50))
@@ -61,12 +61,12 @@ function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Intege
     # Get ratios
     r75₀, r68₀ = d.μ
     # Return early if our lead loss time is too old or anything is NaN'd
-    tₗₗ < log(r68₀+1)/λ238U.val || return fill(T(NaN), nresamplings)
-    tₗₗ < log(r75₀+1)/λ235U.val || return fill(T(NaN), nresamplings)
+    tₗₗ < log(r68₀+1)/value(λ238U) || return fill(T(NaN), nresamplings)
+    tₗₗ < log(r75₀+1)/value(λ235U) || return fill(T(NaN), nresamplings)
     
     # Calculate isotopic ratios of our time of Pb-loss
-    r75ₗₗ = exp(λ235U.val*tₗₗ) - 1
-    r68ₗₗ = exp(λ238U.val*tₗₗ) - 1
+    r75ₗₗ = exp(value(λ235U)*tₗₗ) - 1
+    r68ₗₗ = exp(value(λ238U)*tₗₗ) - 1
     slope₀ = (r68₀-r68ₗₗ)/(r75₀-r75ₗₗ)
 
     ui = zeros(T, nresamplings)

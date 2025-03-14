@@ -77,8 +77,8 @@ function age75(d::UPbAnalysis)
 end
 # Percent discordance
 function discordance(d::UPbAnalysis)
-    μ75 = log(1 + d.μ[1])/λ235U.val
-    μ68 = log(1 + d.μ[2])/λ238U.val
+    μ75 = log(1 + d.μ[1])/value(λ235U)
+    μ68 = log(1 + d.μ[2])/value(λ238U)
     return (μ75 - μ68) / μ75 * 100
 end
 
@@ -105,8 +105,8 @@ function stacey_kramers(t)
         U_Pb = NaN
     end
 
-    r64 -= ((exp(val(λ238U)*t)-1) - (exp(val(λ238U)*t0)-1)) * U_Pb
-    r74 -= ((exp(val(λ238U)*t)-1) - (exp(val(λ238U)*t0)-1)) * U_Pb/137.818
+    r64 -= ((exp(value(λ238U)*t)-1) - (exp(value(λ238U)*t0)-1)) * U_Pb
+    r74 -= ((exp(value(λ238U)*t)-1) - (exp(value(λ238U)*t0)-1)) * U_Pb/137.818
 
     return r64, r74
 end

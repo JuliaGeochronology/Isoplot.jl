@@ -76,6 +76,6 @@ module Isoplot
     include("show.jl")
 
     # extra exports for pkg extensions
-    export Data, Analysis, Collection, val, err, vminimum, vmaximum, datalimits
+    export Data, Analysis, Collection, value, stdev, datalimits
 
 end # module Isoplot

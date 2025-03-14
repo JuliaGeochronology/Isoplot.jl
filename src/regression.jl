@@ -100,12 +100,12 @@ end
 function wmean(x::AbstractVector{Measurement{T}}; corrected::Bool=true, chauvenet::Bool=false) where {T}
 
     if chauvenet
-        μ, σ = val.(x), err.(x)
+        μ, σ = value.(x), stdev.(x)
         not_outliers = chauvenet_func(μ, σ)
         x = x[not_outliers]
     end
 
-    wμ, wσ, mswd = wmean(val.(x), Measurements.cov(x); corrected)
+    wμ, wσ, mswd = wmean(value.(x), Measurements.cov(x); corrected)
 
     return wμ ± wσ, mswd
 end
@@ -201,11 +201,11 @@ end
 function mswd(x::AbstractVector{Measurement{T}}; chauvenet=false) where {T}
 
     if chauvenet
-        not_outliers = chauvenet_func(val.(x), err.(x))
+        not_outliers = chauvenet_func(value.(x), stdev.(x))
         x = x[not_outliers]
     end
 
-    wμ, wσ, mswd = wmean(val.(x), Measurements.cov(x))
+    wμ, wσ, mswd = wmean(value.(x), Measurements.cov(x))
 
     return mswd
 end
@@ -282,7 +282,7 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Vector{Measurement{T}}, y::Vector{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(val.(x), err.(x), val.(y), err.(y), r; iterations)
+yorkfit(x::Vector{Measurement{T}}, y::Vector{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
 function yorkfit(d::Collection{<:Analysis{T}}; iterations=10) where {T}
     # Using NTuples instead of Arrays here avoids allocations and should be
     # much more efficient for relatively small N, but could be less efficient

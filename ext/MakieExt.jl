@@ -57,12 +57,12 @@ module MakieExt
         else   
             throw(ArgumentError("concordiaType must be :Wetherril or :TeraWasserburg"))
         end
-        xmin = val(r75₀)
-        xmax =val(r75₁)
+        xmin = value(r75₀)
+        xmax = value(r75₁)
         x = Observable(collect(range(xmin, xmax, length=50)))
         y = intercept .+ slope .* x[]
-        y_val = Observable(val.(y))
-        y_err = err.(y)
+        y_val = Observable(value.(y))
+        y_err = stdev.(y)
         
         upperError = as_points(x[],y_val[] .+ y_err)
         lowerError = as_points(reverse(x[]),reverse(y_val[] .- y_err))
@@ -87,14 +87,14 @@ module MakieExt
 
     function Makie.plot!(ccurve::ConcordiaCurve)
         # Uncertainty of 235 decay constant relative to the 238 decay constant
-        σₜ = λ235U_jaffey.val .* sqrt((λ238U.err/λ238U.val).^2 + (λ235U_jaffey.err/λ235U_jaffey.val).^2) # 1/Years
+        σₜ = value(λ235U_jaffey) .* sqrt((stdev(λ238U)/value(λ238U)).^2 + (stdev(λ235U_jaffey)/value(λ235U_jaffey)).^2) # 1/Years
 
         # Plot the concordia curve
         tlim = [ccurve.t₀[],ccurve.t₁[]]
         
         # xl = [ccurve.t₀[],ccurve.t₁[]]
         # xl, yl = Plots.xlims(hdl), Plots.ylims(hdl) # Note current size of figure
-        # tlim = age.(max.(xl, 0.0), λ235U_jaffey.val) # Calculate time range of current window
+        # tlim = age.(max.(xl, 0.0), value(λ235U_jaffey)) # Calculate time range of current window
         
         dt = tlim[2] - tlim[1]
         tmin = max(tlim[1]-0.1dt, 0.0)
@@ -115,24 +115,24 @@ module MakieExt
 
 
         if ccurve[:concordiaType][] == :Wetherril
-            xratio[]= ratio.(t, λ235U_jaffey.val) # X axis values
-            yratio[] = ratio.(t, λ238U.val)# Y axis values
+            xratio[]= ratio.(t, value(λ235U_jaffey)) # X axis values
+            yratio[] = ratio.(t, value(λ238U))# Y axis values
 
-            errx = [ratio.(t, λ235U_jaffey.val-σₜ*2); reverse(ratio.(t, λ235U_jaffey.val+σₜ*2))]
+            errx = [ratio.(t, value(λ235U_jaffey)-σₜ*2); reverse(ratio.(t, value(λ235U_jaffey)+σₜ*2))]
             erry = [yratio[]; reverse(yratio[])]
 
-            tickx[] = ratio.(tticks, λ235U_jaffey.val) # X axis values
-            ticky[] = ratio.(tticks, λ238U.val)# Y axis values
+            tickx[] = ratio.(tticks, value(λ235U_jaffey)) # X axis values
+            ticky[] = ratio.(tticks, value(λ238U))# Y axis values
             
         elseif ccurve[:concordiaType][] == :TeraWasserburg
-            xratio[]= ratio.(t, λ235U_jaffey.val) # X axis values
-            yratio[] = ratio.(t, λ238U.val)# Y axis values
+            xratio[]= ratio.(t, value(λ235U_jaffey)) # X axis values
+            yratio[] = ratio.(t, value(λ238U))# Y axis values
 
-            errx = [ratio.(t, λ235U_jaffey.val-σₜ*2); reverse(ratio.(t, λ235U_jaffey.val+σₜ*2))]
+            errx = [ratio.(t, value(λ235U_jaffey)-σₜ*2); reverse(ratio.(t, value(λ235U_jaffey)+σₜ*2))]
             erry = [yratio[]; reverse(yratio[])]
 
-            tickx[] = ratio.(tticks, λ235U_jaffey.val) # X axis values
-            ticky[] = ratio.(tticks, λ238U.val)# Y axis values
+            tickx[] = ratio.(tticks, value(λ235U_jaffey)) # X axis values
+            ticky[] = ratio.(tticks, value(λ238U))# Y axis values
         else   
             throw(ArgumentError("concordiaType must be :Wetherril or :TeraWasserburg"))
         end

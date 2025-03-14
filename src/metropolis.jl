@@ -53,7 +53,7 @@ end
 function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Number, tmax::Number)
     tmax >= tmin || return NaN
     any(isnan, analyses) && return NaN
-    any(x->!(err(x) > 0), analyses) && return NaN
+    any(x->!(stdev(x) > 0), analyses) && return NaN
     nbins = length(dist) - 1
     Δt = abs(tmax - tmin)
     dt = Δt/nbins
@@ -62,7 +62,7 @@ function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Nu
     ll = zero(float(eltype(dist)))
     @inbounds for j in eachindex(analyses)
         dⱼ = analyses[j]
-        μⱼ, σⱼ = val(dⱼ), err(dⱼ)
+        μⱼ, σⱼ = value(dⱼ), stdev(dⱼ)
 
         # Find equivalent index position of μⱼ in the `dist` array
         ix = (μⱼ - tmin) / Δt * nbins + 1
@@ -95,8 +95,8 @@ function dist_ll(dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}, tmin
     @assert eachindex(tbinedges) == eachindex(dist)
     dt = step(tbinedges)
     Σdist = sum(dist)
-    r75ₗₗ = ratio(tll, λ235U.val)
-    r68ₗₗ = ratio(tll, λ238U.val)
+    r75ₗₗ = ratio(tll, value(λ235U))
+    r68ₗₗ = ratio(tll, value(λ238U))
     μₗₗ = SVector(r75ₗₗ, r68ₗₗ)
 
     # Cycle through each datum in dataset
@@ -108,14 +108,14 @@ function dist_ll(dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}, tmin
 
         # Cycle through each time step
         likelihood = zero(T)
-        r75ᵢ = ratio(first(tbinedges)-step(tbinedges), λ235U.val)
-        r68ᵢ = ratio(first(tbinedges)-step(tbinedges), λ238U.val)
+        r75ᵢ = ratio(first(tbinedges)-step(tbinedges), value(λ235U))
+        r68ᵢ = ratio(first(tbinedges)-step(tbinedges), value(λ238U))
         for i in eachindex(dist)
             μlast = SVector(r75ᵢ, r68ᵢ)
 
             # Rotation matrix that would rotate discordia line between tll and tbinedges[i] to vertical
-            r75ᵢ = ratio(tbinedges[i], λ235U.val)
-            r68ᵢ = ratio(tbinedges[i], λ238U.val)
+            r75ᵢ = ratio(tbinedges[i], value(λ235U))
+            r68ᵢ = ratio(tbinedges[i], value(λ238U))
             R = RotMatrix(π/2 - atan(r68ᵢ-r68ₗₗ, r75ᵢ-r75ₗₗ))
 
             # Rotate means and covariance matrix, with proposed time of Pb-loss at origin
@@ -178,7 +178,7 @@ end
 
 """
 ```julia
-metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0, t0prior=Uniform(0,minimum(val.(age68.(analyses)))), lossprior=Uniform(0,100))
+metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0, t0prior=Uniform(0,minimum(value.(age68.(analyses)))), lossprior=Uniform(0,100))
 metropolis_min(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
 metropolis_min(nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis; burnin::Integer=0)
 ```
@@ -193,7 +193,7 @@ tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, bu
 tmindist, t0dist = metropolis_min(2*10^5, HalfNormalDistribution, analyses, burnin=10^5)
 ```
 """
-metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_min(nsteps, dist, val.(data), err.(data); kwargs...)
+metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_min(nsteps, dist, value.(data), stdev.(data); kwargs...)
 function metropolis_min(nsteps::Integer, dist::Collection, mu::Collection, sigma::Collection; kwargs...)
     # Allocate ouput array
     tmindist = Array{float(eltype(mu))}(undef,nsteps)
@@ -298,7 +298,7 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
     end
     return tmindist
 end
-function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, tllprior=Uniform(0,minimum(val.(age68.(analyses)))), lossprior=Uniform(0,100), method=:projection) where {T<:AbstractFloat}
+function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, tllprior=Uniform(0,minimum(value.(age68.(analyses)))), lossprior=Uniform(0,100), method=:projection) where {T<:AbstractFloat}
     @assert eachindex(tmindist) == eachindex(tlldist)
     @assert (method === :projection || method === :bivariate) "Allowed methods are `:projection` or `:bivariate`"
 
@@ -307,7 +307,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
 
     # Process input analyses
     ellipses = Ellipse.(analyses)
-    ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./val(λ238U)
+    ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./value(λ238U)
     ages = @. upperintercept(zero(T), ellipses)
 
     # Initial step sigma for Gaussian proposal distributions
@@ -317,8 +317,8 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
     tllstep = youngest.val/50
 
     # Use oldest and youngest zircons for initial proposal
-    tminₚ = tmin = val(youngest)
-    tmaxₚ = tmax = val(oldest)
+    tminₚ = tmin = value(youngest)
+    tmaxₚ = tmax = value(oldest)
     tllₚ = tll = zero(T)
 
     # Ensure priors for time and amount of lead loss are appropriately truncated
@@ -334,7 +334,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
     end
     ll += prior_ll(ages, tmin, tmax)
     for i in eachindex(ages, ages68)
-        loss = 100*max(one(T) - (ages68[i] - tll) / (val(ages[i]) - tll), zero(T))
+        loss = 100*max(one(T) - (ages68[i] - tll) / (value(ages[i]) - tll), zero(T))
         ll += logpdf(lossprior, loss)
     end
     llₚ = ll
@@ -364,7 +364,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
         end
         llₚ += prior_ll(ages, tminₚ, tmaxₚ)
         for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (val(ages[i]) - tllₚ), zero(T))
+            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
             llₚ += logpdf(lossprior, loss)
         end
         # Decide to accept or reject the proposal
@@ -407,7 +407,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
         end
         llₚ += prior_ll(ages, tminₚ, tmaxₚ)
         for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (val(ages[i]) - tllₚ), zero(T))
+            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
             llₚ += logpdf(lossprior, loss)
         end
         # Decide to accept or reject the proposal
@@ -445,7 +445,7 @@ crystallization ages.
 tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_minmax(nsteps, dist, val.(data), err.(data); kwargs...)
+metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_minmax(nsteps, dist, value.(data), stdev.(data); kwargs...)
 function metropolis_minmax(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; kwargs...)
     # Allocate ouput arrays
     acceptancedist = falses(nsteps)
@@ -559,7 +559,7 @@ function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::
     end
     return tmindist, tmaxdist, lldist, acceptancedist
 end
-function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tlldist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, tllprior=Uniform(0,minimum(val.(age68.(analyses)))), lossprior=Uniform(0,100), method=:projection) where {T <: AbstractFloat}
+function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tlldist::DenseArray{T}, lldist::DenseArray{T}, acceptancedist::BitVector, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; burnin::Integer=0, tllprior=Uniform(0,minimum(value.(age68.(analyses)))), lossprior=Uniform(0,100), method=:projection) where {T <: AbstractFloat}
     @assert eachindex(tmindist) == eachindex(tmaxdist) == eachindex(tlldist) == eachindex(lldist) == eachindex(acceptancedist)
     @assert (method === :projection || method === :bivariate) "Allowed methods are `:projection` or `:bivariate`"
 
@@ -568,7 +568,7 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
 
     # Process input analyses
     ellipses = Ellipse.(analyses)
-    ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./val(λ238U)
+    ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./value(λ238U)
     ages = @. upperintercept(zero(T), ellipses)
 
     # Initial step sigma for Gaussian proposal distributions
@@ -578,8 +578,8 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
     tllstep = youngest.val/50
 
     # Use oldest and youngest upper intercept ages for initial proposal
-    tminₚ = tmin = val(youngest)
-    tmaxₚ = tmax = val(oldest)
+    tminₚ = tmin = value(youngest)
+    tmaxₚ = tmax = value(oldest)
     tllₚ = tll = zero(T)
 
     # Ensure priors for time and amount of lead loss are appropriately truncated
@@ -595,7 +595,7 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
     end
     ll += prior_ll(ages, tmin, tmax)
     for i in eachindex(ages, ages68)
-        loss = 100*max(one(T) - (ages68[i] - tll) / (val(ages[i]) - tll), zero(T))
+        loss = 100*max(one(T) - (ages68[i] - tll) / (value(ages[i]) - tll), zero(T))
         ll += logpdf(lossprior, loss)
     end
     llₚ = ll
@@ -625,7 +625,7 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
         end
         llₚ += prior_ll(ages, tminₚ, tmaxₚ)
         for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (val(ages[i]) - tllₚ), zero(T))
+            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
             llₚ += logpdf(lossprior, loss)
         end
         # Decide to accept or reject the proposal
@@ -668,7 +668,7 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
         end
         llₚ += prior_ll(ages, tminₚ, tmaxₚ)
         for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (val(ages[i]) - tllₚ), zero(T))
+            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
             llₚ += logpdf(lossprior, loss)
         end
         # Decide to accept or reject the proposal

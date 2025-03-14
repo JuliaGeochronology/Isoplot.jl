@@ -24,32 +24,32 @@ module PlotsExt
     end
 
     # Plot a line between two times in Wetherill Concordia space
-    Isoplot.concordialine(t₀, t₁; framestyle=:box, kwargs...) = concordialine!(plot(xlims=ratio.((first(t₀), first(t₁)), λ235U.val)), t₀, t₁; framestyle, kwargs...)
+    Isoplot.concordialine(t₀, t₁; framestyle=:box, kwargs...) = concordialine!(plot(xlims=ratio.((first(t₀), first(t₁)), value(λ235U))), t₀, t₁; framestyle, kwargs...)
     function Isoplot.concordialine!(hdl::PlotOrSubplot, t₀::Number, t₁::Number; truncate::Bool=false, kwargs...)
         xl = Plots.xlims(hdl)
-        r75₀ = ratio(t₀, λ235U.val)
-        r68₀ = ratio(t₀, λ238U.val)
-        r75₁ = ratio(t₁, λ235U.val)
-        r68₁ = ratio(t₁, λ238U.val)
+        r75₀ = ratio(t₀, value(λ235U))
+        r68₀ = ratio(t₀, value(λ238U))
+        r75₁ = ratio(t₁, value(λ235U))
+        r68₁ = ratio(t₁, value(λ238U))
         slope = (r68₁-r68₀)/(r75₁-r75₀)
         intercept = r68₀ - r75₀*slope
         x = if truncate
-            xmin = max(first(xl), val(r75₀))
-            xmax = min(last(xl), val(r75₁))
+            xmin = max(first(xl), value(r75₀))
+            xmax = min(last(xl), value(r75₁))
             range(xmin, xmax, length=50)
         else
             range(xl..., length=50)
         end
         y = intercept .+ slope .* x
-        plot!(hdl, x, val.(y); ribbon=err.(y), kwargs...)
+        plot!(hdl, x, value.(y); ribbon=stdev.(y), kwargs...)
         Plots.xlims!(hdl, xl)
     end
     function Isoplot.concordialine!(hdl::PlotOrSubplot, t₀::Collection, t₁::Collection; truncate::Bool=false, label="", color=:black, alpha=0.05, kwargs...)
         xl = Plots.xlims(hdl)
-        r75₀ = ratio.(t₀, λ235U.val)
-        r68₀ = ratio.(t₀, λ238U.val)
-        r75₁ = ratio.(t₁, λ235U.val)
-        r68₁ = ratio.(t₁, λ238U.val)
+        r75₀ = ratio.(t₀, value(λ235U))
+        r68₀ = ratio.(t₀, value(λ238U))
+        r75₁ = ratio.(t₁, value(λ235U))
+        r68₁ = ratio.(t₁, value(λ238U))
         slope = @. (r68₁-r68₀)/(r75₁-r75₀)
         intercept = @. r68₀ - r75₀*slope
         x = if truncate
@@ -69,23 +69,23 @@ module PlotsExt
     # Plot the Wetherill Concordia curve
     function Isoplot.concordiacurve!(hdl::PlotOrSubplot=Plots.current())
         # Uncertainty of 235 decay constant relative to the 238 decay constant
-        σₜ = λ235U_jaffey.val .* sqrt((λ238U.err/λ238U.val).^2 + (λ235U_jaffey.err/λ235U_jaffey.val).^2) # 1/Years
+        σₜ = value(λ235U_jaffey) .* sqrt((stdev(λ238U)/value(λ238U)).^2 + (stdev(λ235U_jaffey)/value(λ235U_jaffey)).^2) # 1/Years
 
         # Plot the concordia curve
         xl, yl = Plots.xlims(hdl), Plots.ylims(hdl) # Note current size of figure
-        tlim = age.(max.(xl, 0.0), λ235U_jaffey.val) # Calculate time range of current window
+        tlim = age.(max.(xl, 0.0), value(λ235U_jaffey)) # Calculate time range of current window
         dt = tlim[2] - tlim[1]
         tmin = max(tlim[1]-0.1dt, 0.0)
         tmax = tlim[2]+0.1dt
         t = range(tmin, tmax, length=1000) # Time vector, including padding
-        r75t = ratio.(t, λ235U_jaffey.val) # X axis values
-        r68t = ratio.(t, λ238U.val) # Y axis values
-        x = [ratio.(t, λ235U_jaffey.val-σₜ*2); reverse(ratio.(t, λ235U_jaffey.val+σₜ*2))]
+        r75t = ratio.(t, value(λ235U_jaffey)) # X axis values
+        r68t = ratio.(t, value(λ238U)) # Y axis values
+        x = [ratio.(t, value(λ235U_jaffey)-σₜ*2); reverse(ratio.(t, value(λ235U_jaffey)+σₜ*2))]
         y = [r68t; reverse(r68t)]
         Plots.plot!(hdl, Shape(x,y), color=:black, alpha=0.15, label="") # Two-sigma concordia uncertainty
         Plots.plot!(hdl, r75t, r68t, color=:black, label="") # Concordia line
 
-        r75t_Schoene = ratio.(t, λ235U.val) # X axis values
+        r75t_Schoene = ratio.(t, value(λ235U)) # X axis values
         Plots.plot!(hdl, r75t_Schoene,r68t,color=:black,style=:dash, label="") # Concordia line
 
         Plots.xlims!(hdl, xl) # Ensure that figure size hasn't changed
@@ -96,8 +96,8 @@ module PlotsExt
         trange = round.(tlim./10.0^scale) # Minimum and maximum time to a round number
         majorstep = 0.5
         tticks = (trange[1]:majorstep:trange[2]).*10.0^scale # Time ticks, to a round number
-        r75tticks = ratio.(tticks, λ235U_jaffey.val) # X axis values
-        r68tticks = ratio.(tticks, λ238U.val) # Y axis values
+        r75tticks = ratio.(tticks, value(λ235U_jaffey)) # X axis values
+        r68tticks = ratio.(tticks, value(λ238U)) # Y axis values
 
         # Plot age markers with text labels
         Plots.plot!(hdl, r75tticks,r68tticks, color=:black, seriestype=:scatter, ms=2, label="")

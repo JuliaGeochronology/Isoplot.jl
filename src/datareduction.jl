@@ -23,7 +23,7 @@ function calibrate(data::Collection{UPbSIMSData{T}}, standardages::Collection) w
     for i in eachindex(data, standardratios)
         dᵢ = data[i]
         rUO2_U = dᵢ.U238O2 ./ dᵢ.U238
-        PbUrsf = dᵢ.Pb206 ./ (dᵢ.U238 .* val(standardratios[i]))
+        PbUrsf = dᵢ.Pb206 ./ (dᵢ.U238 .* value(standardratios[i]))
         calib[i] = BivariateAnalysis(rUO2_U, PbUrsf)
     end
     return UPbSIMSCalibration(calib, yorkfit(calib))

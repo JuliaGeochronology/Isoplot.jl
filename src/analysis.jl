@@ -38,7 +38,7 @@ struct Age{T<:AbstractFloat} <: Data{T}
     sigma::T
 end
 Age(μ, σ) = Age(float(μ), float(σ))
-Age(x) = Age(val(x), err(x))
+Age(x) = Age(value(x), stdev(x))
 Base.isless(x::Age, y::Age) = isless(x.mean, y.mean)
 
 # A duration of time
@@ -49,7 +49,7 @@ struct Interval{T<:AbstractFloat} <: Data{T}
     max_sigma::T
 end
 Interval(lμ, lσ, uμ, uσ) = Interval(float(lμ), float(lσ), float(uμ), float(uσ))
-Interval(l, u) = Interval(val(l), err(l), val(u), err(u))
+Interval(l, u) = Interval(value(l), stdev(l), value(u), stdev(u))
 Base.min(x::Interval{T}) where {T} = Age{T}(x.min, x.min_sigma) 
 Base.max(x::Interval{T}) where {T} = Age{T}(x.max, x.max_sigma)
 
@@ -142,14 +142,25 @@ y(e::Ellipse) = e.y
 
 # Convenience methods for possibly obtaining values or uncertainties
 # Generic fallback methods for things that don't have uncertainties
-val(x) = x
-err(x::T) where {T} = zero(T)
+value(x) = x
+stdev(x::T) where {T} = zero(T)
 # Specialized methods for `CI`s
-val(x::CI{T}) where {T} = x.mean::T
-err(x::CI{T}) where {T} = x.sigma::T
+value(x::CI{T}) where {T} = x.mean::T
+stdev(x::CI{T}) where {T} = x.sigma::T
 # Specialized methods for `Age`s
-val(x::Age{T}) where {T} = x.mean::T
-err(x::Age{T}) where {T} = x.sigma::T
+value(x::Age{T}) where {T} = x.mean::T
+stdev(x::Age{T}) where {T} = x.sigma::T
 # Specialized methods for `Measurement`s
-val(x::Measurement{T}) where {T} = x.val::T
-err(x::Measurement{T}) where {T} = x.err::T
+value(x::Measurement{T}) where {T} = x.val::T
+stdev(x::Measurement{T}) where {T} = x.err::T
+
+
+# Deprecations of old methods
+function val(x)
+    @warn "`Isoplot.val` is deprecated, use `value` instead"
+    return value(x)
+end
+function err(x)
+    @warn "`Isoplot.err` is deprecated, use `stdev` instead"
+    return stdev(x)
+end
