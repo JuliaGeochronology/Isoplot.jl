@@ -32,8 +32,8 @@ savefig(hdl, "concordia.pdf")
 display(hdl)
 
 # Plot in rankorder plot
-age_06_38 = last.(age.(analyses))
-rankorder_plot = rankorder(value.(age_06_38), 2*stdev.(age_06_38), ylabel="Age (Ma)")
+age_206_238 = age68.(analyses)
+rankorder_plot = rankorder(value.(age_206_238), 2*stdev.(age_206_238), ylabel="Age (Ma)")
 savefig(rankorder_plot, "rank_order.pdf")
 display(rankorder_plot)
 
