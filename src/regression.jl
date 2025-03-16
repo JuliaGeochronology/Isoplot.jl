@@ -282,7 +282,7 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Collection{Measurement{T}}, y::Collection{Measurement{T}}, r=ntuple(i->Measurements.cov([x[i], y[i]])[1,2], length(x)); iterations=10) where {T} = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
+yorkfit(x::Collection{Measurement{T}}, y::Collection{Measurement{T}}, r=ntuple(i->paircov(x[i], y[i]), length(x)); iterations=10) where {T} = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
 function yorkfit(d::Collection{<:AbstractAnalysis{T}}; iterations=10) where {T}
     # Using NTuples instead of Arrays here avoids allocations and should be
     # much more efficient for relatively small N, but could be less efficient
@@ -367,3 +367,12 @@ function yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection,
     ## Results
     return YorkFit(a ± σa, b ± σb, xm, ym ± σym, mswd)
 end
+
+# Correlation and covariance of two `Measurement`s
+function paircov(a::Measurement{T}, b::Measurement{T}) where T
+    overlap = keys(a.der) ∩ keys(b.der)
+    return isempty(overlap) ? zero(T) : sum(overlap) do var
+        a.der[var] * b.der[var] * var[2]^2
+    end
+end
+paircor(a::Measurement, b::Measurement) = paircov(a,b)/(a.err*b.err)
