@@ -94,9 +94,9 @@ Base.max(x::Interval{T}) where {T} = Age{T}(x.max, x.max_sigma)
 
 
 # A type to hold a 2d covariance ellipse for any pair of measurements
-struct Ellipse{T} <: Data{T}
-    x::Vector{T}
-    y::Vector{T}
+struct Ellipse{T,N} <: Data{T}
+    x::SVector{N,T}
+    y::SVector{N,T}
     x₀::T
     y₀::T
     σx₀::T
@@ -113,12 +113,13 @@ function Ellipse(d::Analysis2D;
     return Ellipse(d, a, b, θ; npoints)
 end
 # Make an ellipse if given x and y positions, major and minor axes, and rotation
-function Ellipse(d::Analysis2D, a, b, θ; npoints::Integer=50)
-    x₀, y₀ = d.μ[1], d.μ[2]
-    t = range(0, 2π, length=npoints)
+function Ellipse(d::Analysis2D{T}, a, b, θ; npoints::Integer=50) where {T}
+    x₀, y₀ = mean(d)
+    σx₀, σy₀ = std(d)
+    t = SVector{npoints,T}(range(0, 2π, length=npoints))
     x = a*cos(θ)*cos.(t) .- b*sin(θ)*sin.(t) .+ x₀
     y = a*sin(θ)*cos.(t) .+ b*cos(θ)*sin.(t) .+ y₀
-    return Ellipse(x, y, x₀, y₀, std(d)[1], std(d)[2])
+    return Ellipse(x, y, x₀, y₀, σx₀, σy₀)
 end
 
 # Non-exported function: return semimajor and minor axes for a given U-Pb analysis
