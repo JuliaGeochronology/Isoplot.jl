@@ -256,9 +256,9 @@ end
 
 """
 ```julia
-yorkfit(x, σx, y, σy, [r])
-yorkfit(x::Vector{<:Measurement}, y::Vector{<:Measurement}, [r])
-yorkfit(d::Vector{<:Analysis})
+yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, [r])
+yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, [r])
+yorkfit(d::Collection{<:AbstractAnalysis})
 ```
 Uses the York (1968) two-dimensional least-squares fit to calculate `a`, `b`,
 and uncertanties `σa`, `σb` for the equation `y = a + bx`, given `x`, `y`,
@@ -282,7 +282,7 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Collection{Measurement{T}}, y::Collection{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
+yorkfit(x::Collection{Measurement{T}}, y::Collection{Measurement{T}}, r=ntuple(i->Measurements.cov([x[i], y[i]])[1,2], length(x)); iterations=10) where {T} = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
 function yorkfit(d::Collection{<:AbstractAnalysis{T}}; iterations=10) where {T}
     # Using NTuples instead of Arrays here avoids allocations and should be
     # much more efficient for relatively small N, but could be less efficient
