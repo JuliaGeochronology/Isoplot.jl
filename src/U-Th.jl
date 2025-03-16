@@ -6,4 +6,4 @@ export λ234U, λ230Th
 struct UThAnalysis{T} <: AbstractAnalysis{T}
     data::Analysis2D{T}
 end
-UThAnalysis(args...) = UThAnalysis(Analysis(args...))
+UThAnalysis(args...; kwargs...) = UThAnalysis(Analysis(args...; kwargs...))

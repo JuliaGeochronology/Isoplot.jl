@@ -40,7 +40,8 @@ module Isoplot
 
     # Reduced data
     include("analysis.jl")
-    export Analysis, CI, Age, Interval, Ellipse
+    export Analysis, Analysis1D, Analysis2D, Analysis3D, Analysis4D, Analysis5D
+    export CI, Age, Interval, Ellipse
 
     # Fitting and interpreting data
     include("regression.jl")

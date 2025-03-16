@@ -15,27 +15,41 @@ const Analysis3D{T} = Analysis{3,T,9}
 const Analysis4D{T} = Analysis{4,T,16}
 const Analysis5D{T} = Analysis{5,T,25}
 
-
-function Analysis(x1::AbstractVector, x2::AbstractVector)
-    @assert eachindex(x1) == eachindex(x2) "Vectors x1 and x2 must be of equal dimensions"
-    μ1, μ2 = nanmean(x1), nanmean(x2)
-    σ1, σ2 = nanstd(x1, mean=μ1), nanstd(x2, mean=μ2)
-    σ12 = nancov(x1,x2)
-    Σ = SMatrix{2,2}(σ1, σ12, σ12, σ2)
-    Analysis(SVector(μ1, μ2), SVector(σ1, σ2), Σ)
-end
-function Analysis(r1::Number, σ1::Number, r2::Number, σ2::Number, correlation::Number; T=Float64)
-    cov = σ1 * σ2 * correlation
-    Σ = SMatrix{2,2,T}(σ1^2, cov, cov, σ2^2)
-    σ = SVector{2,T}(σ1, σ2)
-    μ = SVector{2,T}(r1, r2)
-    return Analysis2D{T}(μ, σ, Σ)
-end
-function Analysis(μ::AbstractVector{T}, σ::AbstractVector, Σ::AbstractMatrix) where {T}
+# Additional constructors for n-dimensional Analysis types
+function Analysis(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T}) where {T}
+    @assert eachindex(μ) == eachindex(σ) == axes(Σ,1) == axes(Σ,2) "Dimensions of μ, σ, and Σ must match"
     N, N2 = length(μ), length(μ)*length(μ)
     return Analysis{N,T,N2}(SVector{N,T}(μ), SVector{N,T}(σ), SMatrix{N,N,T,N2}(Σ))
 end
 Analysis(μ::AbstractVector, Σ::AbstractMatrix) = Analysis(μ, sqrt.(diag(Σ)), Σ)
+Analysis(x::AbstractMatrix; dims=1) = Analysis(vec(nanmean(x; dims)), vec(nanstd(x; dims)), nancov(x; dims))
+
+# Additional constructors for 2D Analysis types
+function Analysis(r₁::Number, σ₁::Number, r₂::Number, σ₂::Number, correlation::Number; T=Float64)
+    μ = SVector{2,T}(r₁, r₂)
+    σ = SVector{2,T}(σ₁, σ₂)
+    Σ₁₂ = σ₁ * σ₂ * correlation
+    Σ = SMatrix{2,2,T}(σ₁^2, Σ₁₂, Σ₁₂, σ₂^2)
+    return Analysis2D{T}(μ, σ, Σ)
+end
+function Analysis(x1::AbstractVector, x2::AbstractVector; T=Float64)
+    @assert eachindex(x1) == eachindex(x2) "Vectors `x1` and `x2` must be of equal dimensions"
+    μ₁, μ₂ = nanmean(x1), nanmean(x2)
+    σ₁, σ₂ = nanstd(x1, mean=μ₁), nanstd(x2, mean=μ₂)
+    Σ₁₂ = nancov(x1,x2)
+    Σ = SMatrix{2,2,T,4}(σ₁^2, Σ₁₂, Σ₁₂, σ₂^2)
+    Analysis2D{T}(SVector(μ₁, μ₂), SVector(σ₁, σ₂), Σ)
+end
+
+# Additional constructors for 3D Analysis types
+function Analysis(x1::AbstractVector, x2::AbstractVector, x3::AbstractVector; T=Float64)
+    @assert eachindex(x1) == eachindex(x2) == eachindex(x3) "Vectors `x1`, `x2`, and `x3` must be of equal dimensions"
+    μ₁, μ₂, μ₃ = nanmean(x1), nanmean(x2), nanmean(x3)
+    σ₁, σ₂, σ₃ = nanstd(x1, mean=μ₁), nanstd(x2, mean=μ₂), nanstd(x3, mean=μ₃)
+    Σ₁₂,Σ₂₃,Σ₁₃ = nancov(x1,x2), nancov(x2,x3), nancov(x1,x3)
+    Σ = SMatrix{3,3,T,9}(σ₁^2, Σ₁₂, Σ₁₃, Σ₁₂, σ₂^2, Σ₂₃, Σ₁₃, Σ₂₃, σ₃^2)
+    Analysis3D{T}(SVector(μ₁, μ₂, μ₃), SVector(σ₁, σ₂, σ₃), Σ)
+end
 
 # Extend Base.isnan to return true if any component of the Analysis is NaN
 Base.isnan(a::Analysis) = any(isnan, a.μ) || any(isnan, a.σ) || any(isnan, a.Σ)

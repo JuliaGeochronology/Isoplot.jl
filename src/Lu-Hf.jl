@@ -5,4 +5,4 @@ export λ176Lu
 struct LuHfAnalysis{T} <: AbstractAnalysis{T}
     data::Analysis2D{T}
 end
-LuHfAnalysis(args...) = LuHfAnalysis(Analysis(args...))
+LuHfAnalysis(args...; kwargs...) = LuHfAnalysis(Analysis(args...; kwargs...))

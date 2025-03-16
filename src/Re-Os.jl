@@ -5,4 +5,4 @@ export λ187Re
 struct ReOsAnalysis{T} <: AbstractAnalysis{T}
     data::Analysis2D{T}
 end
-ReOsAnalysis(args...) = ReOsAnalysis(Analysis(args...))
+ReOsAnalysis(args...; kwargs...) = ReOsAnalysis(Analysis(args...; kwargs...))

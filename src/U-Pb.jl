@@ -9,14 +9,14 @@ export λ235U_jaffey
 
 """
 ```
-struct UPbAnalysis{T} <: Analysis{T}
+struct UPbAnalysis{T} <: AbstractAnalysis{T}
 ```
 Core type for U-Pb analyses.
-Has fields
+Wraps an Analysis object which has fields
 ```
-μ :: Vector{T<:AbstractFloat}
-σ :: Vector{T<:AbstractFloat}
-Σ :: Matrix{T<:AbstractFloat}
+μ :: SVector{T<:AbstractFloat}
+σ :: SVector{T<:AbstractFloat}
+Σ :: SMatrix{T<:AbstractFloat}
 ```
 where `μ` contains the means
 ```
@@ -51,7 +51,7 @@ julia> UPbAnalysis(22.6602, 0.0175, 0.40864, 0.00017, 0.83183)
 UPbAnalysis{Float64}([22.6602, 0.40864], [0.00030625000000000004 2.4746942500000003e-6; 2.4746942500000003e-6 2.8900000000000004e-8])
 ```
 """
-UPbAnalysis(args...) = UPbAnalysis(Analysis(args...))
+UPbAnalysis(args...; kwargs...) = UPbAnalysis(Analysis(args...; kwargs...))
 
 
 # 75 and 68 ages

@@ -5,4 +5,4 @@ export λ147Sm, λ147Sm
 struct SmNdAnalysis{T} <: AbstractAnalysis{T}
     data::Analysis2D{T}
 end
-SmNdAnalysis(args...) = SmNdAnalysis(Analysis(args...))
+SmNdAnalysis(args...; kwargs...) = SmNdAnalysis(Analysis(args...; kwargs...))

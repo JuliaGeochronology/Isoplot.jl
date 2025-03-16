@@ -5,4 +5,4 @@ export λ87Rb
 struct RbSrAnalysis{T} <: AbstractAnalysis{T}
     data::Analysis2D{T}
 end
-RbSrAnalysis(args...) = RbSrAnalysis(Analysis(args...))
+RbSrAnalysis(args...; kwargs...) = RbSrAnalysis(Analysis(args...; kwargs...))

@@ -25,6 +25,29 @@ module BaseTests
     end
 
     @testset "General" begin
+        # 2D analyses
+        x = rand(100,2)
+        d1 = Analysis(x)
+        d2 = Analysis(x[:,1], x[:,2])
+        d3 = Analysis(nanmean(x[:,1]), nanstd(x[:,1]), nanmean(x[:,2]), nanstd(x[:,2]), nancor(x[:,1],x[:,2]))
+        @test d1 isa Analysis2D{Float64}
+        @test d2 isa Analysis2D{Float64}
+        @test d3 isa Analysis2D{Float64}
+        @test d1.μ ≈ d2.μ ≈ d3.μ
+        @test d1.σ ≈ d2.σ ≈ d3.σ
+        @test d1.Σ ≈ d2.Σ ≈ d3.Σ
+        @test !isnan(d1) && !isnan(d2) && !isnan(d3)
+        # 3D analyses
+        x = rand(100,3)
+        d1 = Analysis(x)
+        d2 = Analysis(x[:,1], x[:,2], x[:,3])
+        @test d1 isa Analysis3D{Float64}
+        @test d2 isa Analysis3D{Float64}
+        @test d1.μ ≈ d2.μ
+        @test d1.σ ≈ d2.σ
+        @test d1.Σ ≈ d2.Σ
+        @test !isnan(d1) && !isnan(d2)
+        # Age, Interval, and CI types
         @test Age(0) isa Age{Float64}
         @test Age(0, 1) isa Age{Float64}
         @test Interval(0, 1) isa Interval{Float64}
