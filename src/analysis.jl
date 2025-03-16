@@ -1,57 +1,54 @@
 # Our overarching analysis type.
-# Must contain a vector of means μ, standard deviations σ, and a covariance matrix Σ
-abstract type Analysis{T<:AbstractFloat} <: Data{T} end
+abstract type AbstractAnalysis{T<:AbstractFloat} <: Data{T} end
+# Instances other than `Analysis` are intended to be wrapper types, and
+# must contain an `Analysis` object in a field called `data`
 
-# Generic concrete implementation
-struct BivariateAnalysis{T} <: Analysis{T}
-    μ::SVector{2,T}
-    σ::SVector{2,T}
-    Σ::SMatrix{2,2,T,4}
+# Concrete implementation
+struct Analysis{N,T,N2} <: AbstractAnalysis{T}
+    μ::SVector{N,T}
+    σ::SVector{N,T}
+    Σ::SMatrix{N,N,T,N2}
 end
-function BivariateAnalysis(r1::Number, σ1::Number, r2::Number, σ2::Number, correlation::Number; T=Float64)
-    cov = σ1 * σ2 * correlation
-    Σ = SMatrix{2,2,T}(σ1^2, cov, cov, σ2^2)
-    σ = SVector{2,T}(σ1, σ2)
-    μ = SVector{2,T}(r1, r2)
-    BivariateAnalysis(μ, σ, Σ)
-end
-BivariateAnalysis(μ::AbstractVector{T}, σ::AbstractVector, Σ::AbstractMatrix) where {T} = BivariateAnalysis{T}(SVector{2,T}(μ), SVector{2,T}(σ), SMatrix{2,2,T,4}(Σ))
-BivariateAnalysis(μ::AbstractVector{T}, Σ::AbstractMatrix) where {T} = BivariateAnalysis{T}(SVector{2,T}(μ), SVector{2,T}(sqrt.(diag(Σ))), SMatrix{2,2,T,4}(Σ))
-function BivariateAnalysis(x1::AbstractVector, x2::AbstractVector)
+const Analysis1D{T} = Analysis{1,T,1}
+const Analysis2D{T} = Analysis{2,T,4}
+const Analysis3D{T} = Analysis{3,T,9}
+const Analysis4D{T} = Analysis{4,T,16}
+const Analysis5D{T} = Analysis{5,T,25}
+
+
+function Analysis(x1::AbstractVector, x2::AbstractVector)
+    @assert eachindex(x1) == eachindex(x2) "Vectors x1 and x2 must be of equal dimensions"
     μ1, μ2 = nanmean(x1), nanmean(x2)
     σ1, σ2 = nanstd(x1, mean=μ1), nanstd(x2, mean=μ2)
     σ12 = nancov(x1,x2)
     Σ = SMatrix{2,2}(σ1, σ12, σ12, σ2)
-    BivariateAnalysis(SVector(μ1, μ2), SVector(σ1, σ2), Σ)
+    Analysis(SVector(μ1, μ2), SVector(σ1, σ2), Σ)
 end
-
-
-age(r::Number, λ::Number) = log(1+r)/λ
-ratio(t::Number, λ::Number) = exp(λ*t) - 1
+function Analysis(r1::Number, σ1::Number, r2::Number, σ2::Number, correlation::Number; T=Float64)
+    cov = σ1 * σ2 * correlation
+    Σ = SMatrix{2,2,T}(σ1^2, cov, cov, σ2^2)
+    σ = SVector{2,T}(σ1, σ2)
+    μ = SVector{2,T}(r1, r2)
+    return Analysis2D{T}(μ, σ, Σ)
+end
+function Analysis(μ::AbstractVector{T}, σ::AbstractVector, Σ::AbstractMatrix) where {T}
+    N, N2 = length(μ), length(μ)*length(μ)
+    return Analysis{N,T,N2}(SVector{N,T}(μ), SVector{N,T}(σ), SMatrix{N,N,T,N2}(Σ))
+end
+Analysis(μ::AbstractVector, Σ::AbstractMatrix) = Analysis(μ, sqrt.(diag(Σ)), Σ)
 
 # Extend Base.isnan to return true if any component of the Analysis is NaN
 Base.isnan(a::Analysis) = any(isnan, a.μ) || any(isnan, a.σ) || any(isnan, a.Σ)
+Base.isnan(a::AbstractAnalysis) = isnan(a.data)
 
-# A moment in time
-struct Age{T<:AbstractFloat} <: Data{T}
-    mean::T
-    sigma::T
-end
-Age(μ, σ) = Age(float(μ), float(σ))
-Age(x) = Age(value(x), stdev(x))
-Base.isless(x::Age, y::Age) = isless(x.mean, y.mean)
+# Extend mean, std, and cov for Analysis objects
+Distributions.mean(a::Analysis) = a.μ
+Distributions.mean(a::AbstractAnalysis) = mean(a.data)
+Distributions.std(a::Analysis) = a.σ
+Distributions.std(a::AbstractAnalysis) = std(a.data)
+Distributions.cov(a::Analysis) = a.Σ
+Distributions.cov(a::AbstractAnalysis) = cov(a.data)
 
-# A duration of time
-struct Interval{T<:AbstractFloat} <: Data{T}
-    min::T
-    min_sigma::T
-    max::T
-    max_sigma::T
-end
-Interval(lμ, lσ, uμ, uσ) = Interval(float(lμ), float(lσ), float(uμ), float(uσ))
-Interval(l, u) = Interval(value(l), stdev(l), value(u), stdev(u))
-Base.min(x::Interval{T}) where {T} = Age{T}(x.min, x.min_sigma) 
-Base.max(x::Interval{T}) where {T} = Age{T}(x.max, x.max_sigma)
 
 # A confidence or credible interval with 95% bounds
 struct CI{T<:AbstractFloat} <: Data{T}
@@ -74,6 +71,28 @@ function CI(x::AbstractVector{T}) where {T}
 end
 Base.isless(x::CI, y::CI) = isless(x.mean, y.mean)
 
+# A moment in time
+struct Age{T<:AbstractFloat} <: Data{T}
+    mean::T
+    sigma::T
+end
+Age(μ, σ) = Age(float(μ), float(σ))
+Age(x) = Age(value(x), stdev(x))
+Base.isless(x::Age, y::Age) = isless(x.mean, y.mean)
+
+# A duration of time
+struct Interval{T<:AbstractFloat} <: Data{T}
+    min::T
+    min_sigma::T
+    max::T
+    max_sigma::T
+end
+Interval(lμ, lσ, uμ, uσ) = Interval(float(lμ), float(lσ), float(uμ), float(uσ))
+Interval(l, u) = Interval(value(l), stdev(l), value(u), stdev(u))
+Base.min(x::Interval{T}) where {T} = Age{T}(x.min, x.min_sigma) 
+Base.max(x::Interval{T}) where {T} = Age{T}(x.max, x.max_sigma)
+
+
 # A type to hold a 2d covariance ellipse for any pair of measurements
 struct Ellipse{T} <: Data{T}
     x::Vector{T}
@@ -85,7 +104,8 @@ struct Ellipse{T} <: Data{T}
 end
 
 # Make an ellipse from a Analysis object
-function Ellipse(d::Analysis;
+Ellipse(d::AbstractAnalysis, args...; kwargs...) = Ellipse(d.data, args...; kwargs...)
+function Ellipse(d::Analysis2D;
         sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
         npoints::Integer=50,
     )
@@ -93,16 +113,16 @@ function Ellipse(d::Analysis;
     return Ellipse(d, a, b, θ; npoints)
 end
 # Make an ellipse if given x and y positions, major and minor axes, and rotation
-function Ellipse(d::Analysis, a, b, θ; npoints::Integer=50)
+function Ellipse(d::Analysis2D, a, b, θ; npoints::Integer=50)
     x₀, y₀ = d.μ[1], d.μ[2]
     t = range(0, 2π, length=npoints)
     x = a*cos(θ)*cos.(t) .- b*sin(θ)*sin.(t) .+ x₀
     y = a*sin(θ)*cos.(t) .+ b*cos(θ)*sin.(t) .+ y₀
-    return Ellipse(x, y, x₀, y₀, d.σ[1], d.σ[2])
+    return Ellipse(x, y, x₀, y₀, std(d)[1], std(d)[2])
 end
 
 # Non-exported function: return semimajor and minor axes for a given U-Pb analysis
-function ellipseparameters(d::Analysis{T}, sigmalevel::Number) where T
+function ellipseparameters(d::Analysis2D{T}, sigmalevel::Number) where T
 
     # Quickly exit if any NaNs
     any(isnan, d.Σ) && return T.((NaN, NaN, NaN))
@@ -125,19 +145,19 @@ function ellipseparameters(d::Analysis{T}, sigmalevel::Number) where T
     return a, b, θ
 end
 
+xvals(e::Ellipse) = e.x
+yvals(e::Ellipse) = e.y
+
 function datalimits(ellipses::Array{<:Ellipse})
-    xmin = minimum(minimum.(x.(ellipses)))
-    xmax = maximum(maximum.(x.(ellipses)))
-    ymin = minimum(minimum.(y.(ellipses)))
-    ymax = maximum(maximum.(y.(ellipses)))
+    xmin = minimum(minimum.(xvals.(ellipses)))
+    xmax = maximum(maximum.(xvals.(ellipses)))
+    ymin = minimum(minimum.(yvals.(ellipses)))
+    ymax = maximum(maximum.(yvals.(ellipses)))
 
     return xmin, xmax, ymin, ymax
 end
 
-datalimits(analyses::Array{<:Analysis}) = datalimits(Ellipse.(analyses))
-
-x(e::Ellipse) = e.x
-y(e::Ellipse) = e.y
+datalimits(analyses::Array{<:AbstractAnalysis}) = datalimits(Ellipse.(analyses))
 
 
 # Convenience methods for possibly obtaining values or uncertainties

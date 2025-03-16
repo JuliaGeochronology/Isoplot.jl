@@ -17,8 +17,8 @@ module PlotsExt
     # Plot 2d uncertainty ellipses of any sort
     Plots.Shape(e::Ellipse{T}) where {T} = Shape{T,T}(e.x, e.y)
     for P in (Plots.Plot, Plots.Subplot)
-        @eval Plots.plot!(hdl::($P), a::Analysis, args...; kwargs...) = plot!(hdl, Ellipse(a), args...; kwargs...)
-        @eval Plots.plot!(hdl::($P), a::Vector{<:Analysis}, args...; kwargs...) = plot!(hdl, Ellipse.(a), args...; kwargs...)
+        @eval Plots.plot!(hdl::($P), a::AbstractAnalysis, args...; kwargs...) = plot!(hdl, Ellipse(a), args...; kwargs...)
+        @eval Plots.plot!(hdl::($P), a::Vector{<:AbstractAnalysis}, args...; kwargs...) = plot!(hdl, Ellipse.(a), args...; kwargs...)
         @eval Plots.plot!(hdl::($P), e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(e), args...; kwargs...)
         @eval Plots.plot!(hdl::($P), e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
     end

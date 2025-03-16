@@ -58,9 +58,9 @@ module BaseTests
         @test d1 isa UPbAnalysis{Float64}
         @test d2 isa UPbAnalysis{Float64}
         @test d3 isa UPbAnalysis{Float64}
-        @test d1.μ ≈ d2.μ ≈ d3.μ
-        @test d1.σ ≈ d2.σ ≈ d3.σ
-        @test d1.Σ ≈ d2.Σ ≈ d3.Σ
+        @test d1.data.μ ≈ d2.data.μ ≈ d3.data.μ
+        @test d1.data.σ ≈ d2.data.σ ≈ d3.data.σ
+        @test d1.data.Σ ≈ d2.data.Σ ≈ d3.data.Σ
         @test !isnan(d1)
 
         a75, a68 = age(d1)
@@ -124,12 +124,12 @@ module BaseTests
 
     end
     @testset "Other systems" begin
-        μ, σ = rand(2), rand(2)
-        @test UThAnalysis(μ, σ) isa UThAnalysis
-        @test ReOsAnalysis(μ, σ) isa ReOsAnalysis
-        @test LuHfAnalysis(μ, σ) isa LuHfAnalysis
-        @test SmNdAnalysis(μ, σ) isa SmNdAnalysis
-        @test RbSrAnalysis(μ, σ) isa RbSrAnalysis
+        x1, x2 = rand(20), rand(20)
+        @test UThAnalysis(x1, x2) isa UThAnalysis
+        @test ReOsAnalysis(x1, x2) isa ReOsAnalysis
+        @test LuHfAnalysis(x1, x2) isa LuHfAnalysis
+        @test SmNdAnalysis(x1, x2) isa SmNdAnalysis
+        @test RbSrAnalysis(x1, x2) isa RbSrAnalysis
     end
 
     @testset "Weighted means" begin

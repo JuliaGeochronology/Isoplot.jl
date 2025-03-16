@@ -6,9 +6,9 @@ module MakieExt
     import Isoplot: concordialine, concordialine!, concordiacurve, concordiacurve!
 
     Makie.convert_arguments(P::Type{<:Poly},e::Ellipse) = convert_arguments(P,as_points(e.x,e.y))
-    Makie.convert_arguments(P::Type{<:Poly},a::Analysis) = convert_arguments(P,Ellipse(a))
+    Makie.convert_arguments(P::Type{<:Poly},a::AbstractAnalysis) = convert_arguments(P,Ellipse(a))
     Makie.plottype(::Ellipse) = Poly
-    Makie.plottype(::Analysis) = Poly
+    Makie.plottype(::AbstractAnalysis) = Poly
 
     
 

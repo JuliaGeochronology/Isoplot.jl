@@ -282,19 +282,19 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Vector{Measurement{T}}, y::Vector{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
-function yorkfit(d::Collection{<:Analysis{T}}; iterations=10) where {T}
+yorkfit(x::Collection{Measurement{T}}, y::Collection{Measurement{T}}, r=zero(T); iterations=10) where {T} = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
+function yorkfit(d::Collection{<:AbstractAnalysis{T}}; iterations=10) where {T}
     # Using NTuples instead of Arrays here avoids allocations and should be
     # much more efficient for relatively small N, but could be less efficient
     # for large N (greater than ~100)
-    x = ntuple(i->d[i].μ[1], length(d))
-    y = ntuple(i->d[i].μ[2], length(d))
-    σx = ntuple(i->d[i].σ[1], length(d))
-    σy = ntuple(i->d[i].σ[2], length(d))
-    r = ntuple(i->d[i].Σ[1,2], length(d))
+    x = ntuple(i->mean(d[i])[1], length(d))
+    y = ntuple(i->mean(d[i])[2], length(d))
+    σx = ntuple(i->std(d[i])[1], length(d))
+    σy = ntuple(i->std(d[i])[2], length(d))
+    r = ntuple(i->cov(d[i])[1,2], length(d))
     yorkfit(x, σx, y, σy, r; iterations)
 end
-function yorkfit(x, σx, y, σy, r=nancor(x,y); iterations=10)
+function yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, r=nancor(x,y); iterations=10)
 
     ## For an initial estimate of slope and intercept, calculate the
     # ordinary least-squares fit for the equation y=a+bx

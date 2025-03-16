@@ -59,7 +59,7 @@ upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, Ellips
 
 function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integer) where T
     # Get ratios
-    r75₀, r68₀ = d.μ
+    r75₀, r68₀ = mean(d)
     # Return early if our lead loss time is too old or anything is NaN'd
     tₗₗ < log(r68₀+1)/value(λ238U) || return fill(T(NaN), nresamplings)
     tₗₗ < log(r75₀+1)/value(λ235U) || return fill(T(NaN), nresamplings)

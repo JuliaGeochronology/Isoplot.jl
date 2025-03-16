@@ -34,11 +34,10 @@ and Σ contains the covariance matrix
 If `σ` is not provided, it will be automatically calculated from `Σ`,
 given that `σ.^2 = diag(Σ)`.
 """
-struct UPbAnalysis{T} <: Analysis{T}
-    μ::SVector{2, T}
-    σ::SVector{2, T}
-    Σ::SMatrix{2,2,T,4}
+struct UPbAnalysis{T} <: AbstractAnalysis{T}
+    data::Analysis2D{T}
 end
+
 
 """
 ```julia
@@ -52,40 +51,33 @@ julia> UPbAnalysis(22.6602, 0.0175, 0.40864, 0.00017, 0.83183)
 UPbAnalysis{Float64}([22.6602, 0.40864], [0.00030625000000000004 2.4746942500000003e-6; 2.4746942500000003e-6 2.8900000000000004e-8])
 ```
 """
-function UPbAnalysis(r²⁰⁷Pb²³⁵U::Number, σ²⁰⁷Pb²³⁵U::Number, r²⁰⁶Pb²³⁸U::Number, σ²⁰⁶Pb²³⁸U::Number, correlation::Number; T=Float64)
-    cov = σ²⁰⁷Pb²³⁵U * σ²⁰⁶Pb²³⁸U * correlation
-    Σ = SMatrix{2,2,T}(σ²⁰⁷Pb²³⁵U^2, cov, cov, σ²⁰⁶Pb²³⁸U^2)
-    σ = SVector{2,T}(σ²⁰⁷Pb²³⁵U, σ²⁰⁶Pb²³⁸U)
-    μ = SVector{2,T}(r²⁰⁷Pb²³⁵U, r²⁰⁶Pb²³⁸U)
-    UPbAnalysis(μ, σ, Σ)
-end
-UPbAnalysis(μ::Vector{T}, σ::Vector, Σ::Matrix) where {T} = UPbAnalysis{T}(SVector{2,T}(μ), SVector{2,T}(σ), SMatrix{2,2,T,4}(Σ))
-UPbAnalysis(μ::Vector{T}, Σ::Matrix) where {T} = UPbAnalysis{T}(SVector{2,T}(μ), SVector{2,T}(sqrt.(diag(Σ))), SMatrix{2,2,T,4}(Σ))
+UPbAnalysis(args...) = UPbAnalysis(Analysis(args...))
+
 
 # 75 and 68 ages
 function age(d::UPbAnalysis)
-    a75 = log(1 + d.μ[1] ± d.σ[1])/λ235U
-    a68 = log(1 + d.μ[2] ± d.σ[2])/λ238U
+    a75 = log(1 + mean(d)[1] ± std(d)[1])/λ235U
+    a68 = log(1 + mean(d)[2] ± std(d)[2])/λ238U
     return a75, a68
 end
 
 function age68(d::UPbAnalysis)
-    log(1 + d.μ[2] ± d.σ[2])/λ238U
+    log(1 + mean(d)[2] ± std(d)[2])/λ238U
 end
 function age75(d::UPbAnalysis)
-    log(1 + d.μ[1] ± d.σ[1])/λ235U
+    log(1 + mean(d)[1] ± std(d)[1])/λ235U
 end
 # Percent discordance
 function discordance(d::UPbAnalysis)
-    μ75 = log(1 + d.μ[1])/value(λ235U)
-    μ68 = log(1 + d.μ[2])/value(λ238U)
+    μ75 = log(1 + mean(d)[1])/value(λ235U)
+    μ68 = log(1 + mean(d)[2])/value(λ238U)
     return (μ75 - μ68) / μ75 * 100
 end
 
 # Add custom methods to Base.rand to sample from a UPbAnalysis
-Base.rand(d::UPbAnalysis) = rand(MvNormal(d.μ, d.Σ))
-Base.rand(d::UPbAnalysis, n::Integer) = rand(MvNormal(d.μ, d.Σ), n)
-Base.rand(d::UPbAnalysis, dims::Dims) = rand(MvNormal(d.μ, d.Σ), dims)
+Base.rand(d::UPbAnalysis) = rand(MvNormal(mean(d), cov(d)))
+Base.rand(d::UPbAnalysis, n::Integer) = rand(MvNormal(mean(d), cov(d)), n)
+Base.rand(d::UPbAnalysis, dims::Dims) = rand(MvNormal(mean(d), cov(d)), dims)
 
 function stacey_kramers(t)
     if 3700 <= t < 4570

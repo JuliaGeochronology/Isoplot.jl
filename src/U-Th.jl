@@ -3,9 +3,7 @@ const λ234U = log(2)/(245620e-6 ± 260e-6/2) # 1/Myr
 const λ230Th = log(2)/(75584e-6 ± 110e-6/2) # 1/Myr
 export λ234U, λ230Th
 
-struct UThAnalysis{T} <: Analysis{T}
-    μ::Vector{T}
-    σ::Vector{T}
-    Σ::Matrix{T}
+struct UThAnalysis{T} <: AbstractAnalysis{T}
+    data::Analysis2D{T}
 end
-UThAnalysis(μ::Vector{T}, σ::Vector{T}) where {T} = UThAnalysis{T}(μ, σ, diagm(σ).^2)
+UThAnalysis(args...) = UThAnalysis(Analysis(args...))

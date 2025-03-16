@@ -2,9 +2,7 @@
 λ87Rb = 1.393e-5 ± 0.004e-5/2 # 1/Myr, calibrated against U-Pb
 export λ87Rb
 
-struct RbSrAnalysis{T} <: Analysis{T}
-    μ::Vector{T}
-    σ::Vector{T}
-    Σ::Matrix{T}
+struct RbSrAnalysis{T} <: AbstractAnalysis{T}
+    data::Analysis2D{T}
 end
-RbSrAnalysis(μ::Vector{T}, σ::Vector{T}) where {T} = RbSrAnalysis{T}(μ, σ, diagm(σ).^2)
+RbSrAnalysis(args...) = RbSrAnalysis(Analysis(args...))

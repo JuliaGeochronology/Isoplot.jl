@@ -103,8 +103,8 @@ function dist_ll(dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}, tmin
     ll = zero(float(eltype(dist)))
     @inbounds for j in eachindex(analyses)
         d = analyses[j]
-        μⱼ = SVector{2}(d.μ)
-        Σⱼ = SMatrix{2,2}(d.Σ)
+        μⱼ = mean(d)
+        Σⱼ = cov(d)
 
         # Cycle through each time step
         likelihood = zero(T)

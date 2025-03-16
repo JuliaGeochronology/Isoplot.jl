@@ -2,9 +2,7 @@
 λ146Sm = log(2)/(103.1 ± 4.5) # 1/Myr, Meissner et al. (1987)
 export λ147Sm, λ147Sm
 
-struct SmNdAnalysis{T} <: Analysis{T}
-    μ::Vector{T}
-    σ::Vector{T}
-    Σ::Matrix{T}
+struct SmNdAnalysis{T} <: AbstractAnalysis{T}
+    data::Analysis2D{T}
 end
-SmNdAnalysis(μ::Vector{T}, σ::Vector{T}) where {T} = SmNdAnalysis{T}(μ, σ, diagm(σ).^2)
+SmNdAnalysis(args...) = SmNdAnalysis(Analysis(args...))

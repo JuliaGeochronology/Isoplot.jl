@@ -19,6 +19,11 @@ module Isoplot
     # Age of Earth and the Solar System
     const t🜨 = 4.567e3 #Myr
 
+    # Converting from age to ratio and back
+    age(r::Number, λ::Number) = log(1+r)/λ
+    ratio(t::Number, λ::Number) = exp(λ*t) - 1
+    export age, ratio
+
     # Is it data?
     abstract type Data{T} end
     # Generic methods to allow broadcasting and comparison
@@ -35,7 +40,7 @@ module Isoplot
 
     # Reduced data
     include("analysis.jl")
-    export age, ratio, CI, Age, Interval, Ellipse
+    export Analysis, CI, Age, Interval, Ellipse
 
     # Fitting and interpreting data
     include("regression.jl")
@@ -76,6 +81,6 @@ module Isoplot
     include("show.jl")
 
     # extra exports for pkg extensions
-    export Data, Analysis, Collection, value, stdev, datalimits
+    export Data, AbstractAnalysis, Collection, value, stdev, datalimits
 
 end # module Isoplot
