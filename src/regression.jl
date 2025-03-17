@@ -282,8 +282,7 @@ Least-squares linear fit of the form y = a + bx where
   MSWD        : 0.8136665223891004
 ```
 """
-yorkfit(x::Collection{Measurement{T}}, y::Collection{Measurement{T}}, r=ntuple(i->paircov(x[i], y[i]), length(x)); iterations=10) where {T} = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
-function yorkfit(d::Collection{<:AbstractAnalysis{T}}; iterations=10) where {T}
+function yorkfit(d::Collection{<:AbstractAnalysis}; iterations=10)
     # Using NTuples instead of Arrays here avoids allocations and should be
     # much more efficient for relatively small N, but could be less efficient
     # for large N (greater than ~100)
@@ -294,6 +293,7 @@ function yorkfit(d::Collection{<:AbstractAnalysis{T}}; iterations=10) where {T}
     r = ntuple(i->cov(d[i])[1,2], length(d))
     yorkfit(x, σx, y, σy, r; iterations)
 end
+yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, r=ntuple(i->paircov(x[i], y[i]), length(x)); iterations=10) = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
 function yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, r=nancor(x,y); iterations=10)
 
     ## For an initial estimate of slope and intercept, calculate the

@@ -155,6 +155,19 @@ module BaseTests
         @test RbSrAnalysis(x1, x2) isa RbSrAnalysis
     end
 
+    @testset "Isochrons" begin
+        N = 100
+        slope = 0.05
+        analyses = [RbSrAnalysis(0.01randn(N).+x, 0.001randn(N).+slope.*x.+0.706) for x in 1:10]
+
+        c = isochron(analyses)
+        @test c isa Isoplot.Isochron{Float64, RbSrAnalysis{Float64}}
+        @test value(c.line.slope) ≈ slope           atol=3stdev(c.line.slope)
+        @test value(c.line.intercept) ≈ 0.706       atol=3stdev(c.line.intercept)
+        @test value(age(c)) ≈ 3502.5243481286466    atol=3stdev(age(c))
+        @test value(age(slope, Isoplot.λ87Rb)) ≈ 3502.5243481286466
+    end
+
     @testset "Weighted means" begin
         # Weighted means
         x = [-3.4699, -0.875, -1.4189, 1.2993, 1.1167, 0.8357, 0.9985, 1.2789, 0.5446, 0.5639]

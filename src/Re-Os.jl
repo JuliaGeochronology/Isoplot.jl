@@ -6,3 +6,5 @@ struct ReOsAnalysis{T} <: ParentDaughterAnalysis{T}
     data::Analysis2D{T}
 end
 ReOsAnalysis(args...; kwargs...) = ReOsAnalysis(Analysis(args...; kwargs...))
+
+lambda(::Type{<:ReOsAnalysis}) = λ187Re

@@ -6,3 +6,5 @@ struct LuHfAnalysis{T} <: ParentDaughterAnalysis{T}
     data::Analysis2D{T}
 end
 LuHfAnalysis(args...; kwargs...) = LuHfAnalysis(Analysis(args...; kwargs...))
+
+lambda(::Type{<:LuHfAnalysis}) = λ176Lu

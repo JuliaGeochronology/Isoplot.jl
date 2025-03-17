@@ -6,3 +6,5 @@ struct RbSrAnalysis{T} <: ParentDaughterAnalysis{T}
     data::Analysis2D{T}
 end
 RbSrAnalysis(args...; kwargs...) = RbSrAnalysis(Analysis(args...; kwargs...))
+
+lambda(::Type{<:RbSrAnalysis}) = λ87Rb
