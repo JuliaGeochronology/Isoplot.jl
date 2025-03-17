@@ -2,7 +2,7 @@
 λ87Rb = 1.393e-5 ± 0.004e-5/2 # 1/Myr, calibrated against U-Pb
 export λ87Rb
 
-struct RbSrAnalysis{T} <: AbstractAnalysis{T}
+struct RbSrAnalysis{T} <: ParentDaughterAnalysis{T}
     data::Analysis2D{T}
 end
 RbSrAnalysis(args...; kwargs...) = RbSrAnalysis(Analysis(args...; kwargs...))

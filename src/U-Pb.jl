@@ -9,7 +9,7 @@ export λ235U_jaffey
 
 """
 ```
-struct UPbAnalysis{T} <: AbstractAnalysis{T}
+struct UPbAnalysis{T} <: NoInitialDaughterAnalysis{T}
 ```
 Core type for U-Pb analyses.
 Wraps an Analysis object which has fields
@@ -34,7 +34,7 @@ and Σ contains the covariance matrix
 If `σ` is not provided, it will be automatically calculated from `Σ`,
 given that `σ.^2 = diag(Σ)`.
 """
-struct UPbAnalysis{T} <: AbstractAnalysis{T}
+struct UPbAnalysis{T} <: NoInitialDaughterAnalysis{T}
     data::Analysis2D{T}
 end
 

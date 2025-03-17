@@ -3,6 +3,17 @@ abstract type AbstractAnalysis{T<:AbstractFloat} <: Data{T} end
 # Instances other than `Analysis` are intended to be wrapper types, and
 # must contain an `Analysis` object in a field called `data`
 
+# Abstract type for all anlalyses where some initial daughter may be present
+# such that we would like to take an isochron. 
+abstract type ParentDaughterAnalysis{T} <: AbstractAnalysis{T} end
+# For such analyses, we expect
+# μ[1] = parent / stable daughter 
+# μ[2] = radiogenic daughter / stable daughter
+
+# Abstract type for all analyses where no initial daughter is expected,
+# such as U-Pb in zircon
+abstract type NoInitialDaughterAnalysis{T} <: AbstractAnalysis{T} end
+
 # Concrete implementation
 struct Analysis{N,T,N2} <: AbstractAnalysis{T}
     μ::SVector{N,T}

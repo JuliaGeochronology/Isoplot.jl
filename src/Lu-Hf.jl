@@ -2,7 +2,7 @@
 λ176Lu = 1.867e-5 ± 0.008e-5 # 1/Myr, calibrated against U-Pb # 2-sigma?
 export λ176Lu
 
-struct LuHfAnalysis{T} <: AbstractAnalysis{T}
+struct LuHfAnalysis{T} <: ParentDaughterAnalysis{T}
     data::Analysis2D{T}
 end
 LuHfAnalysis(args...; kwargs...) = LuHfAnalysis(Analysis(args...; kwargs...))
