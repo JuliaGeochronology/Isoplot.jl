@@ -33,7 +33,7 @@ function Analysis(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T})
     return Analysis{N,T,N2}(SVector{N,T}(μ), SVector{N,T}(σ), SMatrix{N,N,T,N2}(Σ))
 end
 Analysis(μ::AbstractVector, Σ::AbstractMatrix) = Analysis(μ, sqrt.(diag(Σ)), Σ)
-Analysis(x::AbstractMatrix; dims=1) = Analysis(vec(nanmean(x; dims)), vec(nanstd(x; dims)), nancov(x; dims))
+Analysis(x::AbstractMatrix; dims=1) = Analysis(vec(nanmean(x; dims)), vec(nansem(x; dims)), nancov(x; dims)./size(x, dims))
 
 # Additional constructors for 2D Analysis types
 function Analysis(r₁::Number, σ₁::Number, r₂::Number, σ₂::Number, correlation::Number; T=Float64)
@@ -46,8 +46,8 @@ end
 function Analysis(x1::AbstractVector, x2::AbstractVector; T=Float64)
     @assert eachindex(x1) == eachindex(x2) "Vectors `x1` and `x2` must be of equal dimensions"
     μ₁, μ₂ = nanmean(x1), nanmean(x2)
-    σ₁, σ₂ = nanstd(x1, mean=μ₁), nanstd(x2, mean=μ₂)
-    Σ₁₂ = nancov(x1,x2)
+    σ₁, σ₂ = nansem(x1, mean=μ₁), nansem(x2, mean=μ₂)
+    Σ₁₂ = nancov(x1,x2)/length(x1)
     Σ = SMatrix{2,2,T,4}(σ₁^2, Σ₁₂, Σ₁₂, σ₂^2)
     Analysis2D{T}(SVector(μ₁, μ₂), SVector(σ₁, σ₂), Σ)
 end
@@ -56,8 +56,8 @@ end
 function Analysis(x1::AbstractVector, x2::AbstractVector, x3::AbstractVector; T=Float64)
     @assert eachindex(x1) == eachindex(x2) == eachindex(x3) "Vectors `x1`, `x2`, and `x3` must be of equal dimensions"
     μ₁, μ₂, μ₃ = nanmean(x1), nanmean(x2), nanmean(x3)
-    σ₁, σ₂, σ₃ = nanstd(x1, mean=μ₁), nanstd(x2, mean=μ₂), nanstd(x3, mean=μ₃)
-    Σ₁₂,Σ₂₃,Σ₁₃ = nancov(x1,x2), nancov(x2,x3), nancov(x1,x3)
+    σ₁, σ₂, σ₃ = nansem(x1, mean=μ₁), nansem(x2, mean=μ₂), nansem(x3, mean=μ₃)
+    Σ₁₂,Σ₂₃,Σ₁₃ = (nancov(x1,x2), nancov(x2,x3), nancov(x1,x3))./length(x1)
     Σ = SMatrix{3,3,T,9}(σ₁^2, Σ₁₂, Σ₁₃, Σ₁₂, σ₂^2, Σ₂₃, Σ₁₃, Σ₂₃, σ₃^2)
     Analysis3D{T}(SVector(μ₁, μ₂, μ₃), SVector(σ₁, σ₂, σ₃), Σ)
 end

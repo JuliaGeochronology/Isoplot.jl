@@ -29,7 +29,7 @@ module BaseTests
         x = rand(100,2)
         d1 = Analysis(x)
         d2 = Analysis(x[:,1], x[:,2])
-        d3 = Analysis(nanmean(x[:,1]), nanstd(x[:,1]), nanmean(x[:,2]), nanstd(x[:,2]), nancor(x[:,1],x[:,2]))
+        d3 = Analysis(nanmean(x[:,1]), nansem(x[:,1]), nanmean(x[:,2]), nansem(x[:,2]), nancor(x[:,1],x[:,2]))
         @test d1 isa Analysis2D{Float64}
         @test d2 isa Analysis2D{Float64}
         @test d3 isa Analysis2D{Float64}
@@ -437,13 +437,13 @@ module BaseTests
 
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.yf isa Isoplot.YorkFit{Float64}
-        @test calib.yf.xm ≈ 3.557959284409158
-        @test calib.yf.ym.val ≈ 2.816658925589477
-        @test calib.yf.ym.err ≈ 0.06332465613608829
-        @test calib.yf.slope.val ≈ 1.2194577062052983
-        @test calib.yf.slope.err ≈ 0.43885219141660564
-        @test calib.yf.intercept.val ≈ -1.522121942147959
-        @test calib.yf.intercept.err ≈ 1.56270179424041
+        @test calib.yf.xm ≈ 3.557421724431513 
+        @test calib.yf.ym.val ≈ 2.816033122629681
+        @test calib.yf.ym.err ≈ 0.014223357544438136
+        @test calib.yf.slope.val ≈ 1.2194330367999393
+        @test calib.yf.slope.err ≈ 0.09857561766635436
+        @test calib.yf.intercept.val ≈ -1.522004453971916
+        @test calib.yf.intercept.err ≈ 0.3509633744906013
 
     end
 
