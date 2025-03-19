@@ -478,13 +478,13 @@ module BaseTests
 
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.yf isa Isoplot.YorkFit{Float64}
-        @test calib.yf.xm ≈ 3.557421724431513 
-        @test calib.yf.ym.val ≈ 2.816033122629681
-        @test calib.yf.ym.err ≈ 0.014223357544438136
-        @test calib.yf.slope.val ≈ 1.2194330367999393
-        @test calib.yf.slope.err ≈ 0.09857561766635436
-        @test calib.yf.intercept.val ≈ -1.522004453971916
-        @test calib.yf.intercept.err ≈ 0.3509633744906013
+        @test calib.yf.xm ≈ 2.8160331226296806
+        @test calib.yf.ym.val ≈ 3.5574217244315136
+        @test calib.yf.ym.err ≈ 0.01166391028880385
+        @test calib.yf.slope.val ≈ 0.820053229510839
+        @test calib.yf.slope.err ≈ 0.0662908508944898
+        @test calib.yf.intercept.val ≈ 1.248124667809552
+        @test calib.yf.intercept.err ≈ 0.18704126735290513
 
     end
 

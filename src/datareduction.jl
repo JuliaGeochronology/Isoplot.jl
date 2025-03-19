@@ -24,7 +24,7 @@ function calibrate(data::Collection{UPbSIMSData{T}}, standardages::Collection) w
         dᵢ = data[i]
         rUO2_U = dᵢ.U238O2 ./ dᵢ.U238
         PbUrsf = dᵢ.Pb206 ./ (dᵢ.U238 .* value(standardratios[i]))
-        calib[i] = Analysis(rUO2_U, PbUrsf)
+        calib[i] = Analysis(PbUrsf, rUO2_U)
     end
     return UPbSIMSCalibration(calib, yorkfit(calib))
 end
