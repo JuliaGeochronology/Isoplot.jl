@@ -254,6 +254,10 @@ struct YorkFit{T<:Number} <: Data{T}
     mswd::T
 end
 
+# Calculate a line given data
+line(yf::YorkFit, x::Number) =  yf.ym + (x - yf.xm) * yf.slope
+invline(yf::YorkFit, y::Number) = (y - yf.ym) / yf.slope + yf.xm
+
 """
 ```julia
 yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, [r])

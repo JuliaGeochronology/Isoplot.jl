@@ -477,14 +477,14 @@ module BaseTests
         calib = calibrate(data, standardages)
 
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
-        @test calib.yf isa Isoplot.YorkFit{Float64}
-        @test calib.yf.xm ≈ 2.8160331226296806
-        @test calib.yf.ym.val ≈ 3.5574217244315136
-        @test calib.yf.ym.err ≈ 0.01166391028880385
-        @test calib.yf.slope.val ≈ 0.820053229510839
-        @test calib.yf.slope.err ≈ 0.0662908508944898
-        @test calib.yf.intercept.val ≈ 1.248124667809552
-        @test calib.yf.intercept.err ≈ 0.18704126735290513
+        @test calib.line isa Isoplot.YorkFit{Float64}
+        @test calib.line.xm ≈ 2.8160331226296806
+        @test calib.line.ym.val ≈ 3.5574217244315136
+        @test calib.line.ym.err ≈ 0.01166391028880385
+        @test calib.line.slope.val ≈ 0.820053229510839
+        @test calib.line.slope.err ≈ 0.0662908508944898
+        @test calib.line.intercept.val ≈ 1.248124667809552
+        @test calib.line.intercept.err ≈ 0.18704126735290513
 
     end
 

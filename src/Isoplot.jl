@@ -35,13 +35,14 @@ module Isoplot
 
     # Reduced data
     include("analysis.jl")
+    export value, stdev
     export Analysis, Analysis1D, Analysis2D, Analysis3D, Analysis4D, Analysis5D
     export CI, Age, Interval, Ellipse
 
     # Fitting and interpreting data
     include("regression.jl")
     export wmean, awmean, gwmean, distwmean, mswd
-    export lsqfit, yorkfit
+    export lsqfit, yorkfit, YorkFit
 
     include("isochron.jl")
     export age, ratio, isochron
@@ -62,7 +63,7 @@ module Isoplot
 
     # Raw data
     include("datareduction.jl")
-    export reduce
+    export importsimsdata, calibrate, reduce
 
     include("generic_plotting.jl")
     export concordiacurve, concordiacurve!, concordialine, concordialine!,
@@ -80,6 +81,6 @@ module Isoplot
     include("show.jl")
 
     # extra exports for pkg extensions
-    export Data, AbstractAnalysis, Collection, value, stdev, datalimits
+    export Collection, Data, AbstractAnalysis, datalimits
 
 end # module Isoplot

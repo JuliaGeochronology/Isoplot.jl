@@ -20,7 +20,36 @@ module PlotsExt
         @eval Plots.plot!(hdl::($P), a::AbstractAnalysis, args...; kwargs...) = plot!(hdl, Ellipse(a), args...; kwargs...)
         @eval Plots.plot!(hdl::($P), a::Vector{<:AbstractAnalysis}, args...; kwargs...) = plot!(hdl, Ellipse.(a), args...; kwargs...)
         @eval Plots.plot!(hdl::($P), e::Ellipse, args...; kwargs...) = plot!(hdl, Shape(e), args...; kwargs...)
-        @eval Plots.plot!(hdl::($P), e::Vector{<:Ellipse}, args...; kwargs...) = plot!(hdl, Shape.(e), args...; kwargs...)
+        @eval function Plots.plot!(hdl::($P), e::Vector{<:Ellipse}, args...; label="", color=1, kwargs...)
+            for i in eachindex(e)
+                plot!(hdl, Shape(e[i]), args...; label=(i==firstindex(e) ? label : ""), color, kwargs...)
+            end
+            return hdl
+        end
+    end
+
+    for P in (Plots.Plot, Plots.Subplot)
+        @eval function Plots.plot!(hdl::($P), yf::YorkFit; npoints=25, kwargs...)
+            x = range(Plots.xlims(hdl)..., length=npoints)
+            y = Isoplot.line.(yf, x)
+            plot!(hdl, x, value.(y); ribbon=2stdev.(y), kwargs...)
+            return hdl
+        end
+    end
+
+    Plots.plot(calib::Isoplot.UPbSIMSCalibration; framestyle=:box, kwargs...) = plot!(plot(), calib; framestyle, kwargs...)
+    for P in (Plots.Plot, Plots.Subplot)
+        @eval function Plots.plot!(hdl::($P), calib::Isoplot.UPbSIMSCalibration; 
+                color = :auto,
+                alpha = 0.75,
+                xlabel="²⁰⁶Pb/²³⁸U RSF",
+                ylabel="²³⁸U¹⁶O₂ / ²³⁸U",
+                kwargs...
+            )
+            plot!(hdl, calib.data; color=(color===:auto ? 1 : color), alpha, xlabel, ylabel, label="Data (95% CI)", kwargs...)
+            plot!(hdl, calib.line; color=(color===:auto ? 2 : color), label="York fit (N=$(length(calib.data)), MSWD=$(round(calib.line.mswd, sigdigits=3)))", kwargs...)
+            return hdl
+        end
     end
 
     # Plot a line between two times in Wetherill Concordia space
@@ -41,8 +70,9 @@ module PlotsExt
             range(xl..., length=50)
         end
         y = intercept .+ slope .* x
-        plot!(hdl, x, value.(y); ribbon=stdev.(y), kwargs...)
+        plot!(hdl, x, value.(y); ribbon=2stdev.(y), kwargs...)
         Plots.xlims!(hdl, xl)
+        return hdl
     end
     function Isoplot.concordialine!(hdl::PlotOrSubplot, t₀::Collection, t₁::Collection; truncate::Bool=false, label="", color=:black, alpha=0.05, kwargs...)
         xl = Plots.xlims(hdl)
@@ -64,6 +94,7 @@ module PlotsExt
         plot!(hdl, x, ys; label="", color, alpha, kwargs...)
         plot!(hdl, x, sum(ys)./length(ys); label, color, alpha=1, kwargs...)
         Plots.xlims!(hdl, xl)
+        return hdl
     end
 
     # Plot the Wetherill Concordia curve

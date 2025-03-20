@@ -14,7 +14,7 @@ end
 
 struct UPbSIMSCalibration{T}
     data::Vector{Analysis2D{T}}
-    yf::YorkFit{T}
+    line::YorkFit{T}
 end
 
 function calibrate(data::Collection{UPbSIMSData{T}}, standardages::Collection) where {T<:AbstractFloat}
@@ -28,7 +28,6 @@ function calibrate(data::Collection{UPbSIMSData{T}}, standardages::Collection) w
     end
     return UPbSIMSCalibration(calib, yorkfit(calib))
 end
-export calibrate
 
 function importsimsdata(dir)
     @assert isdir(dir) "Expecting a directory"
@@ -41,7 +40,6 @@ function importsimsdata(dir)
     end
     return data
 end
-export importsimsdata
 
 function importsimsfile(filepath)
     @assert contains(filepath, ".asc") "Expecting .asc file"
