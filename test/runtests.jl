@@ -470,12 +470,12 @@ module BaseTests
         @test mean(MeltsVolcanicZirconDistribution) ≈ 1 atol=0.01
     end
 
-    @testset "Import" begin
-        # Try to import and calibrate a SIMS U-Pb dataset
-        data = importsimsdata("../examples/data")
-        standardages = fill(1099., length(data))
-        calib = calibrate(data, standardages)
+    # Try to import and calibrate a SIMS U-Pb dataset
+    data = importsimsdata("../examples/data")
+    standardages = fill(1099., length(data))
+    calib = calibrate(data, standardages)
 
+    @testset "Import" begin
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.line isa Isoplot.YorkFit{Float64}
         @test calib.line.xm ≈ 2.8160331226296806
@@ -495,12 +495,12 @@ module PlotsTest
     using Test, Statistics
     using Measurements
     using Isoplot
-    using ImageIO, FileIO,Plots
+    using ImageIO, FileIO, Plots
 
-    import ..BaseTests: analyses
+    import ..BaseTests: analyses, calib
 
     # Base.retry_load_extensions()
-    @testset "Plotting" begin
+    @testset "Plots.jl Plotting" begin
         # Plot single concordia ellipse
         h = plot(analyses[1], color=:blue, alpha=0.3, label="", framestyle=:box)
         savefig(h, "concordia.png")
@@ -592,6 +592,14 @@ module PlotsTest
         @test size(img) == (400,600)
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9829569444444444,0.9866916666666666,0.9890226307189541) rtol = 0.01
         rm("CId.png")
+
+        # Plot SIMS calibration line
+        h = plot(calib)
+        savefig(h, "calib.png")
+        img = load("calib.png")
+        @test size(img) == (400,600)
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.9293718627450989, 0.9393299346405233, 0.9497374999999998) rtol = 0.01
+        rm("calib.png")
     end
 
 end
