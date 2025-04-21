@@ -12,12 +12,13 @@ struct UPbSIMSData{T<:AbstractFloat} <: RawData{T}
     U238O2::Vector{T}
 end
 
-struct UPbSIMSCalibration{T}
+abstract type Calibration{T} end
+struct UPbSIMSCalibration{T} <: Calibration{T}
     data::Vector{Analysis2D{T}}
     line::YorkFit{T}
 end
 
-function calibrate(data::Collection{UPbSIMSData{T}}, standardages::Collection) where {T<:AbstractFloat}
+function calibration(data::Collection{UPbSIMSData{T}}, standardages::Collection) where {T<:AbstractFloat}
     standardratios = ratio.(standardages, λ238U)
     calib = similar(data, Analysis2D{T})
     for i in eachindex(data, standardratios)
@@ -29,14 +30,18 @@ function calibrate(data::Collection{UPbSIMSData{T}}, standardages::Collection) w
     return UPbSIMSCalibration(calib, yorkfit(calib))
 end
 
-function importsimsdata(dir)
+function importsimsdata(dir::String, kwargs...)
     @assert isdir(dir) "Expecting a directory"
     files = filter(x->contains(x, ".asc"), readdir(dir))
     @assert !isempty(files) "No .asc files found"
+    return importsimsdata(joinpath.(dir, files), kwargs...)
+end
 
-    data = Vector{UPbSIMSData{Float64}}(undef, length(files))
+function importsimsdata(files; T=Float64)
+    @assert !isempty(files) "No files to import"
+    data = similar(files, UPbSIMSData{T})
     for i in eachindex(files)
-        data[i] = importsimsfile(joinpath(dir, files[i]))
+        data[i] = importsimsfile(files[i])
     end
     return data
 end
@@ -65,5 +70,35 @@ function importsimsfile(filepath)
     return UPbSIMSData(data[:,5], data[:,6], data[:,7], data[:,8], data[:,9], data[:,10], data[:,11])
 end
 
-# function reduce(d::UPbSIMSData, c::UPbSIMSCalibration)
-# end
+function calibrate(data::Collection{<:RawData}, calib::Calibration; kwargs...)
+    return [calibrate(data[i], calib; kwargs...) for i in eachindex(data)]
+end
+function calibrate(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline204::Number=0) where {T}
+    rUO2_U = d.U238O2 ./ d.U238
+    PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
+    
+    r68 = @. (d.Pb206 - (d.Pb204 - baseline204) * blank64) / (d.U238 * PbUrsf)
+    r75 = @. (d.Pb207 - (d.Pb204 - baseline204) * blank74) / (d.U238 * U58 * PbUrsf)
+
+    return UPbAnalysis(r75, r68)
+end
+
+
+function calibrate_blockwise(data::Collection{<:RawData}, calib::Calibration; kwargs...)
+    return [calibrate_blockwise(data[i], calib; kwargs...) for i in eachindex(data)]
+end
+function calibrate_blockwise(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline204::Number=0, blocksize=3) where {T}
+    nblocks = length(d.U238)÷blocksize
+    analyses = Vector{UPbAnalysis{T}}(undef, nblocks)
+    for i in 1:nblocks
+        bi = ((i-1)*blocksize+1):(i*blocksize)
+        rUO2_U = d.U238O2[bi] ./ d.U238[bi]
+        PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
+        
+        r68 = @. (d.Pb206[bi] - (d.Pb204[bi] - baseline204) * blank64) / (d.U238[bi] * PbUrsf)
+        r75 = @. (d.Pb207[bi] - (d.Pb204[bi] - baseline204) * blank74) / (d.U238[bi] * U58 * PbUrsf)
+
+        analyses[i] = UPbAnalysis(r75, r68)
+    end
+    return analyses
+end

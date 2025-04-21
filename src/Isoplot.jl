@@ -63,7 +63,7 @@ module Isoplot
 
     # Raw data
     include("datareduction.jl")
-    export importsimsdata, calibrate, reduce
+    export importsimsdata, calibration, calibrate, calibrate_blockwise
 
     include("generic_plotting.jl")
     export concordiacurve, concordiacurve!, concordialine, concordialine!,

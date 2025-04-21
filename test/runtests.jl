@@ -473,7 +473,7 @@ module BaseTests
     # Try to import and calibrate a SIMS U-Pb dataset
     data = importsimsdata("../examples/data")
     standardages = fill(1099., length(data))
-    calib = calibrate(data, standardages)
+    calib = calibration(data, standardages)
 
     @testset "Import" begin
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
