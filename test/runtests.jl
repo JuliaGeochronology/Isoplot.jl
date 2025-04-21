@@ -471,11 +471,12 @@ module BaseTests
     end
 
     # Try to import and calibrate a SIMS U-Pb dataset
-    data = importsimsdata("../examples/data")
-    standardages = fill(1099., length(data))
-    calib = calibration(data, standardages)
+    standards = importsimsdata("../examples/data")
+    standardages = fill(1099., length(standards))
+    calib = calibration(standards, standardages)
 
     @testset "Import" begin
+        
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.line isa Isoplot.YorkFit{Float64}
         @test calib.line.xm ≈ 2.8160331226296806
@@ -486,6 +487,14 @@ module BaseTests
         @test calib.line.intercept.val ≈ 1.248124667809552
         @test calib.line.intercept.err ≈ 0.18704126735290513
 
+        data = importsimsdata("../examples/data")
+        analyses = calibrate(data, calib)
+        @test analyses isa Vector{UPbAnalysis{Float64}}
+        @test analyses[1] isa UPbAnalysis{Float64}
+        @test value(age68(analyses[1])) ≈ 1086.114161562425
+        @test stdev(age68(analyses[1])) ≈ 6.249296047616489
+        @test value(age68(analyses[10])) ≈ 1096.0020564376744
+        @test stdev(age68(analyses[10])) ≈ 5.146380111453537
     end
 
 end
