@@ -3,13 +3,14 @@ module Isoplot
     using Reexport
     @reexport using NaNStatistics
     using LoopVectorization: @turbo
+    using StatGeochemBase: inpolygon
     using DelimitedFiles: readdlm
+    using StaticArrays: SVector, SMatrix, @SVector
+    using Rotations: RotMatrix
     using LogExpFunctions
     using LinearAlgebra
     using Distributions
     using Measurements
-    using StaticArrays: SVector, SMatrix, @SVector
-    using Rotations: RotMatrix
     
 
     # A type alias for array-ish types
@@ -51,7 +52,7 @@ module Isoplot
     export UPbAnalysis, discordance, age68, age75, stacey_kramers
 
     include("concordia.jl")
-    export upperintercept, lowerintercept, intercepts, age76, ageconcordia
+    export upperintercept, lowerintercept, intercepts, isconcordant, age76, ageconcordia
 
     include("U-Th.jl")
     include("Re-Os.jl")

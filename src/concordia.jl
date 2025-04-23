@@ -10,7 +10,10 @@ function newton_zero(f, df, x0, args::Tuple, iterations=10)
     return x0
 end
 
+# Pb207/Pb206 age
 age76(d::UPbAnalysis{T}) where {T} = upperintercept(zero(T), d)
+
+# Concordia age (of sorts)
 function ageconcordia(d::UPbAnalysis)
     isnan(d) && return NaN ± NaN
     dist = MvNormal(mean(d), cov(d))
@@ -22,6 +25,30 @@ function ageconcordia(d::UPbAnalysis)
     
     # Return Measurement
     return histmean(intersection, agerange) ± histstd(intersection, agerange)
+end
+
+
+function isconcordant(d::UPbAnalysis;
+        sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
+        npoints::Integer = 50,
+    )
+    isnan(d) && return false
+    e = Ellipse(d; sigmalevel, npoints)
+
+    isnan(d) && return NaN ± NaN
+    dist = MvNormal(mean(d), cov(d))
+    μ, mswd = wmean([age75(d), age68(d)], corrected=true)
+
+    # Evaluate at 256 points between -6σ and  +6σ
+    agerange = range(value(μ)-6stdev(μ), value(μ)+6stdev(μ), length=256)
+    for i in eachindex(agerange)
+        xᵢ = ratio(agerange[i], value(λ235U))
+        yᵢ = ratio(agerange[i], value(λ238U))
+        if inpolygon(e.x, e.y, (xᵢ, yᵢ))
+            return true
+        end
+    end
+    return false
 end
 
 function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.447746830680816) where {T<:AbstractFloat}

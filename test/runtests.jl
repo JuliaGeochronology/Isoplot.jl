@@ -94,6 +94,7 @@ module BaseTests
         @test age68(d1) == a68
         @test age75(d1) == a75
         @test discordance(d1) ≈ 31.187024051310136
+        @test isconcordant(d1) === false
 
         @test rand(d1) isa Vector{Float64}
         @test rand(d1, 10) isa Matrix{Float64}
@@ -494,12 +495,16 @@ module BaseTests
         analyses = calibrate(data, calib)
         @test analyses isa Vector{UPbAnalysis{Float64}}
         @test analyses[1] isa UPbAnalysis{Float64}
+        @test isconcordant(analyses[1]) === true
         @test value(age68(analyses[1])) ≈ 1086.114161562425
         @test stdev(age68(analyses[1])) ≈ 6.249296047616489
+        @test isconcordant(analyses[10]) === false
         @test value(age68(analyses[10])) ≈ 1096.0020564376744
         @test stdev(age68(analyses[10])) ≈ 5.146380111453537
         @test value(age76(analyses[10])) ≈ 1089.7911572614648
         @test stdev(age76(analyses[10])) ≈ 10.373817886747076
+        @test value(age75(analyses[10])) ≈ 1072.4641818116602
+        @test stdev(age75(analyses[10])) ≈ 8.560315252726863
         @test value(ageconcordia(analyses[10])) ≈ 1093.6779441066528
         @test stdev(ageconcordia(analyses[10])) ≈ 5.040429228572438
     end
