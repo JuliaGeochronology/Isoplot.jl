@@ -98,13 +98,17 @@ module PlotsExt
     end
 
     # Plot the Wetherill Concordia curve
-    function Isoplot.concordiacurve!(hdl::PlotOrSubplot=Plots.current())
+    function Isoplot.concordiacurve!(hdl::PlotOrSubplot=Plots.current(); timerange=:auto)
         # Uncertainty of 235 decay constant relative to the 238 decay constant
         σₜ = value(λ235U_jaffey) .* sqrt((stdev(λ238U)/value(λ238U)).^2 + (stdev(λ235U_jaffey)/value(λ235U_jaffey)).^2) # 1/Years
 
         # Plot the concordia curve
         xl, yl = Plots.xlims(hdl), Plots.ylims(hdl) # Note current size of figure
-        tlim = age.(max.(xl, 0.0), value(λ235U_jaffey)) # Calculate time range of current window
+        tlim = if timerange===:auto
+             age.(max.(xl, 0.0), value(λ235U_jaffey)) # Calculate time range of current window
+        else
+            timerange
+        end
         dt = tlim[2] - tlim[1]
         tmin = max(tlim[1]-0.1dt, 0.0)
         tmax = tlim[2]+0.1dt
@@ -161,7 +165,8 @@ module PlotsExt
             kwargs...
         )
         x = i0 .+ scale.*(1:length(data))
-        plot!(h, x, sort(data); label, mscolor, seriestype, xticks, kwargs...)
+        ds = sort(data)
+        plot!(h, x, value.(ds), yerror=2*stdev.(ds); label, mscolor, seriestype, xticks, kwargs...)
     end
     function Isoplot.rankorder!(h::PlotOrSubplot, data::Vector{<:CI}, i0::Number=0;
             scale=1,

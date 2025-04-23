@@ -12,7 +12,21 @@ struct UPbSIMSData{T<:AbstractFloat} <: RawData{T}
     U238O2::Vector{T}
 end
 
+# Overarching abstract type for calibrations of all sorts
 abstract type Calibration{T} end
+
+# Generic methods to allow broadcasting and comparison
+Base.length(x::Calibration) = 1
+Base.iterate(x::Calibration) = (x, nothing)
+Base.iterate(x::Calibration, state) = nothing
+Base.:(==)(x::Calibration, y::Calibration) = false
+function Base.:(==)(x::T, y::T) where {T<:Calibration}
+    for n in fieldnames(T)
+        isequal(getfield(x, n), getfield(y, n)) || return false
+    end
+    return true
+end
+
 struct UPbSIMSCalibration{T} <: Calibration{T}
     data::Vector{Analysis2D{T}}
     line::YorkFit{T}
@@ -70,17 +84,52 @@ function importsimsfile(filepath)
     return UPbSIMSData(data[:,5], data[:,6], data[:,7], data[:,8], data[:,9], data[:,10], data[:,11])
 end
 
-function calibrate(data::Collection{<:RawData}, calib::Calibration; kwargs...)
-    return [calibrate(data[i], calib; kwargs...) for i in eachindex(data)]
-end
-function calibrate(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline204::Number=0) where {T}
+
+function age68(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=0, baseline204::Number=0) where {T}
+    # Determine appropriate pb/u rsf correction
     rUO2_U = d.U238O2 ./ d.U238
     PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
     
+    # Calculate blank-, baseline-, and rsf-corrected 206/238 ratios
+    r68 = @. (d.Pb206 - (d.Pb204 - baseline204) * blank64) / (d.U238 * PbUrsf)
+    map!(x-> x<0 ? T(NaN) : x, r68, r68)
+    
+    # Return 206Pb/238U age
+    return @. log(1 + r68)/value(λ238U)
+end
+function age75(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank74::Number=0, U58::Number=1/137.818, baseline204::Number=0) where {T}
+    # Determine appropriate pb/u rsf correction
+    rUO2_U = d.U238O2 ./ d.U238
+    PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
+    
+    # Calculate blank-, baseline-, and rsf-corrected 207/235 ratios
+    r75 = @. (d.Pb207 - (d.Pb204 - baseline204) * blank74) / (d.U238 * U58 * PbUrsf)
+    map!(x-> x<0 ? T(NaN) : x, r75, r75)
+
+    # Return 207Pb/235U age
+    return @. log(1 +r75)/value(λ235U)
+end
+
+
+
+function calibrate(data::Collection{<:RawData}, calib::Calibration, cyclefilter=:; kwargs...)
+    if (cyclefilter isa Collection) && (eachindex(cyclefilter) == eachindex(data))
+        return [calibrate(data[i], calib, cyclefilter[i]; kwargs...) for i in eachindex(data)]
+    else
+        return [calibrate(data[i], calib, cyclefilter; kwargs...) for i in eachindex(data)]
+    end
+end
+function calibrate(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline204::Number=0) where {T}
+    # Determine appropriate pb/u rsf correction
+    rUO2_U = d.U238O2 ./ d.U238
+    PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
+    
+    # Calculate blank-, baseline-, and rsf-corrected 206/238 and 207/235 ratios
     r68 = @. (d.Pb206 - (d.Pb204 - baseline204) * blank64) / (d.U238 * PbUrsf)
     r75 = @. (d.Pb207 - (d.Pb204 - baseline204) * blank74) / (d.U238 * U58 * PbUrsf)
 
-    return UPbAnalysis(r75, r68)
+    # Return UPbAnalysis object
+    return cf isa Colon ? UPbAnalysis(r75, r68) : UPbAnalysis(r75[cf], r68[cf])
 end
 
 

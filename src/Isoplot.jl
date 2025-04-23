@@ -8,7 +8,7 @@ module Isoplot
     using LinearAlgebra
     using Distributions
     using Measurements
-    using StaticArrays: SVector, SMatrix
+    using StaticArrays: SVector, SMatrix, @SVector
     using Rotations: RotMatrix
     
 
@@ -51,7 +51,7 @@ module Isoplot
     export UPbAnalysis, discordance, age68, age75, stacey_kramers
 
     include("concordia.jl")
-    export upperintercept, lowerintercept, intercepts
+    export upperintercept, lowerintercept, intercepts, age76, ageconcordia
 
     include("U-Th.jl")
     include("Re-Os.jl")
