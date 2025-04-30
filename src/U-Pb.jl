@@ -56,21 +56,19 @@ UPbAnalysis(args...; kwargs...) = UPbAnalysis(Analysis(args...; kwargs...))
 
 # 75 and 68 ages
 function age(d::UPbAnalysis)
-    a75 = log(1 + mean(d)[1] ± std(d)[1])/λ235U
-    a68 = log(1 + mean(d)[2] ± std(d)[2])/λ238U
-    return a75, a68
+    return age75(d), age68(d)
 end
 
-function age68(d::UPbAnalysis)
-    log(1 + mean(d)[2] ± std(d)[2])/λ238U
+function age68(d::UPbAnalysis{T}) where {T}
+    return log(1 + max(mean(d)[2], zero(T)) ± std(d)[2])/λ238U
 end
-function age75(d::UPbAnalysis)
-    log(1 + mean(d)[1] ± std(d)[1])/λ235U
+function age75(d::UPbAnalysis{T}) where {T}
+    return log(1 + max(mean(d)[1], zero(T)) ± std(d)[1])/λ235U
 end
 # Percent discordance
-function discordance(d::UPbAnalysis)
-    μ75 = log(1 + mean(d)[1])/value(λ235U)
-    μ68 = log(1 + mean(d)[2])/value(λ238U)
+function discordance(d::UPbAnalysis{T}) where {T}
+    μ75 = mean(d)[1] > 0  ? log(1 + mean(d)[1])/value(λ235U) : T(NaN)
+    μ68 = mean(d)[2] > 0  ? log(1 + mean(d)[2])/value(λ238U) : T(NaN)
     return (μ75 - μ68) / μ75 * 100
 end
 
