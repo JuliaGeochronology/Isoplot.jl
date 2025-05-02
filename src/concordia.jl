@@ -16,6 +16,7 @@ age76(d::UPbAnalysis{T}) where {T} = upperintercept(zero(T), d)
 # Concordia age (of sorts)
 function ageconcordia(d::UPbAnalysis)
     isnan(d) && return NaN ± NaN
+    isposdef(cov(d)) || return NaN ± NaN
     dist = MvNormal(mean(d), cov(d))
     μ, mswd = wmean([age75(d), age68(d)], corrected=true)
 
