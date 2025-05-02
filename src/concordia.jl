@@ -33,13 +33,13 @@ function isconcordant(d::UPbAnalysis;
         npoints::Integer = 50,
     )
     isnan(d) && return false
-    e = Ellipse(d; sigmalevel, npoints)
 
-    isnan(d) && return NaN ± NaN
-    dist = MvNormal(mean(d), cov(d))
+    # Make error ellipse
+    e = Ellipse(d; sigmalevel, npoints)
+    # Calculate mean
     μ, mswd = wmean([age75(d), age68(d)], corrected=true)
 
-    # Evaluate at 256 points between -6σ and  +6σ
+    # Evaluate at 256 points between -6σ and +6σ
     agerange = range(value(μ)-6stdev(μ), value(μ)+6stdev(μ), length=256)
     for i in eachindex(agerange)
         xᵢ = ratio(agerange[i], value(λ235U))
