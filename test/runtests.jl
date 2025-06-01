@@ -507,6 +507,22 @@ module BaseTests
         @test stdev(age75(analyses[10])) ≈ 8.560315252726863
         @test value(ageconcordia(analyses[10])) ≈ 1093.6779441066528
         @test stdev(ageconcordia(analyses[10])) ≈ 5.040429228572438
+
+        analyses = calibrate(data, calib, baseline=0.25)
+        @test analyses isa Vector{UPbAnalysis{Float64}}
+        @test analyses[1] isa UPbAnalysis{Float64}
+        @test isconcordant(analyses[1]) === true
+        @test value(age68(analyses[1])) ≈ 1088.9985313345585
+        @test stdev(age68(analyses[1])) ≈ 6.283919766775051
+        @test isconcordant(analyses[10]) === true
+        @test value(age68(analyses[10])) ≈ 1098.9097932521975
+        @test stdev(age68(analyses[10])) ≈ 5.175351750349851
+        @test value(age76(analyses[10])) ≈ 1097.5273085870058
+        @test stdev(age76(analyses[10])) ≈ 4.395465527535868
+        @test value(age75(analyses[10])) ≈ 1093.7737025147464
+        @test stdev(age75(analyses[10])) ≈ 8.494053886674003
+        @test value(ageconcordia(analyses[10])) ≈ 1098.4664884247334
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.09890800497881
     end
 
 end
