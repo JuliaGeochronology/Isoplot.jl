@@ -179,6 +179,9 @@ using by default a present-day Stacey-Kramers common Pb composition.
 U-235 is estimated based on measured U-238, assuming a 235/238 ratio 
 of `U57` -- by default 1/137.818 (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
 
+A baseline-subtraction (equal for all masses) may optionally be performed 
+given `baseline` excess counts per minute.
+
 ### Examples
 ```
 julia> standards = importsimsdata("./examples/data")
@@ -238,6 +241,9 @@ using by default a present-day Stacey-Kramers common Pb composition.
 
 U-235 is estimated based on measured U-238, assuming a 235/238 ratio 
 of `U57` -- by default 1/137.818 (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
+
+A baseline-subtraction (equal for all masses) may optionally be performed 
+given `baseline` excess counts per minute.
 
 ### Examples
 ```
