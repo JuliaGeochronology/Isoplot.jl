@@ -295,13 +295,14 @@ function yorkfit(d::Collection{<:AbstractAnalysis}; iterations=10)
     y = ntuple(i->mean(d[i])[2], length(d))
     σx = ntuple(i->std(d[i])[1], length(d))
     σy = ntuple(i->std(d[i])[2], length(d))
-    r = ntuple(i->cov(d[i])[1,2], length(d))
+    r = ntuple(i->cov(d[i])[1,2]/(sqrt(cov(d[i])[1,1] * cov(d[i])[2,2])), length(d))
     yorkfit(x, σx, y, σy, r; iterations)
 end
-yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, r=ntuple(i->paircov(x[i], y[i]), length(x)); iterations=10) = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
+yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, r=ntuple(i->paircor(x[i], y[i]), length(x)); iterations=10) = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
 function yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, r=nancor(x,y); iterations=10)
     @assert !isempty(x)
     @assert eachindex(x) == eachindex(σx) == eachindex(y) == eachindex(σy)
+    @assert all(x->(-1<=x<=1), r) "Correlation coefficients must be between -1 and 1"
 
     ## For an initial estimate of slope and intercept, calculate the
     # ordinary least-squares fit for the equation y=a+bx

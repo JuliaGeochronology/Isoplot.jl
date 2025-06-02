@@ -357,28 +357,28 @@ module BaseTests
 
         yf = yorkfit(analyses)
         @test yf isa Isoplot.YorkFit
-        @test yf.intercept.val ≈ 0.0050701916562521515
-        @test yf.intercept.err ≈ 0.004099648408656529
-        @test yf.slope.val ≈ 0.1079872513087868
-        @test yf.slope.err ≈ 0.0037392146940848233
-        @test yf.xm ≈ 1.096376584184683
-        @test yf.ym.val ≈ 0.12346488538167279
-        @test yf.ym.err ≈ 2.235949353726133e-5
-        @test yf.mswd ≈ 0.41413597765872123
+        @test yf.intercept.val ≈ 0.004516889708317304 
+        @test yf.intercept.err ≈ 0.0030190965485973496
+        @test yf.slope.val ≈ 0.10849668347962117
+        @test yf.slope.err ≈ 0.002755312876723662
+        @test yf.xm ≈ 1.095717612255557
+        @test yf.ym.val ≈ 0.12339861666825475
+        @test yf.ym.err ≈ 1.766877975316134e-5
+        @test yf.mswd ≈ 0.4201667519279949
 
         ui = upperintercept(analyses)
-        @test ui.val ≈ 752.6744316220871
-        @test ui.err ≈ 0.5288009504134864
+        @test ui.val ≈ 752.5343109308996 
+        @test ui.err ≈ 0.4124832736605828
 
         li = lowerintercept(analyses)
-        @test li.val ≈ 115.83450556482211
-        @test li.err ≈ 94.4384248140631
+        @test li.val ≈ 103.11359587031025
+        @test li.err ≈ 69.42478116801568
 
         ui, li = intercepts(analyses)
-        @test ui.val ≈ 752.6744316220871
-        @test ui.err ≈ 0.5288009504134864
-        @test li.val ≈ 115.83450556482211
-        @test li.err ≈ 94.4384248140631
+        @test ui.val ≈ 752.5343109308996
+        @test ui.err ≈ 0.4124832736605828
+        @test li.val ≈ 103.11359587031025
+        @test li.err ≈ 69.42478116801568
 
         wm, m = wmean(age68.(analyses[1:10]))
         @test wm.val ≈ 752.2453179272093
@@ -480,49 +480,49 @@ module BaseTests
         
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.line isa Isoplot.YorkFit{Float64}
-        @test calib.line.xm ≈ 2.8160331226296806
-        @test calib.line.ym.val ≈ 3.5574217244315136
-        @test calib.line.ym.err ≈ 0.01166391028880385
-        @test calib.line.slope.val ≈ 0.820053229510839
-        @test calib.line.slope.err ≈ 0.0662908508944898
-        @test calib.line.intercept.val ≈ 1.248124667809552
-        @test calib.line.intercept.err ≈ 0.18704126735290513
+        @test calib.line.xm ≈ 2.8461853552754524 
+        @test calib.line.ym.val ≈ 3.5852539632208216
+        @test calib.line.ym.err ≈ 0.006691477095581028
+        @test calib.line.slope.val ≈ 0.8098481101630957
+        @test calib.line.slope.err ≈ 0.03910134771335598
+        @test calib.line.intercept.val ≈ 1.2802761320771174
+        @test calib.line.intercept.err ≈ 0.11149066983333657
 
         data = importsimsdata("../examples/data")
-        @test age75(data[1], calib) ≈ [1113.4293385550338, 1053.0203346377668, 1034.4260533491415, 1054.7004885169204, 1068.990316049054, 1069.2081176470697, 1097.4490195779847, 1103.8607303163587, 1051.7684315423078, 1097.1247832545434, 1119.0003335172935, 1072.1944747704129, 1110.248360975909, 1127.7521530747485, 1087.7787393527146, 1158.1654711128456, 1069.4358908027727, 1048.2046253042013, 1125.243573300422, 1087.405486838316]
-        @test age68(data[1], calib) ≈ [1101.7849182516, 1053.9899088381646, 1056.0073454530643, 1042.461945720766, 1019.4649813748944, 1061.9475493690124, 1083.06956873063, 1094.9459449280243, 1107.2169982835583, 1088.0301175750913, 1110.6013323577797, 1110.4392397549514, 1097.3607619368754, 1119.1362206959072, 1097.9650245711698, 1119.396230211389, 1111.2354657129576, 1070.4159730763058, 1093.654646933861, 1109.7764022094161] 
+        @test age75(data[1], calib) ≈ [1114.596570231467, 1054.1517196834907, 1035.545967746529, 1055.8328997091878, 1070.1313862977486, 1070.34931893277, 1098.606975329027, 1105.0224253751176, 1052.8990508874456, 1098.2825492822153, 1120.1707647158244, 1073.3374699162075, 1111.4137578599225, 1128.9275752333785, 1088.9310104833544, 1159.3579061128014, 1070.5772290946077, 1049.3330597374338, 1126.4175692757142, 1088.5575374659616]
+        @test age68(data[1], calib) ≈ [1103.5344980788757, 1055.6696442474617, 1057.6900395037655, 1044.1247571691376, 1021.09394078642, 1063.6389495538233, 1084.7918609624876, 1096.685562504694, 1108.974483418046, 1089.7596501796181, 1112.3637393425324, 1112.2014110667944, 1099.1038983574824, 1120.9110285164775, 1099.7090413099584, 1121.1714155568905, 1112.9987946325018, 1072.1197709441205, 1095.392382303994, 1111.537609733524]
 
         analyses = calibrate(data, calib)
         @test analyses isa Vector{UPbAnalysis{Float64}}
         @test analyses[1] isa UPbAnalysis{Float64}
         @test isconcordant(analyses[1]) === true
-        @test value(age68(analyses[1])) ≈ 1086.114161562425
-        @test stdev(age68(analyses[1])) ≈ 6.249296047616489
+        @test value(age68(analyses[1])) ≈ 1087.8408983160473
+        @test stdev(age68(analyses[1])) ≈ 6.258423764224166
         @test isconcordant(analyses[10]) === false
-        @test value(age68(analyses[10])) ≈ 1096.0020564376744
-        @test stdev(age68(analyses[10])) ≈ 5.146380111453537
-        @test value(age76(analyses[10])) ≈ 1089.7911572614648
-        @test stdev(age76(analyses[10])) ≈ 10.373817886747076
-        @test value(age75(analyses[10])) ≈ 1072.4641818116602
-        @test stdev(age75(analyses[10])) ≈ 8.560315252726863
-        @test value(ageconcordia(analyses[10])) ≈ 1093.6779441066528
-        @test stdev(ageconcordia(analyses[10])) ≈ 5.040429228572438
+        @test value(age68(analyses[10])) ≈ 1098.3570739171782
+        @test stdev(age68(analyses[10])) ≈ 5.156535018832662
+        @test value(age76(analyses[10])) ≈ 1091.921724912869
+        @test stdev(age76(analyses[10])) ≈ 10.736262253151212
+        @test value(age75(analyses[10])) ≈ 1074.0101357991698
+        @test stdev(age75(analyses[10])) ≈ 8.56728206795363
+        @test value(ageconcordia(analyses[10])) ≈ 1095.9288408812718 
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.049476518887378
 
         analyses = calibrate(data, calib, baseline=0.25)
         @test analyses isa Vector{UPbAnalysis{Float64}}
         @test analyses[1] isa UPbAnalysis{Float64}
         @test isconcordant(analyses[1]) === true
-        @test value(age68(analyses[1])) ≈ 1088.9985313345585
-        @test stdev(age68(analyses[1])) ≈ 6.283919766775051
+        @test value(age68(analyses[1])) ≈ 1090.728144507266
+        @test stdev(age68(analyses[1])) ≈ 6.293086861809403
         @test isconcordant(analyses[10]) === true
-        @test value(age68(analyses[10])) ≈ 1098.9097932521975
-        @test stdev(age68(analyses[10])) ≈ 5.175351750349851
-        @test value(age76(analyses[10])) ≈ 1097.5273085870058
-        @test stdev(age76(analyses[10])) ≈ 4.395465527535868
-        @test value(age75(analyses[10])) ≈ 1093.7737025147464
-        @test stdev(age75(analyses[10])) ≈ 8.494053886674003
-        @test value(ageconcordia(analyses[10])) ≈ 1098.4664884247334
-        @test stdev(ageconcordia(analyses[10])) ≈ 5.09890800497881
+        @test value(age68(analyses[10])) ≈ 1101.269174993504
+        @test stdev(age68(analyses[10])) ≈ 5.185553271002563
+        @test value(age76(analyses[10])) ≈ 1099.6693566866418 
+        @test stdev(age76(analyses[10])) ≈ 4.402727111764174
+        @test value(age75(analyses[10])) ≈ 1095.3358498205891
+        @test stdev(age75(analyses[10])) ≈ 8.500821278467406
+        @test value(ageconcordia(analyses[10])) ≈ 1100.7521984539392
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.1073440703495505 
     end
 
 end
@@ -635,7 +635,7 @@ module PlotsTest
         savefig(h, "calib.png")
         img = load("calib.png")
         @test size(img) == (400,600)
-        @test sum(img)/length(img) ≈ RGB{Float64}(0.9293718627450989, 0.9393299346405233, 0.9497374999999998) rtol = 0.01
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.9189778921568632, 0.9413858333333338, 0.9578708333333333) rtol = 0.01
         rm("calib.png")
     end
 
