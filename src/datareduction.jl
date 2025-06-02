@@ -34,7 +34,7 @@ end
 
 """
 ```julia
-calibration(data::Collection{<:UPbSIMSData}, standardages::Collection)
+calibration(data::Collection{<:UPbSIMSData}, standardages::Collection; baseline::Number=0)
 ```
 Create a `UPbSIMSCalibration` object `calib` given a dataset of 
 standard SIMS analyses `data` with known ages `standardages`, to construct
@@ -65,13 +65,13 @@ YorkFit{Float64}:
   MSWD     : 0.2704923359277713
 ```
 """
-function calibration(data::Collection{UPbSIMSData{T}}, standardages::Collection) where {T<:AbstractFloat}
+function calibration(data::Collection{UPbSIMSData{T}}, standardages::Collection; baseline::Number=0) where {T<:AbstractFloat}
     standardratios = ratio.(standardages, λ238U)
     calib = similar(data, Analysis2D{T})
     for i in eachindex(data, standardratios)
         dᵢ = data[i]
-        rUO2_U = dᵢ.U238O2 ./ dᵢ.U238
-        PbUrsf = dᵢ.Pb206 ./ (dᵢ.U238 .* value(standardratios[i]))
+        rUO2_U = (dᵢ.U238O2 .- baseline) ./ (dᵢ.U238 .- baseline)
+        PbUrsf = (dᵢ.Pb206  .- baseline) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i]))
         calib[i] = Analysis(PbUrsf, rUO2_U)
     end
     return UPbSIMSCalibration(calib, yorkfit(calib))
