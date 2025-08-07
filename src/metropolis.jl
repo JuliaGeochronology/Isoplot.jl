@@ -91,8 +91,8 @@ function dist_ll(dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}, tmin
     tmax >= tmin || return T(NaN)
     any(isnan, analyses) && return T(NaN)
 
-    tbinedges = range(tmin, tmax, length=length(dist))
-    @assert eachindex(tbinedges) == eachindex(dist)
+    tbinedges = range(tmin, tmax, length=length(dist)+1)
+    @assert eachindex(tbinedges)[1:end-1] == eachindex(dist)
     dt = step(tbinedges)
     Σdist = sum(dist)
     r75ₗₗ = ratio(tll, value(λ235U))
@@ -103,32 +103,96 @@ function dist_ll(dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}, tmin
     ll = zero(float(eltype(dist)))
     @inbounds for j in eachindex(analyses)
         d = analyses[j]
-        μⱼ = mean(d)
+        μⱼ = mean(d) - μₗₗ
         Σⱼ = cov(d)
 
-        # Cycle through each time step
-        likelihood = zero(T)
-        r75ᵢ = ratio(first(tbinedges)-step(tbinedges), value(λ235U))
-        r68ᵢ = ratio(first(tbinedges)-step(tbinedges), value(λ238U))
-        for i in eachindex(dist)
-            μlast = SVector(r75ᵢ, r68ᵢ)
+        # Rotate mean of analysis relative to line between tmin and tll
+        r75_tmin = ratio(tmin, value(λ235U))
+        r68_tmin = ratio(tmin, value(λ238U))
+        R_tmin = RotMatrix(π/2 - atan(r68_tmin-r68ₗₗ, r75_tmin-r75ₗₗ))
+        μᵣ_tmin = R_tmin * μⱼ
+        Σᵣ_tmin = R_tmin * Σⱼ * R_tmin'
+        μ₁_tmin, σ₁_tmin = first(μᵣ_tmin), sqrt(first(Σᵣ_tmin))
 
-            # Rotation matrix that would rotate discordia line between tll and tbinedges[i] to vertical
-            r75ᵢ = ratio(tbinedges[i], value(λ235U))
-            r68ᵢ = ratio(tbinedges[i], value(λ238U))
-            R = RotMatrix(π/2 - atan(r68ᵢ-r68ₗₗ, r75ᵢ-r75ₗₗ))
+        # Rotate mean of analysis relative to line between tmax and tll
+        r75_tmax = ratio(tmax, value(λ235U)) 
+        r68_tmax = ratio(tmax, value(λ238U))
+        R_tmax = RotMatrix(π/2 - atan(r68_tmax-r68ₗₗ, r75_tmax-r75ₗₗ))
+        μᵣ_tmax = R_tmax * μⱼ
+        Σᵣ_tmax = R_tmax * Σⱼ * R_tmax'
+        μ₁_tmax, σ₁_tmax = first(μᵣ_tmax), sqrt(first(Σᵣ_tmax))
 
-            # Rotate means and covariance matrix, with proposed time of Pb-loss at origin
-            μlastᵣ = R * (μlast-μₗₗ)
-            μᵣ = R * (μⱼ-μₗₗ)
-            Σᵣ = R * Σⱼ * R'
-            μ₁, σ₁ = first(μᵣ), sqrt(first(Σᵣ))
+        # Choose best approach (numerically speaking), given position of analysis
+        if μ₁_tmin < 0 
+            # Diff log-CCDFs from young to old (left to right) 
+            # if analysis is left of youngest discordia array
+            llⱼ = typemin(T)
+            lcdf_last = logccdf(Normal(μ₁_tmin, σ₁_tmin), zero(T))
+            for i in eachindex(dist)
+                # Rotation matrix that would rotate discordia line between tll and tbinedges[i+1] to vertical
+                r75ᵢ = ratio(tbinedges[i+1], value(λ235U))
+                r68ᵢ = ratio(tbinedges[i+1], value(λ238U))
+                Rᵢ = RotMatrix(π/2 - atan(r68ᵢ-r68ₗₗ, r75ᵢ-r75ₗₗ))
 
-            # Product of PDF of marginal disribution of rotated bivariate Gaussian and `dist`
-            dμ₁ = abs(first(μlastᵣ)*last(μᵣ)/last(μlastᵣ))
-            likelihood += pdf(Normal(μ₁, σ₁), zero(T))*dμ₁*dist[i]/(dt*Σdist)
+                # Rotate means and covariance matrix, with proposed time of Pb-loss at origin
+                μᵣ = Rᵢ * μⱼ
+                Σᵣ = Rᵢ * Σⱼ * Rᵢ'
+                μ₁, σ₁ = first(μᵣ), sqrt(first(Σᵣ))
+                lcdfᵢ = logccdf(Normal(μ₁, σ₁), zero(T))
+                Δlcdf = logsubexp(lcdf_last, lcdfᵢ)
+                llⱼ = logaddexp(llⱼ, Δlcdf+log(dist[i]/(dt*Σdist)))
+
+                # Prepare for next step
+                lcdf_last = lcdfᵢ
+            end
+            ll += llⱼ
+        elseif μ₁_tmax > 0
+            # Diff log-CDFs from old to young (right to left) 
+            # if analysis is right of oldest discordia array
+            llⱼ = typemin(T)
+            lcdf_last = logcdf(Normal(μ₁_tmax, σ₁_tmax), zero(T))
+            for i in reverse(eachindex(dist))
+                # Rotation matrix that would rotate discordia line between tll and tbinedges[i] to vertical
+                r75ᵢ = ratio(tbinedges[i], value(λ235U))
+                r68ᵢ = ratio(tbinedges[i], value(λ238U))
+                Rᵢ = RotMatrix(π/2 - atan(r68ᵢ-r68ₗₗ, r75ᵢ-r75ₗₗ))
+
+                # Rotate means and covariance matrix, with proposed time of Pb-loss at origin
+                μᵣ = Rᵢ * μⱼ
+                Σᵣ = Rᵢ * Σⱼ * Rᵢ'
+                μ₁, σ₁ = first(μᵣ), sqrt(first(Σᵣ))
+                lcdfᵢ = logcdf(Normal(μ₁, σ₁), zero(T))
+                Δlcdf = logsubexp(lcdf_last, lcdfᵢ)
+                llⱼ = logaddexp(llⱼ, Δlcdf+log(dist[i]/(dt*Σdist)))
+
+                # Prepare for next step
+                lcdf_last = lcdfᵢ
+            end
+            ll += llⱼ
+        else
+            # Diff CCDFs from young to old (left to right)
+            # if analysis is between youngest and oldest discordia array
+            lⱼ = zero(T)
+            cdf_last = ccdf(Normal(μ₁_tmin, σ₁_tmin), zero(T))
+            for i in eachindex(dist)
+                # Rotation matrix that would rotate discordia line between tll and tbinedges[i+1] to vertical
+                r75ᵢ = ratio(tbinedges[i+1], value(λ235U))
+                r68ᵢ = ratio(tbinedges[i+1], value(λ238U))
+                Rᵢ = RotMatrix(π/2 - atan(r68ᵢ-r68ₗₗ, r75ᵢ-r75ₗₗ))
+
+                # Rotate means and covariance matrix, with proposed time of Pb-loss at origin
+                μᵣ = Rᵢ * μⱼ
+                Σᵣ = Rᵢ * Σⱼ * Rᵢ'
+                μ₁, σ₁ = first(μᵣ), sqrt(first(Σᵣ))
+                cdfᵢ = ccdf(Normal(μ₁, σ₁), zero(T))
+                Δcdf = cdf_last - cdfᵢ
+                lⱼ += Δcdf * dist[i]/(dt*Σdist)
+
+                # Prepare for next step
+                cdf_last = cdfᵢ
+            end
+            ll += log(lⱼ)
         end
-        ll += log(likelihood)
     end
     return ll
 end
