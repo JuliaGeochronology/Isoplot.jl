@@ -1,7 +1,7 @@
 module BaseTests
 
     using Test, Statistics
-    using Measurements
+    using Measurements, Distributions
     using Isoplot
 
     @testset "Show" begin
@@ -198,22 +198,36 @@ module BaseTests
     end
 
     @testset "Weighted means" begin
-        # Weighted means
+        # Using vectors of mean and standard deviation
         x = [-3.4699, -0.875, -1.4189, 1.2993, 1.1167, 0.8357, 0.9985, 1.2789, 0.5446, 0.5639]
         σx = ones(10)/4
         @test all(awmean(x, σx) .≈ (0.08737999999999996, 0.07905694150420949, 38.44179426844445))
         @test all(gwmean(x, σx) .≈ (0.08737999999999996, 0.49016447665837415, 38.44179426844445))
-        wm, m = awmean(x .± σx)
-        @test wm.val ≈ 0.08737999999999996
-        @test wm.err ≈ 0.07905694150420949
+        # Using Measurements
+        wm, m = wmean(x .± σx; corrected=false)
+        @test value(wm) ≈ 0.08737999999999996
+        @test stdev(wm) ≈ 0.07905694150420949
         @test m ≈ 38.44179426844445
-        wm, m = gwmean(x .± σx)
-        @test wm.val ≈ 0.08737999999999996
-        @test wm.err ≈ 0.49016447665837415
+        wm, m = wmean(x .± σx; corrected=true)
+        @test value(wm) ≈ 0.08737999999999996
+        @test stdev(wm) ≈ 0.49016447665837415
         @test m ≈ 38.44179426844445
+        # Using Distributions
+        wm, m = wmean(Normal.(x, σx); corrected=false)
+        @test value(wm) ≈ 0.08737999999999996
+        @test stdev(wm) ≈ 0.07905694150420949
+        @test m ≈ 38.44179426844445
+        wm, m = wmean(Normal.(x, σx); corrected=true)
+        @test value(wm) ≈ 0.08737999999999996
+        @test stdev(wm) ≈ 0.49016447665837415
+        @test m ≈ 38.44179426844445
+        # MSWDs
         @test mswd(x, σx) ≈ 38.44179426844445
         @test mswd(x .± σx) ≈ 38.44179426844445
-        σx .*= 20 # Test underdispersed data
+        @test mswd(Normal.(x, σx)) ≈ 38.44179426844445
+
+        # Test underdispersed data
+        σx .*= 20 
         @test gwmean(x, σx) == awmean(x, σx)
 
         N = 10^6
@@ -293,15 +307,15 @@ module BaseTests
         @test mean(d) ≈ μ atol = 0.2
         @test std(d) ≈ σ atol = 2
 
-        # test chauvenet criterion
+        # test Chauvenet's criterion
         x = [1.2, 1.5, 1.3, 2.4, 2.0, 2.1, 1.9, 2.2, 8.0, 2.3]
         xσ = [1,1,1,1,1,1,1,1,1,1.]
         expected = [true, true, true, true, true, true, true, true, false, true]
-        @test Isoplot.chauvenet_func(x, xσ) == expected
-        μ,σ,MSWD = wmean(x, xσ;chauvenet=true)
+        @test (Isoplot.chauvenet_criterion(x, xσ) .> 1) == expected
+        μ,σ,MSWD = wmean(chauvenet(x, xσ)...)
         @test μ ≈ 1.877777777777778
         @test MSWD ≈ 0.19444444444444445
-        μ, MSWD = wmean((x .± xσ);chauvenet=true)
+        μ, MSWD = wmean(chauvenet(x .± xσ))
         @test value(μ) ≈ 1.877777777777778
         @test MSWD ≈ 0.19444444444444445
     end

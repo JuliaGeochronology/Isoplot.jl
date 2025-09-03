@@ -42,6 +42,7 @@ module Isoplot
 
     # Fitting and interpreting data
     include("regression.jl")
+    export chauvenet
     export wmean, awmean, gwmean, distwmean, mswd
     export lsqfit, yorkfit, YorkFit
 

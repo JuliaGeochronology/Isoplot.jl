@@ -199,7 +199,9 @@ stdev(x::Age{T}) where {T} = x.sigma::T
 # Specialized methods for `Measurement`s
 value(x::Measurement{T}) where {T} = x.val::T
 stdev(x::Measurement{T}) where {T} = x.err::T
-
+# Specialized methods for `Distribution`s
+value(x::Distribution) = mean(x)
+stdev(x::Distribution) = std(x)
 
 # Deprecations of old methods
 function val(x)
