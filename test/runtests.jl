@@ -465,16 +465,42 @@ module BaseTests
 
     @testset "General Metropolis" begin
         mu, sigma = collect(100:0.1:101), 0.01*ones(11);
-        @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100,101) ≈ -3.6933372932657607
+        @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100, 101) ≈ -3.6933372932657607
+        @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, Normal.(mu, sigma), 100, 101) ≈ -4.736451831031247
+
+        tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
+        @test mean(tmindist) ≈ 99.9228  atol=0.015
+        @test std(tmindist) ≈ 0.11355  atol=0.015
 
         tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
-        @test mean(tmindist) ≈ 99.9228 atol=0.015
+        @test mean(tmindist) ≈ 99.9228  atol=0.015
+        @test std(tmindist) ≈ 0.11355  atol=0.015
+
+        tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, Normal.(mu, sigma), burnin=10^5)
+        @test mean(tmindist) ≈ 99.9228  atol=0.015
+        @test std(tmindist) ≈ 0.11355  atol=0.015
+
+        tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
+        @test mean(tmindist) ≈ 99.9228  atol=0.015
+        @test std(tmindist) ≈ 0.11355  atol=0.015
+        @test mean(tmaxdist) ≈ 101.08  atol=0.015
+        @test std(tmaxdist) ≈ 0.06917  atol=0.015
+        @test mean(acceptancedist) ≈ 0.6 atol=0.2
+        @test acceptancedist isa BitVector
+        @test lldist isa Vector{Float64}
 
         tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
         @test mean(tmindist) ≈ 99.9228  atol=0.015
+        @test std(tmindist) ≈ 0.11355  atol=0.015
         @test mean(tmaxdist) ≈ 101.08  atol=0.015
-        @test lldist isa Vector{Float64}
-        @test acceptancedist isa BitVector
+        @test std(tmaxdist) ≈ 0.06917  atol=0.015
+        @test mean(acceptancedist) ≈ 0.6 atol=0.2
+
+        tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, Normal.(mu, sigma), burnin=10^5)
+        @test mean(tmindist) ≈ 99.9228  atol=0.015
+        @test std(tmindist) ≈ 0.11355  atol=0.015
+        @test mean(tmaxdist) ≈ 101.08  atol=0.015
+        @test std(tmaxdist) ≈ 0.06917  atol=0.015
         @test mean(acceptancedist) ≈ 0.6 atol=0.2
 
         @test mean(UniformDistribution) ≈ 1

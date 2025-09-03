@@ -12,10 +12,14 @@ module Isoplot
     using Distributions
     using Measurements
     
-
-    # A type alias for array-ish types
+    # Some utilities to support use of NTuples within functions that are expecting arrays
     const Collection{T} = Union{AbstractArray{T}, NTuple{N,T}} where N
     const Collection1D{T} = Union{AbstractVector{T}, NTuple{N,T}} where N
+    arraylike(args...) = similar(args...)
+    arraylike(x::NTuple{N,T}) where {N,T} = similar(Array{T}, N)
+    arraylike(x::NTuple{N,T}, args...) where {N,T} = similar(Array{T}, args...)
+    arraylike(x::NTuple{N}, ::Type{T}) where {N,T} = similar(Array{T}, N)
+    arraylike(x::NTuple, ::Type{T}, args...) where {T} = similar(Array{T}, args...)
 
     # Age of Earth and the Solar System
     const t🜨 = 4.567e3 #Myr

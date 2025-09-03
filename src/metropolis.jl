@@ -87,6 +87,67 @@ function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Nu
     end
     return ll
 end
+function dist_ll(dist::Collection{T}, analyses::Collection{<:Distribution}, tmin::Number, tmax::Number) where {T<:AbstractFloat}
+    tmax >= tmin || return T(NaN)
+
+    tbinedges = range(tmin, tmax, length=length(dist)+1)
+    @assert eachindex(tbinedges)[1:end-1] == eachindex(dist)
+    dt = step(tbinedges)
+    Σdist = sum(dist)
+
+    # Cycle through each datum in dataset
+    ll = zero(float(eltype(dist)))
+    @inbounds for j in eachindex(analyses)
+        d = analyses[j]
+        μ = mean(d)
+
+        # Choose best approach (numerically speaking), given position of analysis
+        if μ < 0 
+            # Diff log-CCDFs from young to old (left to right) 
+            # if analysis is left of youngest discordia array
+            llⱼ = typemin(T)
+            lcdf_last = logccdf(d, tmin)
+            for i in eachindex(dist)
+                lcdfᵢ = logccdf(d, tbinedges[i+1])
+                Δlcdf = logsubexp(lcdf_last, lcdfᵢ)
+                llⱼ = logaddexp(llⱼ, Δlcdf+log(dist[i]/(dt*Σdist)))
+
+                # Prepare for next step
+                lcdf_last = lcdfᵢ
+            end
+            ll += llⱼ
+        elseif tmax < μ
+            # Diff log-CDFs from old to young (right to left) 
+            # if analysis is right of oldest discordia array
+            llⱼ = typemin(T)
+            lcdf_last = logcdf(d, tmax)
+            for i in reverse(eachindex(dist))
+                lcdfᵢ = logcdf(d, tbinedges[i])
+                Δlcdf = logsubexp(lcdf_last, lcdfᵢ)
+                llⱼ = logaddexp(llⱼ, Δlcdf+log(dist[i]/(dt*Σdist)))
+
+                # Prepare for next step
+                lcdf_last = lcdfᵢ
+            end
+            ll += llⱼ
+        else
+            # Diff CCDFs from young to old (left to right)
+            # if analysis is between youngest and oldest discordia array
+            lⱼ = zero(T)
+            cdf_last = ccdf(d, tmin)
+            for i in eachindex(dist)
+                cdfᵢ = ccdf(d, tbinedges[i+1])
+                Δcdf = cdf_last - cdfᵢ
+                lⱼ += Δcdf * dist[i]/(dt*Σdist)
+
+                # Prepare for next step
+                cdf_last = cdfᵢ
+            end
+            ll += log(lⱼ)
+        end
+    end
+    return ll
+end
 function dist_ll(dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}, tmin::Number, tmax::Number, tll::Number) where {T<:AbstractFloat}
     tmax >= tmin || return T(NaN)
     any(isnan, analyses) && return T(NaN)
@@ -210,14 +271,14 @@ function prior_ll(mu::Collection, sigma::Collection, tmin::Number, tmax::Number)
     f = length(mu) - 1
     return prior_ll(wm, wsigma, mswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
 end
-function prior_ll(analyses::Collection{<:Measurement}, tmin::Number, tmax::Number)
-    a₋ = minimum(analyses)
-    a₊ = maximum(analyses)
+function prior_ll(analyses::Collection{<:Union{Distribution, Measurement}}, tmin::Number, tmax::Number)
+    a₋ = argmin(value, analyses)
+    a₊ = argmax(value, analyses)
     # Calculate a weighted mean and examine our MSWD
     (wm, mswd) = wmean(analyses, corrected=true)
     # Degrees of freedom
     f = length(analyses) - 1
-    return prior_ll(wm.val, wm.err, mswd, a₋.val, a₋.err, a₊.val, a₊.err, f, tmin, tmax)
+    return prior_ll(value(wm), stdev(wm), mswd, value(a₋), stdev(a₋), value(a₊), stdev(a₊), f, tmin, tmax)
 end
 function prior_ll(wm, wsigma, mswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
     # Height of MSWD distribution relative to height at MSWD = 1
@@ -257,18 +318,19 @@ tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, bu
 tmindist, t0dist = metropolis_min(2*10^5, HalfNormalDistribution, analyses, burnin=10^5)
 ```
 """
-metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_min(nsteps, dist, value.(data), stdev.(data); kwargs...)
-function metropolis_min(nsteps::Integer, dist::Collection, mu::Collection, sigma::Collection; kwargs...)
-    # Allocate ouput array
-    tmindist = Array{float(eltype(mu))}(undef,nsteps)
-    # Run Metropolis sampler
-    return metropolis_min!(tmindist, dist, mu, sigma; kwargs...)
+function metropolis_min(nsteps::Integer, dist::Collection{T}, mu::Collection, sigma::Collection; kwargs...) where {T}
+    tmindist = arraylike(mu, T, nsteps)
+    metropolis_min!(tmindist, dist, mu, sigma; kwargs...)
+    return tmindist
+end
+function metropolis_min(nsteps::Integer, dist::Collection{T}, data::Collection{<:Union{Measurement, Distribution}}; kwargs...) where {T}
+    tmindist = arraylike(data, T, nsteps)
+    metropolis_min!(tmindist, dist, data; kwargs...)
+    return tmindist
 end
 function metropolis_min(nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; kwargs...) where {T}
-    # Allocate ouput arrays
-    tmindist = Array{T}(undef,nsteps)
-    t0dist = Array{T}(undef,nsteps)
-    # Run Metropolis sampler
+    tmindist = arraylike(analyses, T, nsteps)
+    t0dist = arraylike(analyses, T, nsteps)
     metropolis_min!(tmindist, t0dist, dist, analyses; kwargs...)
     return tmindist, t0dist
 end
@@ -291,6 +353,7 @@ metropolis_min!(tmindist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, bu
 ```
 """
 function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Number}, mu::AbstractArray{<:Number}, sigma::AbstractArray{<:Number}; burnin::Integer=0)
+    @assert eachindex(mu) == eachindex(sigma)
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
@@ -345,6 +408,78 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
 
         # Calculate log likelihood for new proposal
         llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(mu, sigma, tminₚ, tmaxₚ)
+        # Decide to accept or reject the proposal
+        if log(rand()) < (llₚ-ll)
+            if tminₚ != tmin
+                tminstep = abs(tminₚ-tmin)*stepfactor
+            end
+            if tmaxₚ != tmax
+                tmaxstep = abs(tmaxₚ-tmax)*stepfactor
+            end
+
+            ll = llₚ
+            tmin = tminₚ
+            tmax = tmaxₚ
+        end
+        tmindist[i] = tmin
+    end
+    return tmindist
+end
+function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Number}, data::AbstractArray{<:Union{Distribution, Measurement}}; burnin::Integer=0)
+
+    # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
+    stepfactor = 2.9
+
+    # Initial step sigma for Gaussian proposal distributions
+    youngest, oldest = argmin(value, data), argmax(value, data)
+    Δt = (value(oldest)- value(youngest)) + sqrt(stdev(oldest)^2 + stdev(youngest)^2)
+    tminstep = tmaxstep = Δt / length(data)
+
+    # Use oldest and youngest data for initial proposal
+    tminₚ = tmin = value(youngest) - stdev(youngest)
+    tmaxₚ = tmax = value(oldest) + stdev(oldest)
+
+    # Log likelihood of initial proposal
+    llₚ = ll = dist_ll(dist, data, tmin, tmax) + prior_ll(data, tmin, tmax)
+
+    # Burnin
+    for i=1:burnin
+        # Adjust upper or lower bounds
+        tminₚ, tmaxₚ = tmin, tmax
+        r = rand()
+        (r < 0.5) && (tmaxₚ += tminstep*randn())
+        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        # Flip bounds if reversed
+        (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
+
+        # Calculate log likelihood for new proposal
+        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(data, tminₚ, tmaxₚ)
+        # Decide to accept or reject the proposal
+        if log(rand()) < (llₚ-ll)
+            if tminₚ != tmin
+                tminstep = abs(tminₚ-tmin)*stepfactor
+            end
+            if tmaxₚ != tmax
+                tmaxstep = abs(tmaxₚ-tmax)*stepfactor
+            end
+
+            ll = llₚ
+            tmin = tminₚ
+            tmax = tmaxₚ
+        end
+    end
+    # Step through each of the N steps in the Markov chain
+    @inbounds for i in eachindex(tmindist)
+        # Adjust upper or lower bounds
+        tminₚ, tmaxₚ = tmin, tmax
+        r = rand()
+        (r < 0.5) && (tmaxₚ += tminstep*randn())
+        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        # Flip bounds if reversed
+        (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
+
+        # Calculate log likelihood for new proposal
+        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(data, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
@@ -491,7 +626,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
         tmindist[i] = tmin
         tlldist[i] = tll
     end
-    return tmindist
+    return tmindist, tlldist
 end
 
 """
@@ -509,25 +644,30 @@ crystallization ages.
 tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-metropolis_minmax(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; kwargs...) = metropolis_minmax(nsteps, dist, value.(data), stdev.(data); kwargs...)
-function metropolis_minmax(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; kwargs...)
-    # Allocate ouput arrays
+function metropolis_minmax(nsteps::Integer, dist::Collection{T}, mu::AbstractArray, sigma::AbstractArray; kwargs...) where {T}
     acceptancedist = falses(nsteps)
-    lldist = Array{float(eltype(dist))}(undef,nsteps)
-    tmaxdist = Array{float(eltype(mu))}(undef,nsteps)
-    tmindist = Array{float(eltype(mu))}(undef,nsteps)
-    # Run metropolis sampler
-    return metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, dist, mu, sigma; kwargs...)
+    lldist = arraylike(mu, T, nsteps)
+    tmaxdist = arraylike(mu, T, nsteps)
+    tmindist = arraylike(mu, T, nsteps)
+    metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, dist, mu, sigma; kwargs...)
+    return tmindist, tmaxdist, lldist, acceptancedist
+end
+function metropolis_minmax(nsteps::Integer, dist::Collection{T}, data::Collection{<:Union{Measurement, Distribution}}; kwargs...) where {T}
+    acceptancedist = falses(nsteps)
+    lldist = arraylike(data, T, nsteps)
+    tmaxdist = arraylike(data, T, nsteps)
+    tmindist = arraylike(data, T, nsteps)
+    metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, dist, data; kwargs...)
+    return tmindist, tmaxdist, lldist, acceptancedist
 end
 function metropolis_minmax(nsteps::Integer, dist::Collection{T}, analyses::Collection{<:UPbAnalysis{T}}; kwargs...) where {T<:AbstractFloat}
-    # Allocate ouput arrays
     acceptancedist = falses(nsteps)
-    lldist = Array{T}(undef,nsteps)
-    t0dist = Array{T}(undef,nsteps)
-    tmaxdist = Array{T}(undef,nsteps)
-    tmindist = Array{T}(undef,nsteps)
-    # Run metropolis sampler
-    return metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, dist, analyses; kwargs...)
+    lldist = arraylike(analyses, T, nsteps)
+    t0dist = arraylike(analyses, T, nsteps)
+    tmaxdist = arraylike(analyses, T, nsteps)
+    tmindist = arraylike(analyses, T, nsteps)
+    metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, dist, analyses; kwargs...)
+    return tmindist, tmaxdist, t0dist, lldist, acceptancedist
 end
 
 """
@@ -547,8 +687,9 @@ crystallization ages.
 metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, 2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 ```
 """
-function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::DenseArray, acceptancedist::BitVector, dist::Collection{<:Number}, mu::AbstractArray{<:Number}, sigma::AbstractArray{<:Number}; burnin::Integer=0)
+function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray{<:Number}, lldist::DenseArray{<:Number}, acceptancedist::BitVector, dist::Collection{<:Number}, mu::AbstractArray{<:Number}, sigma::AbstractArray{<:Number}; burnin::Integer=0)
     @assert eachindex(tmindist) == eachindex(tmaxdist) == eachindex(lldist) == eachindex(acceptancedist) 
+    @assert eachindex(mu) == eachindex(sigma)
 
     # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
     stepfactor = 2.9
@@ -616,6 +757,82 @@ function metropolis_minmax!(tmindist::DenseArray, tmaxdist::DenseArray, lldist::
             tmin = tminₚ
             tmax = tmaxₚ
             acceptancedist[i]=true
+        end
+        tmindist[i] = tmin
+        tmaxdist[i] = tmax
+        lldist[i] = ll
+    end
+    return tmindist, tmaxdist, lldist, acceptancedist
+end
+function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray{<:Number}, lldist::DenseArray{<:Number}, acceptancedist::BitVector, dist::Collection{<:Number}, data::AbstractArray{<:Union{Distribution, Measurement}}; burnin::Integer=0)
+    @assert eachindex(tmindist) == eachindex(tmaxdist) == eachindex(lldist) == eachindex(acceptancedist) 
+
+    # standard deviation of the proposal function is stepfactor * last step; this is tuned to optimize accetance probability at 50%
+    stepfactor = 2.9
+
+    # Initial step sigma for Gaussian proposal distributions
+    youngest, oldest = argmin(value, data), argmax(value, data)
+    Δt = (value(oldest)- value(youngest)) + sqrt(stdev(oldest)^2 + stdev(youngest)^2)
+    tminstep = tmaxstep = Δt / length(data)
+
+    # Use oldest and youngest data for initial proposal
+    tminₚ = tmin = value(youngest) - stdev(youngest)
+    tmaxₚ = tmax = value(oldest) + stdev(oldest)
+
+    # Log likelihood of initial proposal
+    llₚ = ll = dist_ll(dist, data, tmin, tmax) + prior_ll(data, tmin, tmax)
+
+    # Burnin
+    for i=1:burnin
+        # Adjust upper or lower bounds
+        tminₚ, tmaxₚ = tmin, tmax
+        r = rand()
+        (r < 0.5) && (tmaxₚ += tminstep*randn())
+        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        # Flip bounds if reversed
+        (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
+
+        # Calculate log likelihood for new proposal
+        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(data, tminₚ, tmaxₚ)
+        # Decide to accept or reject the proposal
+        if log(rand()) < (llₚ-ll)
+            if tminₚ != tmin
+                tminstep = abs(tminₚ-tmin)*stepfactor
+            end
+            if tmaxₚ != tmax
+                tmaxstep = abs(tmaxₚ-tmax)*stepfactor
+            end
+
+            ll = llₚ
+            tmin = tminₚ
+            tmax = tmaxₚ
+        end
+    end
+    # Step through each of the N steps in the Markov chain
+    @inbounds for i in eachindex(tmindist, tmaxdist, lldist, acceptancedist)
+        # Adjust upper or lower bounds
+        tminₚ, tmaxₚ = tmin, tmax
+        r = rand()
+        (r < 0.5) && (tmaxₚ += tminstep*randn())
+        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        # Flip bounds if reversed
+        (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
+
+        # Calculate log likelihood for new proposal
+        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(data, tminₚ, tmaxₚ)
+        # Decide to accept or reject the proposal
+        if log(rand()) < (llₚ-ll)
+            if tminₚ != tmin
+                tminstep = abs(tminₚ-tmin)*stepfactor
+            end
+            if tmaxₚ != tmax
+                tmaxstep = abs(tmaxₚ-tmax)*stepfactor
+            end
+
+            ll = llₚ
+            tmin = tminₚ
+            tmax = tmaxₚ
+            acceptancedist[i] = true
         end
         tmindist[i] = tmin
         tmaxdist[i] = tmax
