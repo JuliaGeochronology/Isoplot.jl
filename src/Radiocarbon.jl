@@ -7,6 +7,7 @@
         ldist::Vector{T}
         lcdist::Vector{T}
         lccdist::Vector{T}
+        distmax::T
     end
 
     function Radiocarbon(μ::T, σ::T, ldist::Vector{T}) where {T<:Real}
@@ -20,7 +21,7 @@
         lcdist = nanlogcumsumexp(ldist)
         lccdist = nanlogcumsumexp(ldist, reverse=true)
     
-        return Radiocarbon{T}(μ, σ, dist, ldist, lcdist, lccdist)
+        return Radiocarbon{T}(μ, σ, dist, ldist, lcdist, lccdist, maximum(dist))
     end
 
     function Radiocarbon(age_14C::Real, age_14C_sigma::Real; calibration::NamedTuple=intcal20)
@@ -42,7 +43,7 @@
         lcdist = nanlogcumsumexp(ldist)
         lccdist = nanlogcumsumexp(ldist, reverse=true)
 
-        return Radiocarbon(μ, σ, dist, ldist, lcdist, lccdist)
+        return Radiocarbon(μ, σ, dist, ldist, lcdist, lccdist, maximum(dist))
     end
 
     ## Conversions
@@ -102,6 +103,23 @@
     Distributions.skewness(d::Radiocarbon) = histskewness(d.dist, eachindex(d.dist), corrected=false)
     Distributions.kurtosis(d::Radiocarbon) = histkurtosis(d.dist, eachindex(d.dist), corrected=false)
 
+    ## Sampling
+    function Base.rand(rng::AbstractRNG, d::Radiocarbon{T}) where {T}
+        Tf = float(T)
+        x = eachindex(d.dist)
+        xmin, xmax = first(x), last(x)
+        Δx = prevfloat(Tf(xmax - xmin))
+        while true
+            # Pick random x value
+            rx = xmin + rand(rng, Tf) * Δx
+            # Interpolate corresponding distribution value
+            f = floor(Int,rx)
+            @inbounds y = d.dist[f+1]*(rx-f) + d.dist[f]*(1-(rx-f))
+            # See if x value is accepted
+            ry = rand(rng, Tf) * d.distmax
+            (y > ry) && return rx
+        end
+    end
 
 ## --- Intcal radiocarbon calibration curves (raw / as published)
 

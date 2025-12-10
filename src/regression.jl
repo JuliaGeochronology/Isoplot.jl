@@ -150,6 +150,11 @@ gwmean(args...) = wmean(args...; corrected=true)
 
 
 distwmean(x...; corrected::Bool=true) = distwmean(x; corrected)
+function distwmean(x::Collection{<:Distribution}; corrected::Bool=true, N=10^6)
+    @assert eachindex(x) == 1:length(x)
+    sampled = ntuple(i->rand(x[i], N), length(x))
+    distwmean(sampled; corrected)
+end
 function distwmean(x::NTuple{N, <:AbstractVector}; corrected::Bool=true) where {N}
     σₓ = nanstd.(x)
     wₓ = 1 ./ σₓ.^2

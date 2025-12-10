@@ -7,6 +7,7 @@ module Isoplot
     using DelimitedFiles: readdlm
     using StaticArrays: SVector, SMatrix, @SVector
     using Rotations: RotMatrix
+    using Random: AbstractRNG
     using LogExpFunctions
     using LinearAlgebra
     using Distributions

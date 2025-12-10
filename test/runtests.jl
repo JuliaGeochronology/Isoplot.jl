@@ -174,9 +174,14 @@ module BaseTests
         @test value(wm) ≈ 11509.329228181394
         @test stdev(wm) ≈ 30.825739204181755
         @test mswd ≈ 0.3705296426717654
-
+        
+        # Monte Carlo weighted means on distributions
+        distwm = distwmean(ages, N=50000)
+        @test mean(distwm) ≈ 11509.2 atol = 1
+        @test std(distwm) ≈ 47.4 atol = 1
+        
         # Metropolis on radiocarbon ages
-        @time tmindist = metropolis_min(5000, ones(10), ages; burnin=200)
+        tmindist = metropolis_min(5000, ones(10), ages; burnin=200)
         @test mean(tmindist) ≈ 11453 atol=25
         @test std(tmindist) ≈ 67.8 atol=25
 
