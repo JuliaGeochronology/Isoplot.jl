@@ -102,9 +102,9 @@ function dist_ll(dist::Collection{T}, analyses::Collection{<:Distribution}, tmin
         μ = mean(d)
 
         # Choose best approach (numerically speaking), given position of analysis
-        if μ < 0 
+        if μ < tmin
             # Diff log-CCDFs from young to old (left to right) 
-            # if analysis is left of youngest discordia array
+            # if analysis is younger than tmin
             llⱼ = typemin(T)
             lcdf_last = logccdf(d, tmin)
             for i in eachindex(dist)
@@ -118,7 +118,7 @@ function dist_ll(dist::Collection{T}, analyses::Collection{<:Distribution}, tmin
             ll += llⱼ
         elseif tmax < μ
             # Diff log-CDFs from old to young (right to left) 
-            # if analysis is right of oldest discordia array
+            # if analysis is older than tmax
             llⱼ = typemin(T)
             lcdf_last = logcdf(d, tmax)
             for i in reverse(eachindex(dist))
@@ -132,7 +132,7 @@ function dist_ll(dist::Collection{T}, analyses::Collection{<:Distribution}, tmin
             ll += llⱼ
         else
             # Diff CCDFs from young to old (left to right)
-            # if analysis is between youngest and oldest discordia array
+            # if analysis is between tmin and tmax
             lⱼ = zero(T)
             cdf_last = ccdf(d, tmin)
             for i in eachindex(dist)
