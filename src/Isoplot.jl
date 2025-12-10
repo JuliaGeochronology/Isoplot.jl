@@ -3,7 +3,7 @@ module Isoplot
     using Reexport
     @reexport using NaNStatistics
     using LoopVectorization: @turbo
-    using StatGeochemBase: inpolygon
+    using StatGeochemBase: inpolygon, linterp1s, linterp_at_index, normlogproduct
     using DelimitedFiles: readdlm
     using StaticArrays: SVector, SMatrix, @SVector
     using Rotations: RotMatrix
@@ -66,6 +66,9 @@ module Isoplot
     include("Rb-Sr.jl")
     include("K-Ar.jl")
     export UThAnalysis, ReOsAnalysis, LuHfAnalysis, SmNdAnalysis, RbSrAnalysis
+
+    include("Radiocarbon.jl")
+    export Radiocarbon, intcal13, intcal20, shcal20, marine20
 
     # Raw data
     include("datareduction.jl")

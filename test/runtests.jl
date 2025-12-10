@@ -147,6 +147,40 @@ module BaseTests
         @test stacey_kramers(5000) === (NaN, NaN)
 
     end
+    @testset "Radiocarbon" begin
+        x = Radiocarbon(13500, 100, calibration=intcal13)
+        @test x isa Radiocarbon
+        @test x isa Distribution
+        @test mean(x) ≈ 16262.130754431282
+        @test std(x) ≈ 159.35317423553238
+
+        x = Radiocarbon(13500, 100, calibration=intcal20)
+        @test x isa Radiocarbon
+        @test x isa Distribution
+        @test mean(x) ≈ 16276.13680317237
+        @test std(x) ≈ 159.2406837724124
+
+        x = Radiocarbon(10000, 10)
+        @test mean(x) ≈ 11476.343648266482
+        @test std(x) ≈ 86.70372094312096
+
+        age_14C = [9962.71, 10002.18, 10007.3, 10012.88, 10016.1, 10019.81, 10026.88, 10047.97, 10056.09, 10065.81]
+        age_sigma_14C = fill(25, 10)
+        ages = Radiocarbon.(age_14C, age_sigma_14C, calibration=intcal20)
+        @test ages isa Vector{<:Radiocarbon}
+
+        # Weighted means on radiocarbon ages
+        wm, mswd = wmean(ages)
+        @test value(wm) ≈ 11509.329228181394
+        @test stdev(wm) ≈ 30.825739204181755
+        @test mswd ≈ 0.3705296426717654
+
+        # Metropolis on radiocarbon ages
+        @time tmindist = metropolis_min(5000, ones(10), ages; burnin=200)
+        @test mean(tmindist) ≈ 11453 atol=25
+        @test std(tmindist) ≈ 67.8 atol=25
+
+    end
     @testset "Other systems" begin
         x1, x2 = rand(20), rand(20)
         @test UThAnalysis(x1, x2) isa UThAnalysis
