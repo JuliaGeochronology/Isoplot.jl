@@ -148,17 +148,31 @@ module BaseTests
 
     end
     @testset "Radiocarbon" begin
-        x = Radiocarbon(13500, 100, calibration=intcal13)
-        @test x isa Radiocarbon
-        @test x isa Distribution
-        @test mean(x) ≈ 16262.130754431282
-        @test std(x) ≈ 159.35317423553238
 
-        x = Radiocarbon(13500, 100, calibration=intcal20)
-        @test x isa Radiocarbon
-        @test x isa Distribution
-        @test mean(x) ≈ 16276.13680317237
-        @test std(x) ≈ 159.2406837724124
+        d = Radiocarbon(1000, 10; calibration=intcal13)
+        @test d isa Radiocarbon{Float64}
+        @test d isa Distribution
+        @test pdf(d, 950) ≈ 0.0006472245090905895
+        @test logpdf(d, 950) ≈ -7.342817323513984
+        @test pdf.(d, [900, 950, 1000]) ≈ [6.333126104255167e-8, 0.0006472245090905895, 2.652591331229418e-13]
+        @test cdf.(d, [-1, 900, 950, 1000, 1e5]) ≈ [0.0, 0.000563737957020387, 0.18096988328291203, 0.18312332434946413, 1.0]
+        @test ccdf.(d, [-1, 900, 950, 1000, 1e5]) ≈ [1.0, 0.18255964979458322, 0.0028006656465210025, 7.114355524701459e-11, 0.0]
+        @test logcdf.(d, [-1, 900, 950, 1000, 1e5]) ≈ [-7649.088264850034, -7.480921029645386, -1.7094246522629235, -1.6975954495627632, -0.0]
+        @test logccdf.(d, [-1, 900, 950, 1000, 1e5]) ≈ [-0.0, -1.700678311173327, -5.8778981591541335, -23.366321375298313, -8.706770436253259e7]
+
+        @test eltype(d) === partype(d) === Float64
+        @test location(d) ≈ 927.2556461305643
+        @test scale(d) ≈ 7.5077650707247
+
+        @test mean(d) ≈ 927.2556461305643
+        @test var(d) ≈ 7.5077650707247^2
+        @test std(d) ≈ 7.5077650707247
+        @test skewness(d) ≈ -4.6327184250788696
+        @test kurtosis(d) ≈ 67.68860469654331
+
+        x = Radiocarbon(10000, 10, calibration=intcal13)
+        @test mean(x) ≈ 11474.878002425487
+        @test std(x) ≈ 82.19571126561112
 
         x = Radiocarbon(10000, 10)
         @test mean(x) ≈ 11476.343648266482
@@ -179,7 +193,7 @@ module BaseTests
         distwm = distwmean(ages, N=50000)
         @test mean(distwm) ≈ 11509.2 atol = 1
         @test std(distwm) ≈ 47.4 atol = 1
-        
+
         # Metropolis on radiocarbon ages
         tmindist = metropolis_min(5000, ones(10), ages; burnin=200)
         @test mean(tmindist) ≈ 11453 atol=25
