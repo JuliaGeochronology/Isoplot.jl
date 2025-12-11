@@ -125,11 +125,6 @@ function discordance(d::UPbAnalysis{T}) where {T}
     return (μ75 - μ68) / μ75 * 100
 end
 
-# Add custom methods to Base.rand to sample from a UPbAnalysis
-Base.rand(d::UPbAnalysis) = rand(MvNormal(mean(d), cov(d)))
-Base.rand(d::UPbAnalysis, n::Integer) = rand(MvNormal(mean(d), cov(d)), n)
-Base.rand(d::UPbAnalysis, dims::Dims) = rand(MvNormal(mean(d), cov(d)), dims)
-
 function stacey_kramers(t)
     if 3700 <= t < 4570
         t0 = 3700

@@ -74,6 +74,14 @@ Distributions.std(a::AbstractAnalysis) = std(a.data)
 Distributions.cov(a::Analysis) = a.Σ
 Distributions.cov(a::AbstractAnalysis) = cov(a.data)
 
+# Forward rand methods for Analysis objects to the equivalent call for an MvNormal distribution
+Base.rand(a::AbstractAnalysis) = rand(MvNormal(mean(a), cov(a)))
+Base.rand(a::AbstractAnalysis, n::Integer) = rand(MvNormal(mean(a), cov(a)), n)
+Base.rand(a::AbstractAnalysis, dims::Dims) = rand(MvNormal(mean(a), cov(a)), dims)
+Base.rand(rng::AbstractRNG, a::AbstractAnalysis) = rand(rng, MvNormal(mean(a), cov(a)))
+Base.rand(rng::AbstractRNG, a::AbstractAnalysis, n::Integer) = rand(rng, MvNormal(mean(a), cov(a)), n)
+Base.rand(rng::AbstractRNG, a::AbstractAnalysis, dims::Dims) = rand(rng, MvNormal(mean(a), cov(a)), dims)
+
 
 # A confidence or credible interval with 95% bounds
 struct CI{T<:AbstractFloat} <: Data{T}
