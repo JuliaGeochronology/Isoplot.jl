@@ -163,8 +163,8 @@ end
 """
 ```julia
 calibrate(d::UPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
-    blank64::Number = first(stacey_kramers(0)), 
-    blank74::Number = last(stacey_kramers(0)), 
+    blank64::Number = stacey_kramers(0)[1], 
+    blank74::Number = stacey_kramers(0)[2], 
     U58::Number = 1/137.818, 
     baseline::Number = 0,
 )
@@ -207,7 +207,7 @@ function calibrate(data::Collection{<:RawData}, calib::Calibration, cyclefilter=
         return [calibrate(data[i], calib, cyclefilter; kwargs...) for i in eachindex(data)]
     end
 end
-function calibrate(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:; blank64::Number=first(stacey_kramers(0)), blank74::Number=last(stacey_kramers(0)), U58::Number=1/137.818, baseline::Number=0) where {T}
+function calibrate(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline::Number=0) where {T}
     # Determine appropriate pb/u rsf correction
     rUO2_U = @. (d.U238O2 - baseline) / (d.U238 - baseline)
     PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
@@ -224,8 +224,8 @@ end
 """
 ```julia
 calibrate_blockwise(d::UPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
-    blank64::Number = first(stacey_kramers(0)), 
-    blank74::Number = last(stacey_kramers(0)), 
+    blank64::Number = stacey_kramers(0)[1], 
+    blank74::Number = stacey_kramers(0)[2], 
     U58::Number = 1/137.818, 
     baseline::Number = 0,
     blocksize::Integer = 3,
@@ -272,7 +272,7 @@ julia> calibrate_blockwise(standards[1], calib)
 function calibrate_blockwise(data::Collection{<:RawData}, calib::Calibration; kwargs...)
     return [calibrate_blockwise(data[i], calib; kwargs...) for i in eachindex(data)]
 end
-function calibrate_blockwise(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=first(stacey_kramers(0)), blank74::Number=last(stacey_kramers(0)), U58::Number=1/137.818, baseline::Number=0, blocksize::Integer=3) where {T}
+function calibrate_blockwise(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline::Number=0, blocksize::Integer=3) where {T}
     nblocks = length(d.U238)÷blocksize
     analyses = Vector{UPbAnalysis{T}}(undef, nblocks)
     for i in 1:nblocks

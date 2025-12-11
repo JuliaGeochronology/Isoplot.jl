@@ -68,7 +68,24 @@ module BaseTests
         @test stdev(a) ≈ 3.0276503540974917
     end
 
-    @testset "U-Pb" begin
+    @testset "U-Th-Pb" begin
+        μ = [18.242, 0.59261, 0.16001]
+        Σ = [0.00031 2.50e-6 2.50e-7; 
+             2.50e-6 2.94e-8 2.50e-7;
+             2.50e-7 2.50e-7 7.39e-7;]
+        d1 = UThPbAnalysis(μ, Σ)
+        @test d1 isa UThPbAnalysis{Float64}
+        a75, a68, a82 = age(d1)
+        @test a75.val ≈ 3000.0257585438353
+        @test a75.err ≈ 1.9141367875881798
+        @test a68.val ≈ 2999.985437721613
+        @test a68.err ≈ 1.754454624116367
+        @test a82.val ≈ 3000.0627649796165
+        @test a82.err ≈ 21.190771017329745
+        @test age68(d1) == a68
+        @test age75(d1) == a75
+        @test age82(d1) == a82
+
         r75 = 22.6602
         σ75 = 0.017516107998
         r68 = 0.408643
@@ -141,10 +158,12 @@ module BaseTests
 
 
         # Stacey-Kramers common Pb model
-        @test stacey_kramers(0) == (18.7, 15.628)
-        @test stacey_kramers(3700) == (11.152, 12.998)
-        @test stacey_kramers(4567) == (9.314476625036953, 12.984667029161916)
-        @test stacey_kramers(5000) === (NaN, NaN)
+        @test stacey_kramers(0) == (18.7, 15.628, 38.63)
+        @test stacey_kramers(1000) ==  (17.06558429108375, 15.616140767469298, 36.74374156479152)
+        @test stacey_kramers(3700) == (11.152, 12.998, 31.23)
+        @test stacey_kramers(4000) ==  (10.543938494456278, 12.993587938400326, 30.651601108585144)
+        @test stacey_kramers(4567) == (9.314476625036953, 12.984667029161916, 29.53470176631109)
+        @test stacey_kramers(5000) === (NaN, NaN, NaN)
 
     end
     @testset "Radiocarbon" begin

@@ -54,8 +54,8 @@ module Isoplot
     include("isochron.jl")
     export age, ratio, isochron
 
-    include("U-Pb.jl")
-    export UPbAnalysis, discordance, age68, age75, stacey_kramers
+    include("U-Th-Pb.jl")
+    export UPbAnalysis, UThPbAnalysis, discordance, age75, age68, age82, stacey_kramers
 
     include("concordia.jl")
     export upperintercept, lowerintercept, intercepts, isconcordant, age76, ageconcordia
