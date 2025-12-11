@@ -114,7 +114,7 @@
             rx = xmin + rand(rng, Tf) * Δx
             # Interpolate corresponding distribution value
             f = floor(Int,rx)
-            @inbounds y = d.dist[f+1]*(rx-f) + d.dist[f]*(1-(rx-f))
+            y = d.dist[f+1]*(rx-f) + d.dist[f]*(1-(rx-f))
             # See if x value is accepted
             ry = rand(rng, Tf) * d.distmax
             (y > ry) && return rx
