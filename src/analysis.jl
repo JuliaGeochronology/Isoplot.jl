@@ -34,6 +34,7 @@ function Analysis(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T})
 end
 Analysis(μ::AbstractVector, Σ::AbstractMatrix) = Analysis(μ, sqrt.(diag(Σ)), Σ)
 Analysis(x::AbstractMatrix; dims=1) = Analysis(vec(nanmean(x; dims)), vec(nansem(x; dims)), nancov(x; dims)./size(x, dims))
+Analysis(d::MvNormal) = Analysis(d.μ, d.Σ)
 
 # Additional constructors for 2D Analysis types
 function Analysis(r₁::Number, σ₁::Number, r₂::Number, σ₂::Number, correlation::Number; T=Float64)
@@ -136,6 +137,8 @@ struct Ellipse{T,N} <: Data{T}
     σy₀::T
 end
 
+# Make an ellipse from anything which can be turned into an analysis object
+Ellipse(args...; kwargs...) = Ellipse(Analysis(args...); kwargs...)
 # Make an ellipse from a Analysis object
 Ellipse(d::AbstractAnalysis, args...; kwargs...) = Ellipse(d.data, args...; kwargs...)
 function Ellipse(d::Analysis2D;
