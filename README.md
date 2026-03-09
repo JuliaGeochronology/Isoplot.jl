@@ -1,4 +1,5 @@
 # Isoplot.jl
+[![DOI](osf_io_Z37WE.svg)](https://doi.org/10.17605/OSF.IO/Z37WE)
 [![Docs][docs-dev-img]][docs-dev-url]
 [![CI][ci-img]][ci-url]
 [![codecov.io][codecov-img]][codecov-url]
