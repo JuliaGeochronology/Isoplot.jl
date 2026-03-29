@@ -1,6 +1,6 @@
 name = "Isoplot"
 uuid = "5adc30d5-9ddf-423c-bb15-ece697bec3ab"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["C. Brenhin Keller <cbkeller@dartmouth.edu>"]
 
 [deps]
