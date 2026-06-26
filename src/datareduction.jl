@@ -37,7 +37,13 @@ end
 
 """
 ```julia
-calibration(data::Collection{<:UThPbSIMSData}, standardages::Collection; baseline::Number=0)
+calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collection; 
+    \tbaseline = 0,                 # An overall baseline to subtract
+    \tblank = stacey_kramers(0),    # Common Pb composition in order (206/204, 207/204, 208/204). If the stacey_kramers function itself is given without argument, the age of each standard will be used.
+    \tcorrection = :none,           # [:none, :Pb204, :Pb208]
+    \titerations = 5,               # Number of iterations for Pb-208 correction
+    \tThUrsf::Number = 1.0,         # For Pb-208 correction; default is no fractionation
+)
 ```
 Create a `UPbSIMSCalibration` object `calib` given a dataset of 
 standard SIMS analyses `data` with known ages `standardages`, to construct
@@ -69,49 +75,64 @@ YorkFit{Float64}:
 ```
 """
 function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collection; 
-        baseline::Number=0,
-        correction::Symbol=:none,
-        iterations::Integer=5,
+        baseline::Number = zero(T),
+        blank::Union{NTuple{3,Number}, Function} = stacey_kramers,
+        correction::Symbol = :none,
+        iterations::Integer = 5,
     ) where {T<:AbstractFloat}
     @assert correction ∈ (:none, :Pb204, :Pb208) "Common Pb correction options are `:none`, `:Pb204`, or `:Pb208`"
-    standardratios = ratio.(standardages, λ238U)
+    # Initialize blank ratios
+    blank64, blank74, blank84 = if blank isa NTuple
+        blank
+    else
+        0., 0., 0.
+    end
+
+    # Allocate array for analyses
     calib = similar(data, Analysis2D{T})
 
     if correction === :Pb204
         # Pb-204 corection
-        for i in eachindex(data, standardratios)
+        for i in eachindex(data)
             dᵢ = data[i]
-            blank64 = first(stacey_kramers(standardages[i]))
+            standardratioPb206U238 = value(ratio(standardages[i], λ238U))
+            if blank isa Function
+                blank64, blank74, blank84 = blank(standardages[i])
+            end
             rUO2_U = (dᵢ.U238O2 .- baseline) ./ (dᵢ.U238 .- baseline)
             Pb206c = (dᵢ.Pb204 .- baseline) .* blank64
-            PbUrsf = (dᵢ.Pb206 .- baseline .- Pb206c) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i]))
+            PbUrsf = (dᵢ.Pb206 .- baseline .- Pb206c) ./ ((dᵢ.U238 .- baseline) .* standardratioPb206U238)
             calib[i] = Analysis(PbUrsf, rUO2_U)
         end
         
     elseif correction === :Pb208
         # Pb-208 corection
-        for i in eachindex(data, standardratios)
+        for i in eachindex(data)
             dᵢ = data[i]
+            standardratioPb206U238 = value(ratio(standardages[i], λ238U))
             standardratioPb208Th232 = value(ratio(standardages[i], λ232Th))
-            blank64, blank74, blank84 = stacey_kramers(standardages[i])
+            if blank isa Function
+                blank64, blank74, blank84 = blank(standardages[i])
+            end
             blank68 = blank64/blank84
             rUO2_U = (dᵢ.U238O2 .- baseline) ./ (dᵢ.U238 .- baseline)
             Pb208r, Pb206c = zeros(size(rUO2_U)), zeros(size(rUO2_U))
-            PbUrsf = (dᵢ.Pb206 .- baseline) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i])) # No subtraction the first time
+            PbUrsf = (dᵢ.Pb206 .- baseline) ./ ((dᵢ.U238 .- baseline) .* standardratioPb206U238) # No subtraction the first time
             for _ in 1:iterations
                 Pb208r .= (dᵢ.Th232 .- baseline) .* standardratioPb208Th232 .* PbUrsf
                 Pb206c .= (dᵢ.Pb208 .- baseline .- Pb208r) .* blank68
-                PbUrsf .= (dᵢ.Pb206 .- baseline .- Pb206c) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i]))
+                PbUrsf .= (dᵢ.Pb206 .- baseline .- Pb206c) ./ ((dᵢ.U238 .- baseline) .* standardratioPb206U238)
             end
             calib[i] = Analysis(PbUrsf, rUO2_U)
         end
 
     else # :none
         # No common Pb correction
-        for i in eachindex(data, standardratios)
+        for i in eachindex(data)
             dᵢ = data[i]
+            standardratioPb206U238 = value(ratio(standardages[i], λ238U))
             rUO2_U = (dᵢ.U238O2 .- baseline) ./ (dᵢ.U238 .- baseline)
-            PbUrsf = (dᵢ.Pb206  .- baseline) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i]))
+            PbUrsf = (dᵢ.Pb206  .- baseline) ./ ((dᵢ.U238 .- baseline) .* standardratioPb206U238)
             calib[i] = Analysis(PbUrsf, rUO2_U)
         end
     end
@@ -217,8 +238,7 @@ end
 """
 ```julia
 calibrate(d::UThPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
-    blank64::Number = stacey_kramers(0)[1], 
-    blank74::Number = stacey_kramers(0)[2], 
+    blank::NTuple{3,Number} = stacey_kramers(0),
     U58::Number = 1/137.818, 
     baseline::Number = 0,
 )
@@ -261,12 +281,17 @@ function calibrate(data::Collection{<:RawData}, calib::Calibration, cyclefilter=
         return [calibrate(data[i], calib, cyclefilter; kwargs...) for i in eachindex(data)]
     end
 end
-function calibrate(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline::Number=0) where {T}
+function calibrate(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:; 
+        blank::NTuple{3,Number} = stacey_kramers(0),
+        U58::Number = 1/137.818, 
+        baseline::Number = 0.0,
+    ) where {T}
     # Determine appropriate pb/u rsf correction
     rUO2_U = @. (d.U238O2 - baseline) / (d.U238 - baseline)
     PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
     
     # Calculate blank-, baseline-, and rsf-corrected 206/238 and 207/235 ratios
+    blank64, blank74, blank84 = blank
     r68 = @. ((d.Pb206 - baseline) - (d.Pb204 - baseline) * blank64) / ((d.U238 - baseline) * PbUrsf)
     r75 = @. ((d.Pb207 - baseline) - (d.Pb204 - baseline) * blank74) / ((d.U238 - baseline) * U58 * PbUrsf)
 
