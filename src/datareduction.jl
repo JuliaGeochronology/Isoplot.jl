@@ -68,14 +68,52 @@ YorkFit{Float64}:
   MSWD     : 0.2704923359277713
 ```
 """
-function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collection; baseline::Number=0) where {T<:AbstractFloat}
+function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collection; 
+        baseline::Number=0,
+        correction::Symbol=:none,
+        iterations::Integer=5,
+    ) where {T<:AbstractFloat}
+    @assert correction ∈ (:none, :Pb204, :Pb208) "Common Pb correction options are `:none`, `:Pb204`, or `:Pb208`"
     standardratios = ratio.(standardages, λ238U)
     calib = similar(data, Analysis2D{T})
-    for i in eachindex(data, standardratios)
-        dᵢ = data[i]
-        rUO2_U = (dᵢ.U238O2 .- baseline) ./ (dᵢ.U238 .- baseline)
-        PbUrsf = (dᵢ.Pb206  .- baseline) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i]))
-        calib[i] = Analysis(PbUrsf, rUO2_U)
+
+    if correction === :Pb204
+        # Pb-204 corection
+        for i in eachindex(data, standardratios)
+            dᵢ = data[i]
+            blank64 = first(stacey_kramers(standardages[i]))
+            rUO2_U = (dᵢ.U238O2 .- baseline) ./ (dᵢ.U238 .- baseline)
+            Pb206c = (dᵢ.Pb204 .- baseline) .* blank64
+            PbUrsf = (dᵢ.Pb206 .- baseline .- Pb206c) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i]))
+            calib[i] = Analysis(PbUrsf, rUO2_U)
+        end
+        
+    elseif correction === :Pb208
+        # Pb-208 corection
+        for i in eachindex(data, standardratios)
+            dᵢ = data[i]
+            standardratioPb208Th232 = value(ratio(standardages[i], λ232Th))
+            blank64, blank74, blank84 = stacey_kramers(standardages[i])
+            blank68 = blank64/blank84
+            rUO2_U = (dᵢ.U238O2 .- baseline) ./ (dᵢ.U238 .- baseline)
+            Pb208r, Pb206c = zeros(size(rUO2_U)), zeros(size(rUO2_U))
+            PbUrsf = (dᵢ.Pb206 .- baseline) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i])) # No subtraction the first time
+            for _ in 1:iterations
+                Pb208r .= (dᵢ.Th232 .- baseline) .* standardratioPb208Th232 .* PbUrsf
+                Pb206c .= (dᵢ.Pb208 .- baseline .- Pb208r) .* blank68
+                PbUrsf .= (dᵢ.Pb206 .- baseline .- Pb206c) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i]))
+            end
+            calib[i] = Analysis(PbUrsf, rUO2_U)
+        end
+
+    else # :none
+        # No common Pb correction
+        for i in eachindex(data, standardratios)
+            dᵢ = data[i]
+            rUO2_U = (dᵢ.U238O2 .- baseline) ./ (dᵢ.U238 .- baseline)
+            PbUrsf = (dᵢ.Pb206  .- baseline) ./ ((dᵢ.U238 .- baseline) .* value(standardratios[i]))
+            calib[i] = Analysis(PbUrsf, rUO2_U)
+        end
     end
     return UPbSIMSCalibration(calib, yorkfit(calib))
 end
