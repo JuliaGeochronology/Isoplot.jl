@@ -2,13 +2,16 @@
 abstract type RawData{T<:AbstractFloat} <: Data{T} end 
 
 # Concrete type for U-Pb SIMS data
-struct UPbSIMSData{T<:AbstractFloat} <: RawData{T}
+struct UThPbSIMSData{T<:AbstractFloat} <: RawData{T}
     Pb204::Vector{T}
     Pb206::Vector{T}
     Pb207::Vector{T}
     Pb208::Vector{T}
     Th232::Vector{T}
+    Th232O::Vector{T}
+    Th232O2::Vector{T}
     U238::Vector{T}
+    U238O::Vector{T}
     U238O2::Vector{T}
 end
 
@@ -34,7 +37,7 @@ end
 
 """
 ```julia
-calibration(data::Collection{<:UPbSIMSData}, standardages::Collection; baseline::Number=0)
+calibration(data::Collection{<:UThPbSIMSData}, standardages::Collection; baseline::Number=0)
 ```
 Create a `UPbSIMSCalibration` object `calib` given a dataset of 
 standard SIMS analyses `data` with known ages `standardages`, to construct
@@ -46,11 +49,11 @@ is stored in `calib.data`.
 ### Examples
 ```
 julia> standards = importsimsdata("./examples/data")
-10-element Vector{Isoplot.UPbSIMSData{Float64}}:
- Isoplot.UPbSIMSData{Float64}(...)
- Isoplot.UPbSIMSData{Float64}(...)
+10-element Vector{Isoplot.UThPbSIMSData{Float64}}:
+ Isoplot.UThPbSIMSData{Float64}(...)
+ Isoplot.UThPbSIMSData{Float64}(...)
  ⋮
- Isoplot.UPbSIMSData{Float64}(...)
+ Isoplot.UThPbSIMSData{Float64}(...)
 
 julia> standardages = fill(1099., length(standards));
 
@@ -65,7 +68,7 @@ YorkFit{Float64}:
   MSWD     : 0.2704923359277713
 ```
 """
-function calibration(data::Collection{UPbSIMSData{T}}, standardages::Collection; baseline::Number=0) where {T<:AbstractFloat}
+function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collection; baseline::Number=0) where {T<:AbstractFloat}
     standardratios = ratio.(standardages, λ238U)
     calib = similar(data, Analysis2D{T})
     for i in eachindex(data, standardratios)
@@ -82,16 +85,16 @@ end
 ```julia
 importsimsdata(dir::String; T=Float64)
 ```
-Import all `.asc` files in the directory `dir` into a vector of `UPbSIMSData` objects.
+Import all `.asc` files in the directory `dir` into a vector of `UThPbSIMSData` objects.
 
 ### Examples
 ```
 julia> standards = importsimsdata("./examples/data")
-10-element Vector{Isoplot.UPbSIMSData{Float64}}:
- Isoplot.UPbSIMSData{Float64}(...)
- Isoplot.UPbSIMSData{Float64}(...)
+10-element Vector{Isoplot.UThPbSIMSData{Float64}}:
+ Isoplot.UThPbSIMSData{Float64}(...)
+ Isoplot.UThPbSIMSData{Float64}(...)
  ⋮
- Isoplot.UPbSIMSData{Float64}(...)
+ Isoplot.UThPbSIMSData{Float64}(...)
 ```
 """
 function importsimsdata(dir::String, kwargs...)
@@ -103,50 +106,63 @@ end
 
 function importsimsdata(files; T=Float64)
     @assert !isempty(files) "No files to import"
-    data = similar(files, UPbSIMSData{T})
+    data = similar(files, UThPbSIMSData{T})
     for i in eachindex(files)
         data[i] = importsimsfile(files[i])
     end
     return data
 end
 
-function importsimsfile(filepath)
+function importsimsfile(filepath::AbstractString; 
+        system::Symbol=:UThPb
+    )
+    @assert system ∈ (:UThPb,) "System $system not recognized"
     @assert contains(filepath, ".asc") "Expecting .asc file"
 
+    # Read data file
     file = readdlm(filepath, '\t', skipblanks=true)
     datastart = findfirst(x->x=="RAW DATA:=======================================================================", file[:,1]) + 3
     dataend = findfirst(x->x=="PRIMARY INTENSITY DATA : ///////////////////////////////////////////////////////", file[:,1]) - 1
+    @assert datastart <= dataend "No data rows found"
     hasdata = .!isempty.(file[datastart, :])
+    @assert any(hasdata) "No data columns found"
+    data = Float64.(file[datastart:dataend, hasdata])
 
     # Check data labels
     datalabels = file[datastart-2, :]
     datalabels[3:end] = file[datastart-1, 2:end-1]
-    datalabels = replace.(string.(datalabels), r"[ \t]+$" => "")
-    @assert datalabels[5] == "204Pb"
-    @assert datalabels[6] == "206Pb"
-    @assert datalabels[7] == "207Pb"
-    @assert datalabels[8] == "208Pb"
-    @assert datalabels[9] == "232Th"
-    @assert datalabels[10] == "238U"
-    @assert datalabels[11] == "238U 16O2"
+    datalabels = replace.(string.(datalabels[hasdata]), r"[ \t]+$" => "")
 
-    data = Float64.(file[datastart:dataend, hasdata])
-    return UPbSIMSData(data[:,5], data[:,6], data[:,7], data[:,8], data[:,9], data[:,10], data[:,11])
+    # Pb isotopes
+    Pb204 = "204Pb" ∈ datalabels ? data[:,findfirst(isequal("204Pb"), datalabels)] : fill(NaN, size(data, 1))
+    Pb206 = "206Pb" ∈ datalabels ? data[:,findfirst(isequal("206Pb"), datalabels)] : fill(NaN, size(data, 1))
+    Pb207 = "207Pb" ∈ datalabels ? data[:,findfirst(isequal("207Pb"), datalabels)] : fill(NaN, size(data, 1))
+    Pb208 = "208Pb" ∈ datalabels ? data[:,findfirst(isequal("208Pb"), datalabels)] : fill(NaN, size(data, 1))
+    # Th and Th oxides
+    Th232 = "232Th" ∈ datalabels ? data[:,findfirst(isequal("232Th"), datalabels)] : fill(NaN, size(data, 1))
+    Th232O = "232Th 16O" ∈ datalabels ? data[:,findfirst(isequal("232Th 16O"), datalabels)] : fill(NaN, size(data, 1))
+    Th232O2 = "232Th 16O2" ∈ datalabels ? data[:,findfirst(isequal("232Th 16O2"), datalabels)] : fill(NaN, size(data, 1))
+    # U and U oxides
+    U238 = "238U" ∈ datalabels ? data[:,findfirst(isequal("238U"), datalabels)] : fill(NaN, size(data, 1))
+    U238O = "238U 16O" ∈ datalabels ? data[:,findfirst(isequal("238U 16O"), datalabels)] : fill(NaN, size(data, 1))
+    U238O2 = "238U 16O2" ∈ datalabels ? data[:,findfirst(isequal("238U 16O2"), datalabels)] : fill(NaN, size(data, 1))
+
+    return UThPbSIMSData(Pb204, Pb206, Pb207, Pb208, Th232, Th232O, Th232O2, U238, U238O, U238O2)
 end
 
 
-function age68(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=0, baseline::Number=0) where {T}
+function age68(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=0, baseline::Number=0) where {T}
     # Determine appropriate pb/u rsf correction
     rUO2_U = @. (d.U238O2 - baseline) / (d.U238 - baseline)
     PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
     
-     r68 = @. ((d.Pb206 - baseline) - (d.Pb204 - baseline) * blank64) / ((d.U238 - baseline) * PbUrsf)
+    r68 = @. ((d.Pb206 - baseline) - (d.Pb204 - baseline) * blank64) / ((d.U238 - baseline) * PbUrsf)
     map!(x-> x<0 ? T(NaN) : x, r68, r68)
     
     # Return 206Pb/238U age
     return @. log(1 + r68)/value(λ238U)
 end
-function age75(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank74::Number=0, U58::Number=1/137.818, baseline::Number=0) where {T}
+function age75(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank74::Number=0, U58::Number=1/137.818, baseline::Number=0) where {T}
     # Determine appropriate pb/u rsf correction
     rUO2_U = @. (d.U238O2 - baseline) / (d.U238 - baseline)
     PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
@@ -162,7 +178,7 @@ end
 
 """
 ```julia
-calibrate(d::UPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
+calibrate(d::UThPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
     blank64::Number = stacey_kramers(0)[1], 
     blank74::Number = stacey_kramers(0)[2], 
     U58::Number = 1/137.818, 
@@ -171,13 +187,13 @@ calibrate(d::UPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter];
 ```
 Calibrate one or more U-Pb SIMS analyses `d` with the calibration `calib`, 
 optionally filtering by `cyclefilter`, resulting in a `UPbAnalysis` for
-each input `UPbSIMSData` object.
+each input `UThPbSIMSData` object.
 
 A Pb-204 based blank subtraction (common-Pb subtraction) is performed, 
 using by default a present-day Stacey-Kramers common Pb composition.
 
 U-235 is estimated based on measured U-238, assuming a 235/238 ratio 
-of `U57` -- by default 1/137.818 (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
+of `U58` -- by default 1/137.818 (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
 
 A baseline-subtraction (equal for all masses) may optionally be performed 
 given `baseline` excess counts per minute.
@@ -185,11 +201,11 @@ given `baseline` excess counts per minute.
 ### Examples
 ```
 julia> standards = importsimsdata("./examples/data")
-10-element Vector{Isoplot.UPbSIMSData{Float64}}:
- Isoplot.UPbSIMSData{Float64}(...)
- Isoplot.UPbSIMSData{Float64}(...)
+10-element Vector{Isoplot.UThPbSIMSData{Float64}}:
+ Isoplot.UThPbSIMSData{Float64}(...)
+ Isoplot.UThPbSIMSData{Float64}(...)
  ⋮
- Isoplot.UPbSIMSData{Float64}(...)
+ Isoplot.UThPbSIMSData{Float64}(...)
 
 julia> standardages = fill(1099., length(standards));
 
@@ -207,7 +223,7 @@ function calibrate(data::Collection{<:RawData}, calib::Calibration, cyclefilter=
         return [calibrate(data[i], calib, cyclefilter; kwargs...) for i in eachindex(data)]
     end
 end
-function calibrate(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline::Number=0) where {T}
+function calibrate(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline::Number=0) where {T}
     # Determine appropriate pb/u rsf correction
     rUO2_U = @. (d.U238O2 - baseline) / (d.U238 - baseline)
     PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
@@ -223,7 +239,7 @@ end
 
 """
 ```julia
-calibrate_blockwise(d::UPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
+calibrate_blockwise(d::UThPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
     blank64::Number = stacey_kramers(0)[1], 
     blank74::Number = stacey_kramers(0)[2], 
     U58::Number = 1/137.818, 
@@ -234,7 +250,7 @@ calibrate_blockwise(d::UPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter];
 Calibrate one or more U-Pb SIMS analyses `d` with the calibration `calib`, 
 on a block-by-block basis into blocks of length `blocksize`, optionally 
 filtering by `cyclefilter`, resulting in vector of `UPbAnalysis` objects
-for each `UPbSIMSData` object.
+for each `UThPbSIMSData` object.
 
 A Pb-204 based blank subtraction (common-Pb subtraction) is performed, 
 using by default a present-day Stacey-Kramers common Pb composition.
@@ -248,11 +264,11 @@ given `baseline` excess counts per minute.
 ### Examples
 ```
 julia> standards = importsimsdata("./examples/data")
-10-element Vector{Isoplot.UPbSIMSData{Float64}}:
- Isoplot.UPbSIMSData{Float64}(...)
- Isoplot.UPbSIMSData{Float64}(...)
+10-element Vector{Isoplot.UThPbSIMSData{Float64}}:
+ Isoplot.UThPbSIMSData{Float64}(...)
+ Isoplot.UThPbSIMSData{Float64}(...)
  ⋮
- Isoplot.UPbSIMSData{Float64}(...)
+ Isoplot.UThPbSIMSData{Float64}(...)
 
 julia> standardages = fill(1099., length(standards));
 
@@ -272,7 +288,7 @@ julia> calibrate_blockwise(standards[1], calib)
 function calibrate_blockwise(data::Collection{<:RawData}, calib::Calibration; kwargs...)
     return [calibrate_blockwise(data[i], calib; kwargs...) for i in eachindex(data)]
 end
-function calibrate_blockwise(d::UPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline::Number=0, blocksize::Integer=3) where {T}
+function calibrate_blockwise(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline::Number=0, blocksize::Integer=3) where {T}
     nblocks = length(d.U238)÷blocksize
     analyses = Vector{UPbAnalysis{T}}(undef, nblocks)
     for i in 1:nblocks
