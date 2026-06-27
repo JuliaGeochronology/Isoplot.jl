@@ -12,22 +12,38 @@ end
 
 # Pb207/Pb206 age
 age76(d::UPbAnalysis{T}) where {T} = upperintercept(zero(T), d)
+age76(d::UThPbAnalysis) = age76(UPbAnalysis(d))
 
-# Concordia age (of sorts)
+# 2D Concordia age (via probability density of analysis intersecting the 2d concordia line)
 function ageconcordia(d::UPbAnalysis)
     isnan(d) && return NaN ± NaN
     isposdef(cov(d)) || return NaN ± NaN
     dist = MvNormal(mean(d), cov(d))
-    μ, mswd = wmean([age75(d), age68(d)], corrected=true)
+    μ, mswd = wmean(SVector(age75(d), age68(d)), corrected=true)
 
     # Evaluate at 256 points between -6σ and  +6σ
     agerange = range(value(μ)-6stdev(μ), value(μ)+6stdev(μ), length=256)
     intersection = @SVector [pdf(dist, SVector(ratio(agerange[i], value(λ235U)), ratio(agerange[i], value(λ238U)))) for i in 1:256]
     
     # Return Measurement
-    return histmean(intersection, agerange) ± histstd(intersection, agerange)
+    return histmean(intersection, agerange) ± histstd(intersection, agerange, corrected=false)
 end
+ageconcordia(d::UThPbAnalysis) = ageconcordia(UPbAnalysis(d))
 
+# 3-D Concordia age (via probability density of analysis intersecting the 3d concordia line)
+function ageconcordia3d(d::UThPbAnalysis)
+    isnan(d) && return NaN ± NaN
+    isposdef(cov(d)) || return NaN ± NaN
+    dist = MvNormal(mean(d), cov(d))
+    μ, mswd = wmean(SVector(age75(d), age68(d), age82(d)), corrected=true)
+
+    # Evaluate at 256 points between -6σ and  +6σ
+    agerange = range(value(μ)-6stdev(μ), value(μ)+6stdev(μ), length=256)
+    intersection = @SVector [pdf(dist, SVector(ratio(agerange[i], value(λ235U)), ratio(agerange[i], value(λ238U)), ratio(agerange[i], value(λ232Th)))) for i in 1:256]
+    
+    # Return Measurement
+    return histmean(intersection, agerange) ± histstd(intersection, agerange, corrected=false)
+end
 
 function isconcordant(d::UPbAnalysis;
         sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
@@ -51,6 +67,7 @@ function isconcordant(d::UPbAnalysis;
     end
     return false
 end
+isconcordant(d::UThPbAnalysis) = isconcordant(UPbAnalysis(d))
 
 function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.447746830680816) where {T<:AbstractFloat}
     # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))

@@ -25,6 +25,7 @@ const Analysis2D{T} = Analysis{2,T,4}
 const Analysis3D{T} = Analysis{3,T,9}
 const Analysis4D{T} = Analysis{4,T,16}
 const Analysis5D{T} = Analysis{5,T,25}
+Analysis2D(μ::AbstractVector{T}, σ::AbstractVector{T}, Σ::AbstractMatrix{T}) where {T} = Analysis{2,T,4}(SVector{2,T}(μ), SVector{2,T}(σ), SMatrix{2,2,T,4}(Σ))
 
 # Additional constructors for n-dimensional Analysis types
 function Analysis(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T}) where {T}

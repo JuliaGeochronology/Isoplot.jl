@@ -39,9 +39,9 @@ end
 ```julia
 calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collection; 
     \tbaseline = 0,                 # An overall baseline to subtract
-    \tblank = stacey_kramers(0),    # Common Pb composition in order (206/204, 207/204, 208/204). If the stacey_kramers function itself is given without argument, the age of each standard will be used.
+    \tblank = stacey_kramers,    # Common Pb composition in order (206/204, 207/204, 208/204). If the stacey_kramers function itself is given without argument, the age of each standard will be used.
     \tcorrection = :none,           # [:none, :Pb204, :Pb208]
-    \titerations = 5,               # Number of iterations for Pb-208 correction
+    \titerations = 8,               # Number of iterations for Pb-208 correction
     \tThUrsf::Number = 1.0,         # For Pb-208 correction; default is no fractionation
 )
 ```
@@ -78,7 +78,7 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
         baseline::Number = zero(T),
         blank::Union{NTuple{3,Number}, Function} = stacey_kramers,
         correction::Symbol = :none,
-        iterations::Integer = 5,
+        iterations::Integer = 8,
     ) where {T<:AbstractFloat}
     @assert correction ∈ (:none, :Pb204, :Pb208) "Common Pb correction options are `:none`, `:Pb204`, or `:Pb208`"
     # Initialize blank ratios
@@ -95,7 +95,7 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
         # Pb-204 corection
         for i in eachindex(data)
             dᵢ = data[i]
-            standardratioPb206U238 = value(ratio(standardages[i], λ238U))
+            standardratioPb206U238 = ratio(standardages[i], value(λ238U))
             if blank isa Function
                 blank64, blank74, blank84 = blank(standardages[i])
             end
@@ -109,8 +109,8 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
         # Pb-208 corection
         for i in eachindex(data)
             dᵢ = data[i]
-            standardratioPb206U238 = value(ratio(standardages[i], λ238U))
-            standardratioPb208Th232 = value(ratio(standardages[i], λ232Th))
+            standardratioPb206U238 = ratio(standardages[i], value(λ238U))
+            standardratioPb208Th232 = ratio(standardages[i], value(λ232Th))
             if blank isa Function
                 blank64, blank74, blank84 = blank(standardages[i])
             end
@@ -130,7 +130,7 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
         # No common Pb correction
         for i in eachindex(data)
             dᵢ = data[i]
-            standardratioPb206U238 = value(ratio(standardages[i], λ238U))
+            standardratioPb206U238 = ratio(standardages[i], value(λ238U))
             rUO2_U = (dᵢ.U238O2 .- baseline) ./ (dᵢ.U238 .- baseline)
             PbUrsf = (dᵢ.Pb206  .- baseline) ./ ((dᵢ.U238 .- baseline) .* standardratioPb206U238)
             calib[i] = Analysis(PbUrsf, rUO2_U)
@@ -238,9 +238,11 @@ end
 """
 ```julia
 calibrate(d::UThPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
-    blank::NTuple{3,Number} = stacey_kramers(0),
-    U58::Number = 1/137.818, 
-    baseline::Number = 0,
+    \tblank = stacey_kramers(0),
+    \tU58 = 1/137.818, 
+    \tbaseline = 0.0,
+    \tcorrection = :Pb204,
+    \titerations = 8
 )
 ```
 Calibrate one or more U-Pb SIMS analyses `d` with the calibration `calib`, 
@@ -285,18 +287,47 @@ function calibrate(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:;
         blank::NTuple{3,Number} = stacey_kramers(0),
         U58::Number = 1/137.818, 
         baseline::Number = 0.0,
+        correction::Symbol = :Pb204,
+        iterations::Integer = 8,
     ) where {T}
+    @assert correction ∈ (:none, :Pb204, :Pb208) "Common Pb correction options are `:none`, `:Pb204`, or `:Pb208`"
+
     # Determine appropriate pb/u rsf correction
     rUO2_U = @. (d.U238O2 - baseline) / (d.U238 - baseline)
     PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
     
     # Calculate blank-, baseline-, and rsf-corrected 206/238 and 207/235 ratios
     blank64, blank74, blank84 = blank
-    r68 = @. ((d.Pb206 - baseline) - (d.Pb204 - baseline) * blank64) / ((d.U238 - baseline) * PbUrsf)
-    r75 = @. ((d.Pb207 - baseline) - (d.Pb204 - baseline) * blank74) / ((d.U238 - baseline) * U58 * PbUrsf)
+    if correction === :Pb204
+        # Pb-204 correction
+        r68 = @. ((d.Pb206 - baseline) - (d.Pb204 - baseline) * blank64) / ((d.U238 - baseline) * PbUrsf)
+        r75 = @. ((d.Pb207 - baseline) - (d.Pb204 - baseline) * blank74) / ((d.U238 - baseline) * U58 * PbUrsf)
+        r82 = @. ((d.Pb208 - baseline) - (d.Pb204 - baseline) * blank84) / ((d.Th232 - baseline) * PbUrsf)
 
+    elseif correction === :Pb208
+        # Non-iterative Pb-208 correction
+        blank68, blank78 = blank64/blank84, blank74/blank84
+        r68 = @. ((d.Pb206 - baseline) - (d.Pb208 - baseline) * blank68) / ((d.U238 - baseline) * PbUrsf)
+        r75 = @. ((d.Pb207 - baseline) - (d.Pb208 - baseline) * blank78) / ((d.U238 - baseline) * U58 * PbUrsf)
+        r82 = @. d.Pb208 * NaN
+        Pb208r, agest = zeros(size(r68)), zeros(size(r68))
+        for _ in 1:iterations
+            @. agest = log(1 + max(r68, zero(T)))/value(λ238U)
+            @. Pb208r = (d.Th232 - baseline) * ratio(agest, value(λ232Th)) * PbUrsf
+            @. r68 = ((d.Pb206 - baseline) - (d.Pb208 - baseline - Pb208r) * blank68) / ((d.U238 - baseline) * PbUrsf)
+            @. r75 = ((d.Pb207 - baseline) - (d.Pb208 - baseline - Pb208r) * blank78) / ((d.U238 - baseline) * U58 * PbUrsf)
+        end
+
+    else # none
+        # No common Pb correction
+        r68 = @. (d.Pb206 - baseline) / ((d.U238 - baseline) * PbUrsf)
+        r75 = @. (d.Pb207 - baseline) / ((d.U238 - baseline) * U58 * PbUrsf)
+        r82 = @. (d.Pb208 - baseline) / ((d.Th232 - baseline) * PbUrsf)
+
+    end
+    
     # Return UPbAnalysis object
-    return cf isa Colon ? UPbAnalysis(r75, r68) : UPbAnalysis(r75[cf], r68[cf])
+    return cf isa Colon ? UThPbAnalysis(r75, r68, r82) : UThPbAnalysis(r75[cf], r68[cf], r82[cf])
 end
 
 
@@ -351,18 +382,58 @@ julia> calibrate_blockwise(standards[1], calib)
 function calibrate_blockwise(data::Collection{<:RawData}, calib::Calibration; kwargs...)
     return [calibrate_blockwise(data[i], calib; kwargs...) for i in eachindex(data)]
 end
-function calibrate_blockwise(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=stacey_kramers(0)[1], blank74::Number=stacey_kramers(0)[2], U58::Number=1/137.818, baseline::Number=0, blocksize::Integer=3) where {T}
+function calibrate_blockwise(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; 
+        blocksize::Integer = 3,
+        blank::NTuple{3,Number} = stacey_kramers(0),
+        U58::Number = 1/137.818, 
+        baseline::Number = 0.0,
+        correction::Symbol = :Pb204,
+        iterations::Integer = 8,
+    ) where {T}
+    @assert correction ∈ (:none, :Pb204, :Pb208) "Common Pb correction options are `:none`, `:Pb204`, or `:Pb208`"
+    blank64, blank74, blank84 = blank
+
+    # Allocate result array
     nblocks = length(d.U238)÷blocksize
-    analyses = Vector{UPbAnalysis{T}}(undef, nblocks)
+    analyses = Vector{UThPbAnalysis{T}}(undef, nblocks)
+
+    # Cycle through each block
     for i in 1:nblocks
+        # Determine appropriate pb/u rsf correction for this block
         bi = ((i-1)*blocksize+1):(i*blocksize)
         rUO2_U = @. (d.U238O2[bi] - baseline) / (d.U238[bi] - baseline)
         PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
-        
-        r68 = @. ((d.Pb206[bi] - baseline) - (d.Pb204[bi] - baseline) * blank64) / ((d.U238[bi] - baseline) * PbUrsf)
-        r75 = @. ((d.Pb207[bi] - baseline) - (d.Pb204[bi] - baseline) * blank74) / ((d.U238[bi] - baseline) * U58 * PbUrsf)
 
-        analyses[i] = UPbAnalysis(r75, r68)
+        # Calculate blank-, baseline-, and rsf-corrected 206/238 and 207/235 ratios
+        if correction === :Pb204
+            # Pb-204 correction
+            r68 = @. ((d.Pb206[bi] - baseline) - (d.Pb204[bi] - baseline) * blank64) / ((d.U238[bi] - baseline) * PbUrsf)
+            r75 = @. ((d.Pb207[bi] - baseline) - (d.Pb204[bi] - baseline) * blank74) / ((d.U238[bi] - baseline) * U58 * PbUrsf)
+            r82 = @. ((d.Pb208[bi] - baseline) - (d.Pb204[bi] - baseline) * blank84) / ((d.Th232[bi] - baseline) * PbUrsf)
+
+        elseif correction === :Pb208
+            # Non-iterative Pb-208 correction
+            blank68, blank78 = blank64/blank84, blank74/blank84
+            r68 = @. ((d.Pb206[bi] - baseline) - (d.Pb208[bi] - baseline) * blank68) / ((d.U238[bi] - baseline) * PbUrsf)
+            r75 = @. ((d.Pb207[bi] - baseline) - (d.Pb208[bi] - baseline) * blank78) / ((d.U238[bi] - baseline) * U58 * PbUrsf)
+            r82 = fill(NaN, length(bi))
+            Pb208r, agest = zeros(size(r68)), zeros(size(r68))
+            for _ in 1:iterations
+                @. agest = log(1 + max(r68, zero(T)))/value(λ238U)
+                @. Pb208r = (d.Th232[bi] - baseline) * ratio(agest, value(λ232Th)) * PbUrsf
+                @. r68 = ((d.Pb206[bi] - baseline) - (d.Pb208[bi] - baseline - Pb208r) * blank68) / ((d.U238[bi] - baseline) * PbUrsf)
+                @. r75 = ((d.Pb207[bi] - baseline) - (d.Pb208[bi] - baseline - Pb208r) * blank78) / ((d.U238[bi] - baseline) * U58 * PbUrsf)
+            end
+
+        else # none
+            # No common Pb correction
+            r68 = @. (d.Pb206[bi] - baseline) / ((d.U238[bi] - baseline) * PbUrsf)
+            r75 = @. (d.Pb207[bi] - baseline) / ((d.U238[bi] - baseline) * U58 * PbUrsf)
+            r82 = @. (d.Pb208[bi] - baseline) / ((d.Th232[bi] - baseline) * PbUrsf)
+
+        end
+        
+        analyses[i] = UThPbAnalysis(r75, r68, r82)
     end
     return analyses
 end

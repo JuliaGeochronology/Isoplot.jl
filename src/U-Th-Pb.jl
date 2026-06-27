@@ -98,7 +98,8 @@ UPbAnalysis{Float64}([22.6602, 0.40864], [0.00030625000000000004 2.4746942500000
 ```
 """
 UPbAnalysis(args...; kwargs...) = UPbAnalysis(Analysis(args...; kwargs...))
-
+# Construct UPbAnalysis from UThPbAnalysis
+UPbAnalysis(d::UThPbAnalysis) = UPbAnalysis(Analysis2D(view(d.data.μ, 1:2), view(d.data.σ, 1:2), view(d.data.Σ, 1:2, 1:2)))
 
 # Pb-207/U-235 and Pb-206/U-238, and Pb-208/Th-232 ages
 function age(d::UPbAnalysis)
@@ -108,11 +109,11 @@ function age(d::UThPbAnalysis)
     return age75(d), age68(d), age82(d)
 end
 
-function age68(d::Union{UPbAnalysis{T}, UThPbAnalysis{T}}) where {T}
-    return log(1 + max(mean(d)[2], zero(T)) ± std(d)[2])/λ238U
-end
 function age75(d::Union{UPbAnalysis{T}, UThPbAnalysis{T}}) where {T}
     return log(1 + max(mean(d)[1], zero(T)) ± std(d)[1])/λ235U
+end
+function age68(d::Union{UPbAnalysis{T}, UThPbAnalysis{T}}) where {T}
+    return log(1 + max(mean(d)[2], zero(T)) ± std(d)[2])/λ238U
 end
 function age82(d::UThPbAnalysis{T}) where {T}
     return log(1 + max(mean(d)[3], zero(T)) ± std(d)[3])/λ232Th

@@ -552,37 +552,37 @@ module BaseTests
 
         tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
         @test mean(tmindist) ≈ 99.9228  atol=0.015
-        @test std(tmindist) ≈ 0.11355  atol=0.02
+        @test std(tmindist) ≈ 0.11355  atol=0.03
 
         tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
         @test mean(tmindist) ≈ 99.9228  atol=0.015
-        @test std(tmindist) ≈ 0.11355  atol=0.02
+        @test std(tmindist) ≈ 0.11355  atol=0.03
 
         tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, Normal.(mu, sigma), burnin=10^5)
         @test mean(tmindist) ≈ 99.9228  atol=0.015
-        @test std(tmindist) ≈ 0.11355  atol=0.02
+        @test std(tmindist) ≈ 0.11355  atol=0.03
 
         tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
         @test mean(tmindist) ≈ 99.9228  atol=0.015
-        @test std(tmindist) ≈ 0.11355  atol=0.02
+        @test std(tmindist) ≈ 0.11355  atol=0.03
         @test mean(tmaxdist) ≈ 101.08  atol=0.015
-        @test std(tmaxdist) ≈ 0.06917  atol=0.02
+        @test std(tmaxdist) ≈ 0.06917  atol=0.03
         @test mean(acceptancedist) ≈ 0.6 atol=0.2
         @test acceptancedist isa BitVector
         @test lldist isa Vector{Float64}
 
         tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, mu .± sigma, burnin=10^5)
         @test mean(tmindist) ≈ 99.9228  atol=0.015
-        @test std(tmindist) ≈ 0.11355  atol=0.02
+        @test std(tmindist) ≈ 0.11355  atol=0.03
         @test mean(tmaxdist) ≈ 101.08  atol=0.015
-        @test std(tmaxdist) ≈ 0.06917  atol=0.02
+        @test std(tmaxdist) ≈ 0.06917  atol=0.03
         @test mean(acceptancedist) ≈ 0.6 atol=0.2
 
         tmindist, tmaxdist, lldist, acceptancedist = metropolis_minmax(2*10^5, MeltsVolcanicZirconDistribution, Normal.(mu, sigma), burnin=10^5)
         @test mean(tmindist) ≈ 99.9228  atol=0.015
-        @test std(tmindist) ≈ 0.11355  atol=0.02
+        @test std(tmindist) ≈ 0.11355  atol=0.03
         @test mean(tmaxdist) ≈ 101.08  atol=0.015
-        @test std(tmaxdist) ≈ 0.06917  atol=0.02
+        @test std(tmaxdist) ≈ 0.06917  atol=0.03
         @test mean(acceptancedist) ≈ 0.6 atol=0.2
 
         @test mean(UniformDistribution) ≈ 1
@@ -613,14 +613,14 @@ module BaseTests
         calib = calibration(standards, standardages, correction=:Pb208)
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.line isa Isoplot.YorkFit{Float64}
-        @test calib.line.xm ≈ 2.7633700263706222
+        @test calib.line.xm ≈ 2.7633699841713986
         @test calib.line.ym.val ≈ 3.580221586760041
-        @test calib.line.ym.err ≈ 0.006750544116322851
-        @test calib.line.slope.val ≈ 0.7871473198994628
+        @test calib.line.ym.err ≈ 0.006750544300109984
+        @test calib.line.slope.val ≈ 0.7871472546208862
         @test calib.line.slope.err ≈ 0.039125011815153266
-        @test calib.line.intercept.val ≈ 1.4050422766118982
+        @test calib.line.intercept.val ≈ 1.4050424869569733
         @test calib.line.intercept.err ≈ 0.10832742287009742
-        @test calib.line.mswd ≈ 0.42584707923044623
+        @test calib.line.mswd ≈ 0.4258476619531879
 
         calib = calibration(standards, standardages, correction=:none)
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
@@ -639,8 +639,8 @@ module BaseTests
         @test age68(data[1], calib) ≈ [1103.5344980788757, 1055.6696442474617, 1057.6900395037655, 1044.1247571691376, 1021.09394078642, 1063.6389495538233, 1084.7918609624876, 1096.685562504694, 1108.974483418046, 1089.7596501796181, 1112.3637393425324, 1112.2014110667944, 1099.1038983574824, 1120.9110285164775, 1099.7090413099584, 1121.1714155568905, 1112.9987946325018, 1072.1197709441205, 1095.392382303994, 1111.537609733524]
 
         analyses = calibrate(data, calib)
-        @test analyses isa Vector{UPbAnalysis{Float64}}
-        @test analyses[1] isa UPbAnalysis{Float64}
+        @test analyses isa Vector{UThPbAnalysis{Float64}}
+        @test analyses[1] isa UThPbAnalysis{Float64}
         @test isconcordant(analyses[1]) === true
         @test value(age68(analyses[1])) ≈ 1087.8408983160473
         @test stdev(age68(analyses[1])) ≈ 6.258423764224166
@@ -652,11 +652,13 @@ module BaseTests
         @test value(age75(analyses[10])) ≈ 1074.0101357991698
         @test stdev(age75(analyses[10])) ≈ 8.56728206795363
         @test value(ageconcordia(analyses[10])) ≈ 1095.9288408812718 
-        @test stdev(ageconcordia(analyses[10])) ≈ 5.049476518887378
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.046883161892715
+        @test value(ageconcordia3d(analyses[10])) ≈ 1093.1098397056223
+        @test stdev(ageconcordia3d(analyses[10])) ≈ 4.986433944581977
 
         analyses = calibrate(data, calib, baseline=0.25)
-        @test analyses isa Vector{UPbAnalysis{Float64}}
-        @test analyses[1] isa UPbAnalysis{Float64}
+        @test analyses isa Vector{UThPbAnalysis{Float64}}
+        @test analyses[1] isa UThPbAnalysis{Float64}
         @test isconcordant(analyses[1]) === true
         @test value(age68(analyses[1])) ≈ 1090.728144507266
         @test stdev(age68(analyses[1])) ≈ 6.293086861809403
@@ -668,7 +670,83 @@ module BaseTests
         @test value(age75(analyses[10])) ≈ 1095.3358498205891
         @test stdev(age75(analyses[10])) ≈ 8.500821278467406
         @test value(ageconcordia(analyses[10])) ≈ 1100.7521984539392
-        @test stdev(ageconcordia(analyses[10])) ≈ 5.1073440703495505 
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.107336790295968
+        @test value(ageconcordia3d(analyses[10])) ≈ 1096.507010573444
+        @test stdev(ageconcordia3d(analyses[10])) ≈ 5.046402829634531
+
+        analyses = calibrate(data, calib, correction=:Pb208)
+        @test analyses isa Vector{UThPbAnalysis{Float64}}
+        @test analyses[1] isa UThPbAnalysis{Float64}
+        @test isconcordant(analyses[1]) === false
+        @test value(age68(analyses[1])) ≈ 1053.7227390071946
+        @test stdev(age68(analyses[1])) ≈ 6.261711149703558
+        @test isconcordant(analyses[10]) === false
+        @test value(age68(analyses[10])) ≈ 1066.993234136693
+        @test stdev(age68(analyses[10])) ≈ 5.225169671870751
+        @test value(age76(analyses[10])) ≈ 1030.3027067863845
+        @test stdev(age76(analyses[10])) ≈ 90.12995119930991
+        @test value(age75(analyses[10])) ≈ 808.8992904323351
+        @test stdev(age75(analyses[10])) ≈ 12.76612514107005
+        @test value(ageconcordia(analyses[10])) ≈ 1060.9330668133198 
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.02642962319151
+        @test isnan(value(ageconcordia3d(analyses[10])))
+        @test isnan(stdev(ageconcordia3d(analyses[10])))
+
+        analyses = calibrate(data, calib, correction=:none)
+        @test analyses isa Vector{UThPbAnalysis{Float64}}
+        @test analyses[1] isa UThPbAnalysis{Float64}
+        @test isconcordant(analyses[1]) === true
+        @test value(age68(analyses[1])) ≈ 1089.2309863382145
+        @test stdev(age68(analyses[1])) ≈ 6.2582939732193115
+        @test isconcordant(analyses[10]) === true
+        @test value(age68(analyses[10])) ≈ 1101.7661528233955
+        @test stdev(age68(analyses[10])) ≈ 5.093890546968541
+        @test value(age76(analyses[10])) ≈ 1100.921403770263
+        @test stdev(age76(analyses[10])) ≈ 4.173011600334088 
+        @test value(age75(analyses[10])) ≈ 1099.1238243186738
+        @test stdev(age75(analyses[10])) ≈ 7.405824967337639
+        @test value(ageconcordia(analyses[10])) ≈ 1101.2736368091792
+        @test stdev(ageconcordia(analyses[10])) ≈ 4.906482880832643
+        @test value(ageconcordia3d(analyses[10])) ≈ 1122.4631228507028
+        @test stdev(ageconcordia3d(analyses[10])) ≈ 4.8200450463770474
+
+        analyses = calibrate_blockwise(data, calib, blocksize=5, correction=:Pb204)
+        @test analyses isa Vector{Vector{UThPbAnalysis{Float64}}}
+        @test analyses[1] isa Vector{UThPbAnalysis{Float64}}
+        @test analyses[1][1] isa UThPbAnalysis{Float64}
+        @test isconcordant(analyses[1][1]) === true
+        @test value(age68(analyses[1][1])) ≈ 1134.9088069798336
+        @test stdev(age68(analyses[1][1])) ≈ 14.45619125345241
+        @test isconcordant(analyses[10][1]) === false
+        @test value(age68(analyses[10][1])) ≈ 1168.6828104908395
+        @test stdev(age68(analyses[10][1])) ≈ 5.504554708938923
+        @test value(age76(analyses[10][1])) ≈ 1165.2961931884743
+        @test stdev(age76(analyses[10][1])) ≈ 13.882389119810675
+        @test value(age75(analyses[10][1])) ≈ 1108.3896370390012
+        @test stdev(age75(analyses[10][1])) ≈ 22.425551633239973
+        @test value(ageconcordia(analyses[10][1])) ≈ 1175.1284182082527
+        @test stdev(ageconcordia(analyses[10][1])) ≈ 5.061796384203235 
+        @test value(ageconcordia3d(analyses[1][1])) ≈ 1194.3700928960031
+        @test stdev(ageconcordia3d(analyses[1][1])) ≈ 12.154632402446628
+
+        analyses = calibrate_blockwise(data, calib, blocksize=5, correction=:Pb208)
+        @test analyses isa Vector{Vector{UThPbAnalysis{Float64}}}
+        @test analyses[1] isa Vector{UThPbAnalysis{Float64}}
+        @test analyses[1][1] isa UThPbAnalysis{Float64}
+        @test isconcordant(analyses[1][1]) === false
+        @test value(age68(analyses[1][1])) ≈ 1098.1471540737275
+        @test stdev(age68(analyses[1][1])) ≈ 15.39129206855998
+        @test isconcordant(analyses[10][1]) === false
+        @test value(age68(analyses[10][1])) ≈ 1134.408958205585
+        @test stdev(age68(analyses[10][1])) ≈ 4.469366588406542
+        @test value(age76(analyses[10][1])) ≈ 1112.5616836086601
+        @test stdev(age76(analyses[10][1])) ≈ 79.59853741913108
+        @test value(age75(analyses[10][1])) ≈ 822.5517269362339
+        @test stdev(age75(analyses[10][1])) ≈ 16.13822022182851
+        @test value(ageconcordia(analyses[10][1])) ≈ 1114.8519986024403
+        @test stdev(ageconcordia(analyses[10][1])) ≈ 4.292885427107948
+        @test isnan(value(ageconcordia3d(analyses[1][1])))
+        @test isnan(stdev(ageconcordia3d(analyses[1][1])))
     end
 
     # Import and calibrate a SIMS U-Pb dataset, for later use

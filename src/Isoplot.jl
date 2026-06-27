@@ -58,7 +58,7 @@ module Isoplot
     export UPbAnalysis, UThPbAnalysis, discordance, age75, age68, age82, stacey_kramers
 
     include("concordia.jl")
-    export upperintercept, lowerintercept, intercepts, isconcordant, age76, ageconcordia
+    export upperintercept, lowerintercept, intercepts, isconcordant, age76, ageconcordia, ageconcordia3d
 
     include("U-Th.jl")
     include("Re-Os.jl")
