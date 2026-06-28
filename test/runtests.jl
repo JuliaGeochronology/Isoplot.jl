@@ -634,6 +634,27 @@ module BaseTests
         @test calib.line.intercept.err ≈ 0.11149066983333657
         @test calib.line.mswd ≈ 0.2814290880244583
 
+        # Test import with baseline subtraction
+        data = importsimsdata("../examples/data", baseline=0.25)
+        analyses = calibrate(data, calib)
+        @test analyses isa Vector{UThPbAnalysis{Float64}}
+        @test analyses[1] isa UThPbAnalysis{Float64}
+        @test isconcordant(analyses[1]) === true
+        @test value(age68(analyses[1])) ≈ 1090.728144507266
+        @test stdev(age68(analyses[1])) ≈ 6.293086861809403
+        @test isconcordant(analyses[10]) === true
+        @test value(age68(analyses[10])) ≈ 1101.269174993504
+        @test stdev(age68(analyses[10])) ≈ 5.185553271002563
+        @test value(age76(analyses[10])) ≈ 1099.6693566866418 
+        @test stdev(age76(analyses[10])) ≈ 4.402727111764174
+        @test value(age75(analyses[10])) ≈ 1095.3358498205891
+        @test stdev(age75(analyses[10])) ≈ 8.500821278467406
+        @test value(ageconcordia(analyses[10])) ≈ 1100.7521984539392
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.107336790295968
+        @test value(ageconcordia3d(analyses[10])) ≈ 1096.507010573444
+        @test stdev(ageconcordia3d(analyses[10])) ≈ 5.046402829634531
+
+        # Test import without baseline subtraction
         data = importsimsdata("../examples/data")
         @test age75(data[1], calib) ≈ [1114.596570231467, 1054.1517196834907, 1035.545967746529, 1055.8328997091878, 1070.1313862977486, 1070.34931893277, 1098.606975329027, 1105.0224253751176, 1052.8990508874456, 1098.2825492822153, 1120.1707647158244, 1073.3374699162075, 1111.4137578599225, 1128.9275752333785, 1088.9310104833544, 1159.3579061128014, 1070.5772290946077, 1049.3330597374338, 1126.4175692757142, 1088.5575374659616]
         @test age68(data[1], calib) ≈ [1103.5344980788757, 1055.6696442474617, 1057.6900395037655, 1044.1247571691376, 1021.09394078642, 1063.6389495538233, 1084.7918609624876, 1096.685562504694, 1108.974483418046, 1089.7596501796181, 1112.3637393425324, 1112.2014110667944, 1099.1038983574824, 1120.9110285164775, 1099.7090413099584, 1121.1714155568905, 1112.9987946325018, 1072.1197709441205, 1095.392382303994, 1111.537609733524]
@@ -655,24 +676,6 @@ module BaseTests
         @test stdev(ageconcordia(analyses[10])) ≈ 5.046883161892715
         @test value(ageconcordia3d(analyses[10])) ≈ 1093.1098397056223
         @test stdev(ageconcordia3d(analyses[10])) ≈ 4.986433944581977
-
-        analyses = calibrate(data, calib, baseline=0.25)
-        @test analyses isa Vector{UThPbAnalysis{Float64}}
-        @test analyses[1] isa UThPbAnalysis{Float64}
-        @test isconcordant(analyses[1]) === true
-        @test value(age68(analyses[1])) ≈ 1090.728144507266
-        @test stdev(age68(analyses[1])) ≈ 6.293086861809403
-        @test isconcordant(analyses[10]) === true
-        @test value(age68(analyses[10])) ≈ 1101.269174993504
-        @test stdev(age68(analyses[10])) ≈ 5.185553271002563
-        @test value(age76(analyses[10])) ≈ 1099.6693566866418 
-        @test stdev(age76(analyses[10])) ≈ 4.402727111764174
-        @test value(age75(analyses[10])) ≈ 1095.3358498205891
-        @test stdev(age75(analyses[10])) ≈ 8.500821278467406
-        @test value(ageconcordia(analyses[10])) ≈ 1100.7521984539392
-        @test stdev(ageconcordia(analyses[10])) ≈ 5.107336790295968
-        @test value(ageconcordia3d(analyses[10])) ≈ 1096.507010573444
-        @test stdev(ageconcordia3d(analyses[10])) ≈ 5.046402829634531
 
         analyses = calibrate(data, calib, correction=:Pb208)
         @test analyses isa Vector{UThPbAnalysis{Float64}}
