@@ -33,6 +33,10 @@ end
 struct UPbSIMSCalibration{T} <: Calibration{T}
     data::Vector{Analysis2D{T}}
     line::YorkFit{T}
+    numerator::Symbol
+    denominator::Symbol
+    parent::Symbol
+    daughter::Symbol
 end
 
 """
@@ -77,8 +81,14 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
         blank::Union{NTuple{3,Number}, Function} = stacey_kramers,
         correction::Symbol = :none,
         iterations::Integer = 8,
+        numerator::Symbol = :U238O2,
+        denominator::Symbol = :U238,
+        parent::Symbol = :U238,
+        daughter::Symbol = :Pb206,
     ) where {T<:AbstractFloat}
-    @assert correction ∈ (:none, :Pb204, :Pb208) "Common Pb correction options are `:none`, `:Pb204`, or `:Pb208`"
+    @assert correction ∈ (:none, :Pb204, :Pb208,) "Common Pb correction options are `:none`, `:Pb204`, or `:Pb208`"
+    @assert parent ∈ (:U238, :U238O, :U238,)
+    @assert daughter ∈ (:Pb206,)
     # Initialize blank ratios
     blank64, blank74, blank84 = if blank isa NTuple
         blank
@@ -97,10 +107,10 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
             if blank isa Function
                 blank64, blank74, blank84 = blank(standardages[i])
             end
-            rUO2_U = dᵢ.U238O2 ./ dᵢ.U238
+            oxideratio = getfield(dᵢ, numerator) ./ getfield(dᵢ, denominator)
             Pb206c = dᵢ.Pb204 .* blank64
-            PbUrsf = (dᵢ.Pb206 .- Pb206c) ./ (dᵢ.U238 .* standardratioPb206U238)
-            calib[i] = Analysis(PbUrsf, rUO2_U)
+            PbUrsf = (dᵢ.Pb206 .- Pb206c) ./ (getfield(dᵢ, parent) .* standardratioPb206U238)
+            calib[i] = Analysis(PbUrsf, oxideratio)
         end
         
     elseif correction === :Pb208
@@ -113,15 +123,16 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
                 blank64, blank74, blank84 = blank(standardages[i])
             end
             blank68 = blank64/blank84
-            rUO2_U = dᵢ.U238O2 ./ dᵢ.U238
-            Pb208r, Pb206c = zeros(size(rUO2_U)), zeros(size(rUO2_U))
-            PbUrsf = dᵢ.Pb206 ./ (dᵢ.U238 .* standardratioPb206U238) # No subtraction the first time
+            U238 = getfield(dᵢ, parent)
+            oxideratio = getfield(dᵢ, numerator) ./ getfield(dᵢ, denominator)
+            Pb208r, Pb206c = zeros(size(oxideratio)), zeros(size(oxideratio))
+            PbUrsf = dᵢ.Pb206 ./ (getfield(dᵢ, parent) .* standardratioPb206U238) # No subtraction the first time
             for _ in 1:iterations
-                Pb208r .= dᵢ.Th232 .* standardratioPb208Th232 .* PbUrsf
-                Pb206c .= (dᵢ.Pb208 .- Pb208r) .* blank68
-                PbUrsf .= (dᵢ.Pb206 .- Pb206c) ./ (dᵢ.U238 .* standardratioPb206U238)
+                @. Pb208r = dᵢ.Th232 * standardratioPb208Th232 * PbUrsf
+                @. Pb206c = (dᵢ.Pb208 - Pb208r) * blank68
+                @. PbUrsf = (dᵢ.Pb206 - Pb206c) / (U238 * standardratioPb206U238)
             end
-            calib[i] = Analysis(PbUrsf, rUO2_U)
+            calib[i] = Analysis(PbUrsf, oxideratio)
         end
 
     else # :none
@@ -129,12 +140,12 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
         for i in eachindex(data)
             dᵢ = data[i]
             standardratioPb206U238 = ratio(standardages[i], value(λ238U))
-            rUO2_U = dᵢ.U238O2 ./ dᵢ.U238
-            PbUrsf = dᵢ.Pb206 ./ (dᵢ.U238 .* standardratioPb206U238)
-            calib[i] = Analysis(PbUrsf, rUO2_U)
+            oxideratio = getfield(dᵢ, numerator) ./ getfield(dᵢ, denominator)
+            PbUrsf = dᵢ.Pb206 ./ (getfield(dᵢ, parent) .* standardratioPb206U238)
+            calib[i] = Analysis(PbUrsf, oxideratio)
         end
     end
-    return UPbSIMSCalibration(calib, yorkfit(calib))
+    return UPbSIMSCalibration(calib, yorkfit(calib), numerator, denominator, parent, daughter)
 end
 
 
@@ -213,8 +224,8 @@ end
 
 function age68(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Number=0) where {T}
     # Determine appropriate pb/u rsf correction
-    rUO2_U = @. d.U238O2 / d.U238
-    PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
+    oxideratio = getfield(d, calib.numerator) ./ getfield(d, calib.denominator)
+    PbUrsf = value(invline(calib.line, nanmean(oxideratio)))
     
     r68 = @. (d.Pb206 - d.Pb204 * blank64) / (d.U238 * PbUrsf)
     map!(x-> x<0 ? T(NaN) : x, r68, r68)
@@ -224,8 +235,8 @@ function age68(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Numbe
 end
 function age75(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank74::Number=0, U58::Number=1/137.818) where {T}
     # Determine appropriate pb/u rsf correction
-    rUO2_U = @. d.U238O2 / d.U238
-    PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
+    oxideratio = getfield(d, calib.numerator) ./ getfield(d, calib.denominator)
+    PbUrsf = value(invline(calib.line, nanmean(oxideratio)))
     
     # Calculate blank-, and rsf-corrected 207/235 ratios
     r75 = @. (d.Pb207 - d.Pb204 * blank74) / (d.U238 * U58 * PbUrsf)
@@ -289,8 +300,8 @@ function calibrate(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:;
     @assert correction ∈ (:none, :Pb204, :Pb208) "Common Pb correction options are `:none`, `:Pb204`, or `:Pb208`"
 
     # Determine appropriate pb/u rsf correction
-    rUO2_U = @. d.U238O2 / d.U238
-    PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
+    oxideratio = getfield(d, calib.numerator) ./ getfield(d, calib.denominator)
+    PbUrsf = value(invline(calib.line, nanmean(oxideratio)))
     
     # Calculate blank- and rsf-corrected 206/238 and 207/235 ratios
     blank64, blank74, blank84 = blank
@@ -393,8 +404,8 @@ function calibrate_blockwise(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T};
     for i in 1:nblocks
         # Determine appropriate pb/u rsf correction for this block
         bi = ((i-1)*blocksize+1):(i*blocksize)
-        rUO2_U = @. d.U238O2[bi] / d.U238[bi]
-        PbUrsf = value(invline(calib.line, nanmean(rUO2_U)))
+        oxideratio = getfield(d, calib.numerator)[bi] ./ getfield(d, calib.denominator)[bi]
+        PbUrsf = value(invline(calib.line, nanmean(oxideratio)))
 
         # Calculate blank- and rsf-corrected 206/238 and 207/235 ratios
         if correction === :Pb204
