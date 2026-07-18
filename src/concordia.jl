@@ -49,7 +49,8 @@ function isconcordant(d::UPbAnalysis;
         sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
         npoints::Integer = 50,
     )
-    isnan(d) && return false
+    isnan(d) && return false # No NaNs allowed
+    (0 < abs(det(cov(d))) < Inf) || return false # Determinant of covariance matrix must be finite and not zero
 
     # Make error ellipse
     e = Ellipse(d; sigmalevel, npoints)
