@@ -192,11 +192,15 @@ function importsimsfile(filepath::AbstractString;
 
     # Read data file
     file = readdlm(filepath, '\t', skipblanks=true)
-    datastart = findfirst(x->x=="RAW DATA:=======================================================================", file[:,1]) + 3
-    dataend = findfirst(x->x=="PRIMARY INTENSITY DATA : ///////////////////////////////////////////////////////", file[:,1]) - 1
-    @assert datastart <= dataend "No data rows found"
+    datastartmarker = findfirst(x->x=="RAW DATA:=======================================================================", file[:,1])
+    @assert !isnothing(datastartmarker) "Could not find data start in $filepath"
+    datastart = datastartmarker + 3
+    dataendmarker = findfirst(x->x=="PRIMARY INTENSITY DATA : ///////////////////////////////////////////////////////", file[:,1])
+    @assert !isnothing(dataendmarker) "Could not find data start in $filepath"
+    dataend = dataendmarker - 1
+    @assert datastart <= dataend "No data rows found in $filepath"
     hasdata = .!isempty.(file[datastart, :])
-    @assert any(hasdata) "No data columns found"
+    @assert any(hasdata) "No data columns foun in $filepath"
     data = Float64.(file[datastart:dataend, hasdata])
 
     # Check data labels
@@ -205,20 +209,37 @@ function importsimsfile(filepath::AbstractString;
     datalabels = replace.(string.(datalabels[hasdata]), r"[ \t]+$" => "")
 
     # Pb isotopes
-    Pb204 = "204Pb" ∈ datalabels ? data[:,findfirst(isequal("204Pb"), datalabels)] .- baseline : fill(NaN, size(data, 1))
-    Pb206 = "206Pb" ∈ datalabels ? data[:,findfirst(isequal("206Pb"), datalabels)] .- baseline : fill(NaN, size(data, 1))
-    Pb207 = "207Pb" ∈ datalabels ? data[:,findfirst(isequal("207Pb"), datalabels)] .- baseline : fill(NaN, size(data, 1))
-    Pb208 = "208Pb" ∈ datalabels ? data[:,findfirst(isequal("208Pb"), datalabels)] .- baseline : fill(NaN, size(data, 1))
+    Pb204 = findcounts("204Pb", datalabels, data)
+    Pb206 = findcounts("206Pb", datalabels, data)
+    Pb207 = findcounts("207Pb", datalabels, data)
+    Pb208 = findcounts("208Pb", datalabels, data)
     # Th and Th oxides
-    Th232 = "232Th" ∈ datalabels ? data[:,findfirst(isequal("232Th"), datalabels)] .- baseline : fill(NaN, size(data, 1))
-    Th232O = "232Th 16O" ∈ datalabels ? data[:,findfirst(isequal("232Th 16O"), datalabels)] .- baseline : fill(NaN, size(data, 1))
-    Th232O2 = "232Th 16O2" ∈ datalabels ? data[:,findfirst(isequal("232Th 16O2"), datalabels)] .- baseline : fill(NaN, size(data, 1))
+    Th232 = findcounts("232Th", datalabels, data)
+    Th232O = findcounts("232Th 16O", datalabels, data)
+    Th232O2 = findcounts("232Th 16O2", datalabels, data)
     # U and U oxides
-    U238 = "238U" ∈ datalabels ? data[:,findfirst(isequal("238U"), datalabels)] .- baseline : fill(NaN, size(data, 1))
-    U238O = "238U 16O" ∈ datalabels ? data[:,findfirst(isequal("238U 16O"), datalabels)] .- baseline : fill(NaN, size(data, 1))
-    U238O2 = "238U 16O2" ∈ datalabels ? data[:,findfirst(isequal("238U 16O2"), datalabels)] .- baseline : fill(NaN, size(data, 1))
+    U238 = findcounts("238U", datalabels, data)
+    U238O = findcounts("238U 16O", datalabels, data)
+    U238O2 = findcounts("238U 16O2", datalabels, data)
+
+    # Baseline subtraction, if any
+    if baseline != 0
+        # Smallest observed count rate
+        minobserved = nanminimum(nanmean.((Pb204, Pb206, Pb207, Pb208, Th232, Th232O, Th232O2, U238, U238O, U238O2)))
+        # Subtract, ensuring that mean count rate cannot ever become negative
+        maxbaseline = min(baseline, minobserved)
+        (Pb204, Pb206, Pb207, Pb208, Th232, Th232O, Th232O2, U238, U238O, U238O2) .|> v -> v.-=maxbaseline
+    end
 
     return UThPbSIMSData(Pb204, Pb206, Pb207, Pb208, Th232, Th232O, Th232O2, U238, U238O, U238O2)
+end
+function findcounts(label, datalabels, data::AbstractMatrix{T}, missingval::T=T(NaN)) where {T<:Number}
+    if label ∈ datalabels
+        col = findfirst(isequal(label), datalabels)
+        return data[:,col]
+    else
+        return fill(missingval, size(data, 1))
+    end
 end
 
 

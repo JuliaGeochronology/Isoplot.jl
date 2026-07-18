@@ -640,8 +640,8 @@ module BaseTests
         @test analyses isa Vector{UThPbAnalysis{Float64}}
         @test analyses[1] isa UThPbAnalysis{Float64}
         @test isconcordant(analyses[1]) === true
-        @test value(age68(analyses[1])) ≈ 1090.728144507266
-        @test stdev(age68(analyses[1])) ≈ 6.293086861809403
+        @test value(age68(analyses[1])) ≈ 1089.1403262167232
+        @test stdev(age68(analyses[1])) ≈ 6.273970719204299
         @test isconcordant(analyses[10]) === true
         @test value(age68(analyses[10])) ≈ 1101.269174993504
         @test stdev(age68(analyses[10])) ≈ 5.185553271002563
