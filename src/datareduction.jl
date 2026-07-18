@@ -35,8 +35,8 @@ struct UPbSIMSCalibration{T} <: Calibration{T}
     line::YorkFit{T}
     numerator::Symbol
     denominator::Symbol
-    parent::Symbol
-    daughter::Symbol
+    U::Symbol
+    Th::Symbol
 end
 
 """
@@ -83,12 +83,12 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
         iterations::Integer = 8,
         numerator::Symbol = :U238O2,
         denominator::Symbol = :U238,
-        parent::Symbol = :U238,
-        daughter::Symbol = :Pb206,
+        U::Symbol = :U238,
+        Th::Symbol = :Th232,
     ) where {T<:AbstractFloat}
     @assert correction ∈ (:none, :Pb204, :Pb208,) "Common Pb correction options are `:none`, `:Pb204`, or `:Pb208`"
-    @assert parent ∈ (:U238, :U238O, :U238,)
-    @assert daughter ∈ (:Pb206,)
+    @assert U ∈ (:U238, :U238O, :U238O2,)
+    @assert Th ∈ (:Th232, :Th232O, :Th232O2,)
     # Initialize blank ratios
     blank64, blank74, blank84 = if blank isa NTuple
         blank
@@ -109,7 +109,7 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
             end
             oxideratio = getfield(dᵢ, numerator) ./ getfield(dᵢ, denominator)
             Pb206c = dᵢ.Pb204 .* blank64
-            PbUrsf = (dᵢ.Pb206 .- Pb206c) ./ (getfield(dᵢ, parent) .* standardratioPb206U238)
+            PbUrsf = (dᵢ.Pb206 .- Pb206c) ./ (getfield(dᵢ, U) .* standardratioPb206U238)
             calib[i] = Analysis(PbUrsf, oxideratio)
         end
         
@@ -123,12 +123,13 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
                 blank64, blank74, blank84 = blank(standardages[i])
             end
             blank68 = blank64/blank84
-            U238 = getfield(dᵢ, parent)
+            U238 = getfield(dᵢ, U)
+            Th232 = getfield(dᵢ, Th)
             oxideratio = getfield(dᵢ, numerator) ./ getfield(dᵢ, denominator)
             Pb208r, Pb206c = zeros(size(oxideratio)), zeros(size(oxideratio))
-            PbUrsf = dᵢ.Pb206 ./ (getfield(dᵢ, parent) .* standardratioPb206U238) # No subtraction the first time
+            PbUrsf = dᵢ.Pb206 ./ (getfield(dᵢ, U) .* standardratioPb206U238) # No subtraction the first time
             for _ in 1:iterations
-                @. Pb208r = dᵢ.Th232 * standardratioPb208Th232 * PbUrsf
+                @. Pb208r = Th232 * standardratioPb208Th232 * PbUrsf
                 @. Pb206c = (dᵢ.Pb208 - Pb208r) * blank68
                 @. PbUrsf = (dᵢ.Pb206 - Pb206c) / (U238 * standardratioPb206U238)
             end
@@ -141,11 +142,11 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
             dᵢ = data[i]
             standardratioPb206U238 = ratio(standardages[i], value(λ238U))
             oxideratio = getfield(dᵢ, numerator) ./ getfield(dᵢ, denominator)
-            PbUrsf = dᵢ.Pb206 ./ (getfield(dᵢ, parent) .* standardratioPb206U238)
+            PbUrsf = dᵢ.Pb206 ./ (getfield(dᵢ, U) .* standardratioPb206U238)
             calib[i] = Analysis(PbUrsf, oxideratio)
         end
     end
-    return UPbSIMSCalibration(calib, yorkfit(calib), numerator, denominator, parent, daughter)
+    return UPbSIMSCalibration(calib, yorkfit(calib), numerator, denominator, U, Th)
 end
 
 
@@ -323,34 +324,36 @@ function calibrate(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:;
     # Determine appropriate pb/u rsf correction
     oxideratio = getfield(d, calib.numerator) ./ getfield(d, calib.denominator)
     PbUrsf = value(invline(calib.line, nanmean(oxideratio)))
-    
+    U238 = getfield(d, calib.U)
+    Th232 = getfield(d, calib.Th)
+
     # Calculate blank- and rsf-corrected 206/238 and 207/235 ratios
     blank64, blank74, blank84 = blank
     if correction === :Pb204
         # Pb-204 correction
-        r68 = @. (d.Pb206 - d.Pb204 * blank64) / (d.U238 * PbUrsf)
-        r75 = @. (d.Pb207 - d.Pb204 * blank74) / (d.U238 * U58 * PbUrsf)
-        r82 = @. (d.Pb208 - d.Pb204 * blank84) / (d.Th232 * PbUrsf)
+        r68 = @. (d.Pb206 - d.Pb204 * blank64) / (U238 * PbUrsf)
+        r75 = @. (d.Pb207 - d.Pb204 * blank74) / (U238 * U58 * PbUrsf)
+        r82 = @. (d.Pb208 - d.Pb204 * blank84) / (Th232 * PbUrsf)
 
     elseif correction === :Pb208
         # Non-iterative Pb-208 correction
         blank68, blank78 = blank64/blank84, blank74/blank84
-        r68 = @. (d.Pb206 - d.Pb208 * blank68) / (d.U238 * PbUrsf)
-        r75 = @. (d.Pb207 - d.Pb208 * blank78) / (d.U238 * U58 * PbUrsf)
+        r68 = @. (d.Pb206 - d.Pb208 * blank68) / (U238 * PbUrsf)
+        r75 = @. (d.Pb207 - d.Pb208 * blank78) / (U238 * U58 * PbUrsf)
         r82 = @. d.Pb208 * NaN
         Pb208r, agest = zeros(size(r68)), zeros(size(r68))
         for _ in 1:iterations
             @. agest = log(1 + max(r68, zero(T)))/value(λ238U)
-            @. Pb208r = d.Th232 * ratio(agest, value(λ232Th)) * PbUrsf
-            @. r68 = (d.Pb206 - (d.Pb208 - Pb208r) * blank68) / (d.U238 * PbUrsf)
-            @. r75 = (d.Pb207 - (d.Pb208 - Pb208r) * blank78) / (d.U238 * U58 * PbUrsf)
+            @. Pb208r = Th232 * ratio(agest, value(λ232Th)) * PbUrsf
+            @. r68 = (d.Pb206 - (d.Pb208 - Pb208r) * blank68) / (U238 * PbUrsf)
+            @. r75 = (d.Pb207 - (d.Pb208 - Pb208r) * blank78) / (U238 * U58 * PbUrsf)
         end
 
     else # none
         # No common Pb correction
-        r68 = @. d.Pb206 / (d.U238 * PbUrsf)
-        r75 = @. d.Pb207 / (d.U238 * U58 * PbUrsf)
-        r82 = @. d.Pb208 / (d.Th232 * PbUrsf)
+        r68 = @. d.Pb206 / (U238 * PbUrsf)
+        r75 = @. d.Pb207 / (U238 * U58 * PbUrsf)
+        r82 = @. d.Pb208 / (Th232 * PbUrsf)
 
     end
     
@@ -427,33 +430,35 @@ function calibrate_blockwise(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T};
         bi = ((i-1)*blocksize+1):(i*blocksize)
         oxideratio = getfield(d, calib.numerator)[bi] ./ getfield(d, calib.denominator)[bi]
         PbUrsf = value(invline(calib.line, nanmean(oxideratio)))
+        U238 = getfield(d, calib.U)
+        Th232 = getfield(d, calib.Th)
 
         # Calculate blank- and rsf-corrected 206/238 and 207/235 ratios
         if correction === :Pb204
             # Pb-204 correction
-            r68 = @. (d.Pb206[bi] - d.Pb204[bi] * blank64) / (d.U238[bi] * PbUrsf)
-            r75 = @. (d.Pb207[bi] - d.Pb204[bi] * blank74) / (d.U238[bi] * U58 * PbUrsf)
-            r82 = @. (d.Pb208[bi] - d.Pb204[bi] * blank84) / (d.Th232[bi] * PbUrsf)
+            r68 = @. (d.Pb206[bi] - d.Pb204[bi] * blank64) / (U238[bi] * PbUrsf)
+            r75 = @. (d.Pb207[bi] - d.Pb204[bi] * blank74) / (U238[bi] * U58 * PbUrsf)
+            r82 = @. (d.Pb208[bi] - d.Pb204[bi] * blank84) / (Th232[bi] * PbUrsf)
 
         elseif correction === :Pb208
             # Non-iterative Pb-208 correction
             blank68, blank78 = blank64/blank84, blank74/blank84
-            r68 = @. (d.Pb206[bi] - d.Pb208[bi] * blank68) / (d.U238[bi] * PbUrsf)
-            r75 = @. (d.Pb207[bi] - d.Pb208[bi] * blank78) / (d.U238[bi] * U58 * PbUrsf)
+            r68 = @. (d.Pb206[bi] - d.Pb208[bi] * blank68) / (U238[bi] * PbUrsf)
+            r75 = @. (d.Pb207[bi] - d.Pb208[bi] * blank78) / (U238[bi] * U58 * PbUrsf)
             r82 = fill(NaN, length(bi))
             Pb208r, agest = zeros(size(r68)), zeros(size(r68))
             for _ in 1:iterations
                 @. agest = log(1 + max(r68, zero(T)))/value(λ238U)
-                @. Pb208r = d.Th232[bi] * ratio(agest, value(λ232Th)) * PbUrsf
-                @. r68 = (d.Pb206[bi] - (d.Pb208[bi] - Pb208r) * blank68) / (d.U238[bi] * PbUrsf)
-                @. r75 = (d.Pb207[bi] - (d.Pb208[bi] - Pb208r) * blank78) / (d.U238[bi] * U58 * PbUrsf)
+                @. Pb208r = Th232[bi] * ratio(agest, value(λ232Th)) * PbUrsf
+                @. r68 = (d.Pb206[bi] - (d.Pb208[bi] - Pb208r) * blank68) / (U238[bi] * PbUrsf)
+                @. r75 = (d.Pb207[bi] - (d.Pb208[bi] - Pb208r) * blank78) / (U238[bi] * U58 * PbUrsf)
             end
 
         else # none
             # No common Pb correction
-            r68 = @. d.Pb206[bi] / (d.U238[bi] * PbUrsf)
-            r75 = @. d.Pb207[bi] / (d.U238[bi] * U58 * PbUrsf)
-            r82 = @. d.Pb208[bi] / (d.Th232[bi] * PbUrsf)
+            r68 = @. d.Pb206[bi] / (U238[bi] * PbUrsf)
+            r75 = @. d.Pb207[bi] / (U238[bi] * U58 * PbUrsf)
+            r82 = @. d.Pb208[bi] / (Th232[bi] * PbUrsf)
 
         end
         

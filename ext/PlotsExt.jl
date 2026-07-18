@@ -42,7 +42,7 @@ module PlotsExt
         @eval function Plots.plot!(hdl::($P), calib::Isoplot.UPbSIMSCalibration; 
                 color = :auto,
                 alpha = 0.75,
-                xlabel="$(Isoplot.prettify(calib.daughter)) / $(Isoplot.prettify(calib.parent)) RSF",
+                xlabel="$(Isoplot.prettify(:Pb206)) / $(Isoplot.prettify(calib.U)) RSF",
                 ylabel="$(Isoplot.prettify(calib.numerator)) / $(Isoplot.prettify(calib.denominator))",
                 kwargs...
             )
