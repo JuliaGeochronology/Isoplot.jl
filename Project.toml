@@ -1,6 +1,6 @@
 name = "Isoplot"
 uuid = "5adc30d5-9ddf-423c-bb15-ece697bec3ab"
-version = "0.5.2"
+version = "0.5.3"
 authors = ["C. Brenhin Keller <cbkeller@dartmouth.edu>"]
 
 [deps]
@@ -27,15 +27,15 @@ MakieExt = "Makie"
 PlotsExt = "Plots"
 
 [compat]
-DelimitedFiles = "1.9.1"
+DelimitedFiles = "1.9"
 Distributions = "0.25"
-LogExpFunctions = "0.3.29"
+LogExpFunctions = "0.3, 1"
 LoopVectorization = "0.12"
 Measurements = "2"
 NaNStatistics = "0.6"
 Plots = "1"
-Random = "1.11.0"
-Reexport = "1.2.2"
+Random = "1.11"
+Reexport = "1.2"
 Rotations = "1.7"
 SpecialFunctions = "2"
 StatGeochemBase = "0.6.15"
