@@ -105,6 +105,7 @@ function CI(x::AbstractVector{T}) where {T}
     )
 end
 Base.isless(x::CI, y::CI) = isless(x.mean, y.mean)
+Base.isapprox(x::CI, y::CI) = isapprox(x.mean, y.mean) && isapprox(x.sigma, y.sigma) && isapprox(x.median, y.median) && isapprox(x.lower, y.lower) && isapprox(x.upper, y.upper)
 
 # A moment in time
 struct Age{T<:AbstractFloat} <: Data{T}

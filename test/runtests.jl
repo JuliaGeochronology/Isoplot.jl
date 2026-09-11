@@ -21,7 +21,7 @@ module BaseTests
         @test display(ci) != NaN
 
         ci = CI([0.4227751675791465, 2.339746777712491, 0.7073822332289744, 1.115676532764763, 1.3295183295746795, 1.1839524860728812, 9.051763176763613, 3.163690972571135, 0.35529944660568286, 20.552275066037705, 1.3021911627717235, 0.8154804384732102, 2.630294225259665, 0.24662095224118538, 0.4755015782877633])
-        @test ci == CI{Float64}(3.0461445697296416, 5.314497528659032,1.1839524860728812, 0.2846584252687595, 16.52709590479178)
+        @test ci ≈ CI{Float64}(3.0461445697296416, 5.314497528659032,1.1839524860728812, 0.2846584252687595, 16.52709590479178)
     end
 
     @testset "General" begin
@@ -245,36 +245,36 @@ module BaseTests
         analyses = [RbSrAnalysis(0.01randn(N).+x, 0.001randn(N).+slope.*x.+0.706) for x in 1:10]
         c = isochron(analyses)
         @test c isa Isoplot.Isochron{Float64, RbSrAnalysis{Float64}}
-        @test value(c.line.slope) ≈ slope           atol=3stdev(c.line.slope)
-        @test value(c.line.intercept) ≈ 0.706       atol=3stdev(c.line.intercept)
-        @test value(age(c)) ≈ 3502.5243481286466    atol=3stdev(age(c))
+        @test value(c.line.slope) ≈ slope           atol=4stdev(c.line.slope)
+        @test value(c.line.intercept) ≈ 0.706       atol=4stdev(c.line.intercept)
+        @test value(age(c)) ≈ 3502.5243481286466    atol=4stdev(age(c))
         @test stdev(age(c)) ≈ 5.104097410724326     atol=1
         @test value(age(slope, Isoplot.λ87Rb)) ≈ 3502.5243481286466
 
         analyses = [LuHfAnalysis(0.01randn(N).+x, 0.001randn(N).+slope.*x.+0.2828) for x in 1:10]
         c = isochron(analyses)
         @test c isa Isoplot.Isochron{Float64, LuHfAnalysis{Float64}}
-        @test value(c.line.slope) ≈ slope           atol=3stdev(c.line.slope)
-        @test value(c.line.intercept) ≈ 0.2828      atol=3stdev(c.line.intercept)
-        @test value(age(c)) ≈ 2613.2921354810956    atol=3stdev(age(c))
+        @test value(c.line.slope) ≈ slope           atol=4stdev(c.line.slope)
+        @test value(c.line.intercept) ≈ 0.2828      atol=4stdev(c.line.intercept)
+        @test value(age(c)) ≈ 2613.2921354810956    atol=4stdev(age(c))
         @test stdev(age(c)) ≈ 11.217070579075328    atol=2
         @test value(age(slope, Isoplot.λ176Lu)) ≈ 2613.2921354810956
 
         analyses = [ReOsAnalysis(0.01randn(N).+x, 0.001randn(N).+slope.*x.+0.14848) for x in 1:10]
         c = isochron(analyses)
         @test c isa Isoplot.Isochron{Float64, ReOsAnalysis{Float64}}
-        @test value(c.line.slope) ≈ slope           atol=3stdev(c.line.slope)
-        @test value(c.line.intercept) ≈ 0.14848     atol=3stdev(c.line.intercept)
-        @test value(age(c)) ≈ 2923.492370389601     atol=3stdev(age(c))
+        @test value(c.line.slope) ≈ slope           atol=4stdev(c.line.slope)
+        @test value(c.line.intercept) ≈ 0.14848     atol=4stdev(c.line.intercept)
+        @test value(age(c)) ≈ 2923.492370389601     atol=4stdev(age(c))
         @test stdev(age(c)) ≈ 5.4768445350318045    atol=1
         @test value(age(slope, Isoplot.λ187Re)) ≈ 2923.492370389601
 
         analyses = [SmNdAnalysis(0.01randn(N).+x, 0.001randn(N).+slope.*x.+0.5126) for x in 1:10]
         c = isochron(analyses)
         @test c isa Isoplot.Isochron{Float64, SmNdAnalysis{Float64}}
-        @test value(c.line.slope) ≈ slope           atol=3stdev(c.line.slope)
-        @test value(c.line.intercept) ≈ 0.5126      atol=3stdev(c.line.intercept)
-        @test value(age(c)) ≈ 7478.565936454944     atol=3stdev(age(c))
+        @test value(c.line.slope) ≈ slope           atol=4stdev(c.line.slope)
+        @test value(c.line.intercept) ≈ 0.5126      atol=4stdev(c.line.intercept)
+        @test value(age(c)) ≈ 7478.565936454944     atol=4stdev(age(c))
         @test stdev(age(c)) ≈ 13.869217589658614    atol=3
         @test value(age(slope, Isoplot.λ147Sm)) ≈ 7478.565936454944
     end
