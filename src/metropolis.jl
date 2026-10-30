@@ -20,6 +20,7 @@ function dist_ll(dist::Collection, mu::Collection{<:Number}, sigma::Collection{<
     any(x->!(x>0), sigma) && return NaN
     nbins = length(dist) - 1
     Δt = abs(tmax-tmin)
+    Σdist = sum(dist)
     dt = Δt/nbins
 
     # Cycle through each datum in dataset
@@ -39,7 +40,7 @@ function dist_ll(dist::Collection, mu::Collection{<:Number}, sigma::Collection{<
             # Otherwise, sum contributions from Gaussians at each point in distribution
             𝑖 = 1:length(dist)
             likelihood = zero(float(eltype(dist)))
-            normconst = 1/(length(dist) * σⱼ * sqrt(2 * pi))
+            normconst = 1/(Σdist * σⱼ * sqrt(2 * pi))
             @turbo for i in eachindex(dist, 𝑖)
                 distx = tmin + dt * (𝑖[i] - 1) # time-position of distribution point
                 # Likelihood curve follows a Gaussian PDF. Note: Δt cancels
@@ -56,6 +57,7 @@ function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Nu
     any(x->!(stdev(x) > 0), analyses) && return NaN
     nbins = length(dist) - 1
     Δt = abs(tmax - tmin)
+    Σdist = sum(dist)
     dt = Δt/nbins
 
     # Cycle through each datum in dataset
@@ -76,7 +78,7 @@ function dist_ll(dist::Collection, analyses::Collection{<:Measurement}, tmin::Nu
             # Otherwise, sum contributions from Gaussians at each point in distribution
             𝑖 = 1:length(dist)
             likelihood = zero(float(eltype(dist)))
-            normconst = 1/(length(dist) * σⱼ * sqrt(2 * pi))
+            normconst = 1/(Σdist * σⱼ * sqrt(2 * pi))
             @inbounds @fastmath @simd ivdep for i in eachindex(dist, 𝑖)
                 distx = tmin + dt * (𝑖[i] - 1) # time-position of distribution point
                 # Likelihood curve follows a Gaussian PDF. Note: Δt cancels
@@ -261,29 +263,37 @@ end
 
 # Encoding of additional prior assumptions about likely age given observed dispersion
 function prior_ll(mu::Collection, sigma::Collection, tmin::Number, tmax::Number)
+    wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f = prior_ll_params(mu, sigma)
+    return prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
+end
+function prior_ll(analyses::Collection{<:Union{Distribution, Measurement}}, tmin::Number, tmax::Number)
+    wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f = prior_ll_params(analyses)
+    return prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
+end
+function prior_ll_params(mu::Collection, sigma::Collection)
     i₋ = argmin(mu)
     mu₋, sigma₋ = mu[i₋], sigma[i₋]
     i₊ = argmax(mu)
     mu₊, sigma₊ = mu[i₊], sigma[i₊]
     # Calculate a weighted mean and examine our MSWD
-    (wm, wsigma, mswd) = wmean(mu, sigma, corrected=true) 
+    (wm, wsigma, wmswd) = wmean(mu, sigma, corrected=true) 
     # Degrees of freedom
     f = length(mu) - 1
-    return prior_ll(wm, wsigma, mswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
+    return wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f
 end
-function prior_ll(analyses::Collection{<:Union{Distribution, Measurement}}, tmin::Number, tmax::Number)
+function prior_ll_params(analyses::Collection{<:Union{Distribution, Measurement}})
     a₋ = argmin(value, analyses)
     a₊ = argmax(value, analyses)
     # Calculate a weighted mean and examine our MSWD
-    (wm, mswd) = wmean(analyses, corrected=true)
+    (wm, wmswd) = wmean(analyses, corrected=true)
     # Degrees of freedom
     f = length(analyses) - 1
-    return prior_ll(value(wm), stdev(wm), mswd, value(a₋), stdev(a₋), value(a₊), stdev(a₊), f, tmin, tmax)
+    return value(wm), stdev(wm), wmswd, value(a₋), stdev(a₋), value(a₊), stdev(a₊), f
 end
-function prior_ll(wm, wsigma, mswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
+function prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
     # Height of MSWD distribution relative to height at MSWD = 1
     # (see Wendt and Carl, 1991, Chemical Geology)
-    Zf = exp((f/2-1)*log(mswd) - f/2*(mswd-1)) * (f > 0)
+    Zf = exp((f/2-1)*log(wmswd) - f/2*(wmswd-1)) * (f > 0)
     Zf = max(min(Zf, 1.0), 0.0)
     # To avoid instability of the MCMC for small datasets (low N),
     # favor the weighted mean interpretation at high Zf (MSWD close to 1) and
@@ -303,7 +313,7 @@ end
 
 """
 ```julia
-metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0, t0prior=Uniform(0,minimum(value.(age68.(analyses)))), lossprior=Uniform(0,100))
+metropolis_min(nsteps::Integer, dist::Collection, data::Collection{<:Measurement}; burnin::Integer=0, tllprior=Uniform(0,minimum(value.(age68.(analyses)))), lossprior=Uniform(0,100))
 metropolis_min(nsteps::Integer, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
 metropolis_min(nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis; burnin::Integer=0)
 ```
@@ -315,7 +325,7 @@ zircon eruption ages from a distribution of zircon crystallization ages.
 ```julia
 tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
 
-tmindist, t0dist = metropolis_min(2*10^5, HalfNormalDistribution, analyses, burnin=10^5)
+tmindist, tlldist = metropolis_min(2*10^5, HalfNormalDistribution, analyses, burnin=10^5)
 ```
 """
 function metropolis_min(nsteps::Integer, dist::Collection{T}, mu::Collection, sigma::Collection; kwargs...) where {T}
@@ -330,16 +340,16 @@ function metropolis_min(nsteps::Integer, dist::Collection{T}, data::Collection{<
 end
 function metropolis_min(nsteps::Integer, dist::Collection{T}, analyses::Collection{UPbAnalysis{T}}; kwargs...) where {T}
     tmindist = arraylike(analyses, T, nsteps)
-    t0dist = arraylike(analyses, T, nsteps)
-    metropolis_min!(tmindist, t0dist, dist, analyses; kwargs...)
-    return tmindist, t0dist
+    tlldist = arraylike(analyses, T, nsteps)
+    metropolis_min!(tmindist, tlldist, dist, analyses; kwargs...)
+    return tmindist, tlldist
 end
 
 
 """
 ```julia
 metropolis_min!(tmindist::DenseArray, dist::Collection, mu::AbstractArray, sigma::AbstractArray; burnin::Integer=0)
-metropolis_min!(tmindist::DenseArray, t0dist::DenseArray, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer=0) where {T}
+metropolis_min!(tmindist::DenseArray, tlldist::DenseArray, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer=0) where {T}
 ```
 In-place (non-allocating) version of `metropolis_min`, fills existing array `tmindist`.
 
@@ -367,8 +377,11 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
     tminₚ = tmin = youngest - sigma[argmin(mu)]
     tmaxₚ = tmax = oldest + sigma[argmax(mu)]
 
+    # Parameters for prior_ll
+    wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f = prior_ll_params(mu, sigma)
+
     # Log likelihood of initial proposal
-    llₚ = ll = dist_ll(dist, mu, sigma, tmin, tmax) + prior_ll(mu, sigma, tmin, tmax)
+    llₚ = ll = dist_ll(dist, mu, sigma, tmin, tmax) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
 
     # Burnin
     for i=1:burnin
@@ -381,7 +394,7 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(mu, sigma, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
@@ -407,7 +420,7 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(mu, sigma, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
@@ -439,8 +452,11 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
     tminₚ = tmin = value(youngest) - stdev(youngest)
     tmaxₚ = tmax = value(oldest) + stdev(oldest)
 
+    # Parameters for prior_ll
+    wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f = prior_ll_params(data)
+
     # Log likelihood of initial proposal
-    llₚ = ll = dist_ll(dist, data, tmin, tmax) + prior_ll(data, tmin, tmax)
+    llₚ = ll = dist_ll(dist, data, tmin, tmax) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
 
     # Burnin
     for i=1:burnin
@@ -453,7 +469,7 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(data, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
@@ -479,7 +495,7 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(data, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
@@ -663,17 +679,17 @@ end
 function metropolis_minmax(nsteps::Integer, dist::Collection{T}, analyses::Collection{<:UPbAnalysis{T}}; kwargs...) where {T<:AbstractFloat}
     acceptancedist = falses(nsteps)
     lldist = arraylike(analyses, T, nsteps)
-    t0dist = arraylike(analyses, T, nsteps)
+    tlldist = arraylike(analyses, T, nsteps)
     tmaxdist = arraylike(analyses, T, nsteps)
     tmindist = arraylike(analyses, T, nsteps)
-    metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, dist, analyses; kwargs...)
-    return tmindist, tmaxdist, t0dist, lldist, acceptancedist
+    metropolis_minmax!(tmindist, tmaxdist, tlldist, lldist, acceptancedist, dist, analyses; kwargs...)
+    return tmindist, tmaxdist, tlldist, lldist, acceptancedist
 end
 
 """
 ```julia
 metropolis_minmax!(tmindist, tmaxdist, lldist, acceptancedist, nsteps::Integer, dist::AbstractArray, data::AbstractArray, uncert::AbstractArray; burnin::Integer=0)
-metropolis_minmax!(tmindist, tmaxdist, t0dist, lldist, acceptancedist, nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer=0)
+metropolis_minmax!(tmindist, tmaxdist, tlldist, lldist, acceptancedist, nsteps::Integer, dist::Collection, analyses::Collection{<:UPbAnalysis}; burnin::Integer=0)
 ```
 In-place (non-allocating) version of `metropolis_minmax`, filling existing arrays
 
@@ -703,8 +719,11 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
     tminₚ = tmin = youngest - sigma[argmin(mu)]
     tmaxₚ = tmax = oldest + sigma[argmax(mu)]
 
+    # Parameters for prior_ll
+    wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f = prior_ll_params(mu, sigma)
+
     # Log likelihood of initial proposal
-    llₚ = ll = dist_ll(dist, mu, sigma, tmin, tmax) + prior_ll(mu, sigma, tmin, tmax)
+    llₚ = ll = dist_ll(dist, mu, sigma, tmin, tmax) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
 
     # Burnin
     for i=1:burnin
@@ -717,7 +736,7 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(mu, sigma, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
@@ -743,7 +762,7 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(mu, sigma, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, mu, sigma, tminₚ, tmaxₚ) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
@@ -779,8 +798,11 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
     tminₚ = tmin = value(youngest) - stdev(youngest)
     tmaxₚ = tmax = value(oldest) + stdev(oldest)
 
+    # Parameters for prior_ll
+    wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f = prior_ll_params(data)
+
     # Log likelihood of initial proposal
-    llₚ = ll = dist_ll(dist, data, tmin, tmax) + prior_ll(data, tmin, tmax)
+    llₚ = ll = dist_ll(dist, data, tmin, tmax) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tmin, tmax)
 
     # Burnin
     for i=1:burnin
@@ -793,7 +815,7 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(data, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
@@ -819,7 +841,7 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(data, tminₚ, tmaxₚ)
+        llₚ = dist_ll(dist, data, tminₚ, tmaxₚ) + prior_ll(wm, wsigma, wmswd, mu₋, sigma₋, mu₊, sigma₊, f, tminₚ, tmaxₚ)
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ-ll)
             if tminₚ != tmin
@@ -897,18 +919,23 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        @. ages = upperintercept(tllₚ, ellipses)
-        llₚ = logpdf(tllprior, tllₚ)
-        if method === :projection
-            llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
-        elseif method === :bivariate
-            llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+        if tllₚ >= tminₚ
+            llₚ = -Inf
+        else
+            @. ages = upperintercept(tllₚ, ellipses)
+            llₚ = logpdf(tllprior, tllₚ)
+            if method === :projection
+                llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
+            elseif method === :bivariate
+                llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+            end
+            llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+            for i in eachindex(ages, ages68)
+                loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
+                llₚ += logpdf(lossprior, loss)
+            end
         end
-        llₚ += prior_ll(ages, tminₚ, tmaxₚ)
-        for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
-            llₚ += logpdf(lossprior, loss)
-        end
+
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
             if tminₚ != tmin
@@ -940,18 +967,23 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        @. ages = upperintercept(tllₚ, ellipses)
-        llₚ = logpdf(tllprior, tllₚ)
-        if method === :projection
-            llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
-        elseif method === :bivariate
-            llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+        if tllₚ >= tminₚ
+            llₚ = -Inf
+        else
+            @. ages = upperintercept(tllₚ, ellipses)
+            llₚ = logpdf(tllprior, tllₚ)
+            if method === :projection
+                llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
+            elseif method === :bivariate
+                llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+            end
+            llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+            for i in eachindex(ages, ages68)
+                loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
+                llₚ += logpdf(lossprior, loss)
+            end
         end
-        llₚ += prior_ll(ages, tminₚ, tmaxₚ)
-        for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
-            llₚ += logpdf(lossprior, loss)
-        end
+        
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
             if tminₚ != tmin

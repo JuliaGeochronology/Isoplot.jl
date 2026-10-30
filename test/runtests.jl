@@ -547,7 +547,7 @@ module BaseTests
 
     @testset "General Metropolis" begin
         mu, sigma = collect(100:0.1:101), 0.01*ones(11);
-        @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100, 101) ≈ -3.6933372932657607
+        @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, mu, sigma, 100, 101) ≈ -3.6933370180057423
         @test Isoplot.dist_ll(MeltsVolcanicZirconDistribution, Normal.(mu, sigma), 100, 101) ≈ -4.736451831031247
 
         tmindist = metropolis_min(2*10^5, MeltsVolcanicZirconDistribution, mu, sigma, burnin=10^5)
