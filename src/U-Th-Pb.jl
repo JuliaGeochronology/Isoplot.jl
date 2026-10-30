@@ -151,7 +151,7 @@ function stacey_kramers(t)
     end
 
     r64 -= ((exp(value(λ238U)*t)-1) - (exp(value(λ238U)*t0)-1)) * U_Pb
-    r74 -= ((exp(value(λ238U)*t)-1) - (exp(value(λ238U)*t0)-1)) * U_Pb/137.818
+    r74 -= ((exp(value(λ235U)*t)-1) - (exp(value(λ235U)*t0)-1)) * U_Pb/137.818
     r84 -= ((exp(value(λ232Th)*t)-1) - (exp(value(λ232Th)*t0)-1)) * Th_Pb
 
     return r64, r74, r84
