@@ -523,7 +523,8 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
     # Process input analyses
     ellipses = Ellipse.(analyses)
     ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./value(λ238U)
-    ages = @. upperintercept(zero(T), ellipses)
+    tllₚ = tll = zero(T)
+    ages = @. upperintercept(tll, ellipses)
 
     # Initial step sigma for Gaussian proposal distributions
     youngest, oldest = minimum(ages), maximum(ages)
@@ -531,10 +532,9 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
     tminstep = tmaxstep = Δt / length(analyses)
     tllstep = youngest.val/50
 
-    # Use oldest and youngest zircons for initial proposal
+    # Use oldest and youngest upper intercept ages for initial proposal
     tminₚ = tmin = value(youngest)
     tmaxₚ = tmax = value(oldest)
-    tllₚ = tll = zero(T)
 
     # Ensure priors for time and amount of lead loss are appropriately truncated
     tllprior = truncated(tllprior, 0, minimum(ages68))
@@ -570,18 +570,25 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        @. ages = upperintercept(tllₚ, ellipses)
-        llₚ = logpdf(tllprior, tllₚ)
-        if method === :projection
-            llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
-        elseif method === :bivariate
-            llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+        if tllₚ >= tminₚ
+            llₚ = -Inf
+        else
+            if tllₚ != tll
+                @. ages = upperintercept(tllₚ, ellipses)
+            end
+            llₚ = logpdf(tllprior, tllₚ)
+            if method === :projection
+                llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
+            elseif method === :bivariate
+                llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+            end
+            llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+            for i in eachindex(ages, ages68)
+                loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
+                llₚ += logpdf(lossprior, loss)
+            end
         end
-        llₚ += prior_ll(ages, tminₚ, tmaxₚ)
-        for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
-            llₚ += logpdf(lossprior, loss)
-        end
+
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
             if tminₚ != tmin
@@ -613,18 +620,25 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
         # Calculate log likelihood for new proposal
-        @. ages = upperintercept(tllₚ, ellipses)
-        llₚ = logpdf(tllprior, tllₚ)
-        if method === :projection
-            llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
-        elseif method === :bivariate
-            llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+        if tllₚ >= tminₚ
+            llₚ = -Inf
+        else
+            if tllₚ != tll
+                @. ages = upperintercept(tllₚ, ellipses)
+            end
+            llₚ = logpdf(tllprior, tllₚ)
+            if method === :projection
+                llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
+            elseif method === :bivariate
+                llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
+            end
+            llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+            for i in eachindex(ages, ages68)
+                loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
+                llₚ += logpdf(lossprior, loss)
+            end
         end
-        llₚ += prior_ll(ages, tminₚ, tmaxₚ)
-        for i in eachindex(ages, ages68)
-            loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
-            llₚ += logpdf(lossprior, loss)
-        end
+        
         # Decide to accept or reject the proposal
         if log(rand()) < (llₚ - ll)
             if tminₚ != tmin
@@ -872,7 +886,8 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
     # Process input analyses
     ellipses = Ellipse.(analyses)
     ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./value(λ238U)
-    ages = @. upperintercept(zero(T), ellipses)
+    tllₚ = tll = zero(T)
+    ages = @. upperintercept(tll, ellipses)
 
     # Initial step sigma for Gaussian proposal distributions
     youngest, oldest = minimum(ages), maximum(ages)
@@ -883,7 +898,6 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
     # Use oldest and youngest upper intercept ages for initial proposal
     tminₚ = tmin = value(youngest)
     tmaxₚ = tmax = value(oldest)
-    tllₚ = tll = zero(T)
 
     # Ensure priors for time and amount of lead loss are appropriately truncated
     tllprior = truncated(tllprior, 0, minimum(ages68))
@@ -922,7 +936,9 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
         if tllₚ >= tminₚ
             llₚ = -Inf
         else
-            @. ages = upperintercept(tllₚ, ellipses)
+            if tllₚ != tll
+                @. ages = upperintercept(tllₚ, ellipses)
+            end
             llₚ = logpdf(tllprior, tllₚ)
             if method === :projection
                 llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
@@ -970,7 +986,9 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
         if tllₚ >= tminₚ
             llₚ = -Inf
         else
-            @. ages = upperintercept(tllₚ, ellipses)
+            if tllₚ != tll
+                @. ages = upperintercept(tllₚ, ellipses)
+            end
             llₚ = logpdf(tllprior, tllₚ)
             if method === :projection
                 llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
