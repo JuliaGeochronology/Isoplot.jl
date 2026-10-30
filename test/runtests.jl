@@ -429,11 +429,11 @@ module BaseTests
         σx = σy = ones(10)/4
         yf = yorkfit(x, σx, y, σy)
         @test yf isa Isoplot.YorkFit
-        @test yf.intercept.val ≈-0.23498964673701916
-        @test yf.intercept.err ≈ 0.02250863813481163
-        @test yf.slope.val ≈ 1.041124018512526
-        @test yf.slope.err ≈ 0.0035683808205783673
-        @test yf.mswd ≈ 1.1419901440278089
+        @test yf.intercept.val ≈-0.2446693790977319
+        @test yf.intercept.err ≈ 0.2469541320914601
+        @test yf.slope.val ≈ 1.0428730084538775
+        @test yf.slope.err ≈ 0.039561084436542084
+        @test yf.mswd ≈ 1.1417951538670306
 
         yf = yorkfit(x, σx, y, σy, zeros(length(x)))
         @test yf isa Isoplot.YorkFit

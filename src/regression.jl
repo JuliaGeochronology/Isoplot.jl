@@ -316,7 +316,7 @@ function yorkfit(d::Collection{<:AbstractAnalysis}; iterations=10)
     yorkfit(x, σx, y, σy, r; iterations)
 end
 yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, r=ntuple(i->paircor(x[i], y[i]), length(x)); iterations=10) = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
-function yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, r=nancor(x,y); iterations=10)
+function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Collection, r=zero(T); iterations=10) where {T}
     @assert !isempty(x)
     @assert eachindex(x) == eachindex(σx) == eachindex(y) == eachindex(σy)
     @assert all(x->(-1<=x<=1), r) "Correlation coefficients must be between -1 and 1"
