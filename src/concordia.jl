@@ -113,7 +113,7 @@ function upperintercept(tₗₗ::Number, s::Ellipse{T}, sigmalevel::T=2.44774683
     return value(ui₀) ± σcombined(ui₀, σ)
 end
 σcombined(m::Measurement, σ) = sqrt(stdev(m)^2 + σ^2)
-σcombined(m, σ) = σ # If m is not a Measurement
+σcombined(_, σ) = σ # If m is not a Measurement
 
 upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, Ellipse(d; npoints=50))
 

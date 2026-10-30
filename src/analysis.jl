@@ -113,6 +113,7 @@ struct Age{T<:AbstractFloat} <: Data{T}
     sigma::T
 end
 Age(μ, σ) = Age(float(μ), float(σ))
+Age(μ::T, σ) where {T<:AbstractFloat} = Age(μ, T(σ))
 Age(x) = Age(value(x), stdev(x))
 Base.isless(x::Age, y::Age) = isless(x.mean, y.mean)
 

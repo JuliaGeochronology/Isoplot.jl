@@ -163,7 +163,8 @@ function distwmean(x::NTuple{N, <:AbstractVector}; corrected::Bool=true) where {
     @inbounds for i in eachindex(x...)
         c[i] = sum(getindex.(x, i) .* wₓ)/wₜ
         if corrected
-            c[i] += sqrt(sum(wₓ.*abs2.(getindex.(x,i).-c[i]))/(wₜ*(N-1))) * randn()
+            mswd = sum(wₓ.*abs2.(getindex.(x,i).-c[i]))/(wₜ*(N-1))
+            c[i] += sqrt(mswd) * randn()
         end
     end
     return c
@@ -305,9 +306,8 @@ Least-squares linear fit of the form y = a + bx where
 """
 function yorkfit(d::Collection{<:AbstractAnalysis}; iterations=10)
     @assert !isempty(d)
-    # Using NTuples instead of Arrays here avoids allocations and should be
-    # much more efficient for relatively small N, but could be less efficient
-    # for large N (greater than ~100)
+    # Using NTuples instead of Arrays can avoid allocations if length(d) can be const-prop'd
+    # and should be more efficient for relatively small N, but could be less efficient for large N
     x = ntuple(i->mean(d[i])[1], length(d))
     y = ntuple(i->mean(d[i])[2], length(d))
     σx = ntuple(i->std(d[i])[1], length(d))
