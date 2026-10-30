@@ -93,7 +93,7 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
     blank64, blank74, blank84 = if blank isa NTuple
         blank
     else
-        0., 0., 0.
+        (0., 0., 0.)
     end
 
     # Allocate array for analyses
@@ -110,7 +110,7 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
             oxideratio = getfield(dᵢ, numerator) ./ getfield(dᵢ, denominator)
             Pb206c = dᵢ.Pb204 .* blank64
             PbUrsf = (dᵢ.Pb206 .- Pb206c) ./ (getfield(dᵢ, U) .* standardratioPb206U238)
-            calib[i] = Analysis(PbUrsf, oxideratio)
+            calib[i] = Analysis(PbUrsf, oxideratio; T)
         end
         
     elseif correction === :Pb208
@@ -133,7 +133,7 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
                 @. Pb206c = (dᵢ.Pb208 - Pb208r) * blank68
                 @. PbUrsf = (dᵢ.Pb206 - Pb206c) / (U238 * standardratioPb206U238)
             end
-            calib[i] = Analysis(PbUrsf, oxideratio)
+            calib[i] = Analysis(PbUrsf, oxideratio; T)
         end
 
     else # :none
@@ -143,7 +143,7 @@ function calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collectio
             standardratioPb206U238 = ratio(standardages[i], value(λ238U))
             oxideratio = getfield(dᵢ, numerator) ./ getfield(dᵢ, denominator)
             PbUrsf = dᵢ.Pb206 ./ (getfield(dᵢ, U) .* standardratioPb206U238)
-            calib[i] = Analysis(PbUrsf, oxideratio)
+            calib[i] = Analysis(PbUrsf, oxideratio; T)
         end
     end
     return UPbSIMSCalibration(calib, yorkfit(calib), numerator, denominator, U, Th)
@@ -179,7 +179,7 @@ function importsimsdata(files::AbstractVector; T=Float64, kwargs...)
     @assert !isempty(files) "No files to import"
     data = Vector{UThPbSIMSData{T}}(undef, length(files))
     for i in eachindex(data)
-        data[i] = importsimsfile(files[i]; kwargs...)
+        data[i] = importsimsfile(files[i]; T, kwargs...)
     end
     return data
 end
@@ -187,6 +187,7 @@ end
 function importsimsfile(filepath::AbstractString; 
         system::Symbol=:UThPb,
         baseline::Number=0,
+        T::Type=Float64,
     )
     @assert system ∈ (:UThPb,) "System $system not recognized"
     @assert contains(filepath, ".asc") "Expecting .asc file"
@@ -232,7 +233,7 @@ function importsimsfile(filepath::AbstractString;
         (Pb204, Pb206, Pb207, Pb208, Th232, Th232O, Th232O2, U238, U238O, U238O2) .|> v -> v.-=maxbaseline
     end
 
-    return UThPbSIMSData(Pb204, Pb206, Pb207, Pb208, Th232, Th232O, Th232O2, U238, U238O, U238O2)
+    return UThPbSIMSData{T}(Pb204, Pb206, Pb207, Pb208, Th232, Th232O, Th232O2, U238, U238O, U238O2)
 end
 function findcounts(label, datalabels, data::AbstractMatrix{T}, missingval::T=T(NaN)) where {T<:Number}
     if label ∈ datalabels
@@ -249,7 +250,9 @@ function age68(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Numbe
     oxideratio = getfield(d, calib.numerator) ./ getfield(d, calib.denominator)
     PbUrsf = value(invline(calib.line, nanmean(oxideratio)))
     
-    r68 = @. (d.Pb206 - d.Pb204 * blank64) / (d.U238 * PbUrsf)
+    # Calculate blank-, and rsf-corrected 206/238 ratios
+    U238 = getfield(d, calib.U)
+    r68 = @. (d.Pb206 - d.Pb204 * blank64) / (U238 * PbUrsf)
     map!(x-> x<0 ? T(NaN) : x, r68, r68)
     
     # Return 206Pb/238U age
@@ -261,7 +264,8 @@ function age75(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank74::Numbe
     PbUrsf = value(invline(calib.line, nanmean(oxideratio)))
     
     # Calculate blank-, and rsf-corrected 207/235 ratios
-    r75 = @. (d.Pb207 - d.Pb204 * blank74) / (d.U238 * U58 * PbUrsf)
+    U238 = getfield(d, calib.U)
+    r75 = @. (d.Pb207 - d.Pb204 * blank74) / (U238 * U58 * PbUrsf)
     map!(x-> x<0 ? T(NaN) : x, r75, r75)
 
     # Return 207Pb/235U age
@@ -358,7 +362,7 @@ function calibrate(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:;
     end
     
     # Return UPbAnalysis object
-    return cf isa Colon ? UThPbAnalysis(r75, r68, r82) : UThPbAnalysis(r75[cf], r68[cf], r82[cf])
+    return cf isa Colon ? UThPbAnalysis(r75, r68, r82; T) : UThPbAnalysis(r75[cf], r68[cf], r82[cf]; T)
 end
 
 
@@ -381,7 +385,7 @@ A Pb-204 based blank subtraction (common-Pb subtraction) is performed,
 using by default a present-day Stacey-Kramers common Pb composition.
 
 U-235 is estimated based on measured U-238, assuming a 235/238 ratio 
-of `U57` -- by default 1/137.818 (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
+of `U58` -- by default 1/137.818 (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
 
 ### Examples
 ```
@@ -462,7 +466,7 @@ function calibrate_blockwise(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T};
 
         end
         
-        analyses[i] = UThPbAnalysis(r75, r68, r82)
+        analyses[i] = UThPbAnalysis(r75, r68, r82; T)
     end
     return analyses
 end

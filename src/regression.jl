@@ -36,8 +36,8 @@ end
 ## --- Weighted means
 """
 ```julia
-wμ, wσ, mswd = wmean(μ, σ; corrected=true, chauvenet=false)
-wμ ± wσ, mswd = wmean(μ ± σ; corrected=true, chauvenet=false)
+wμ, wσ, mswd = wmean(μ, σ; corrected=true)
+wμ ± wσ, mswd = wmean(μ ± σ; corrected=true)
 ```
 The weighted mean, with or without the "geochronologist's MSWD correction" to uncertainty.
 You may specify your means and standard deviations either as separate vectors `μ` and `σ`,
@@ -69,13 +69,13 @@ julia> wmean(x, y)
 (-0.321824416323509, 0.31622776601683794, 0.8192171477885678)
 
 julia> wmean(x .± y)
-(-0.32 ± 0.32, 0.8192171477885678)
+(-0.32 ± 0.32, 0.8192171477885679)
 
 julia> wmean(x .± y./10)
-(-0.322 ± 0.032, 81.9217147788568)
+(-0.32 ± 0.29, 81.92171477885678)
 
-julia> wmean(x .± y./10, corrected=true)
-(-0.32 ± 0.29, 81.9217147788568)
+julia> wmean(x .± y./10, corrected=false)
+(-0.322 ± 0.032, 81.92171477885678)
 ```
 """
 # Weighted mean given a vector of means and vector of standard deviations, assuming no covariance
@@ -95,7 +95,7 @@ function wmean(μ::Collection1D{T}, σ::Collection1D{T}; corrected::Bool=true) w
     mswd = χ² / (length(μ)-1)
 
     # Optional: expand standard error by sqrt of mswd, if mswd > 1
-    corrected && (wσ² *= max(mswd,1))
+    corrected && (wσ² *= nanmax(mswd,1))
     
     return wμ, sqrt(wσ²), mswd
 end
@@ -112,7 +112,7 @@ function wmean(x::AbstractVector{T}, C::AbstractMatrix{T}; corrected::Bool=true)
     mswd = χ² / (length(x)-1)
 
     # Optional: expand standard error by sqrt of mswd, if mswd > 1
-    corrected && (σ²ₓ̄ *= max(mswd,1))
+    corrected && (σ²ₓ̄ *= nanmax(mswd,1))
 
     return x̄, sqrt(σ²ₓ̄), mswd
 end
@@ -134,7 +134,7 @@ function wmean(analyses::Collection{<:Distribution}; corrected::Bool=true)
     mswd = χ² / (length(analyses)-1)
 
     # Optional: expand standard error by sqrt of mswd, if mswd > 1
-    corrected && (wσ² *= max(mswd,1))
+    corrected && (wσ² *= nanmax(mswd,1))
 
     return Normal(wμ, sqrt(wσ²)), mswd
 end
@@ -298,10 +298,10 @@ julia> y = 2*(1:100) .+ randn.();
 
 julia> yorkfit(x, ones(100), y, ones(100))
 YorkFit{Float64}:
-Least-squares linear fit of the form y = a + bx where
-  intercept a : -0.29 ± 0.2 (1σ)
-  slope b     : 2.0072 ± 0.0035 (1σ)
-  MSWD        : 0.8136665223891004
+ Least-squares linear fit of the form y = a + bx with
+  intercept: -0.54 ± 0.45 (1σ)
+  slope    : 2.0065 ± 0.0078 (1σ)
+  MSWD     : 0.9457955207778813
 ```
 """
 function yorkfit(d::Collection{<:AbstractAnalysis}; iterations=10)

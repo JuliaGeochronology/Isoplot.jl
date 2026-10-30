@@ -22,8 +22,9 @@ function Base.show(io::IO, x::CI{T}) where T
         l = round(x.mean - x.lower, sigdigits=2)
         u = round(x.upper - x.mean, sigdigits=2)
         minerr = min(abs(l),abs(u))
-        nd = any(isnan, (x.mean, x.upper, x.lower)) || minerr == 0
-        d = nd ? 0 : floor(Int, log10(abs(x.mean)) - log10(minerr))
+        nd = any(isnan, (x.mean, x.upper, x.lower)) || any(isinf, (x.mean, x.upper, x.lower)) || minerr <= 0
+        scale = izero(x.mean) ? 0 : log(abs(x.mean))
+        d = nd ? -2 : min(floor(Int, scale-log10(minerr)), -2)
         m = round(x.mean, sigdigits=3+d)
         print(io, "$m +$u/-$l")
     else
