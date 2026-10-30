@@ -12,10 +12,9 @@
 
     function Radiocarbon(μ::T, σ::T, ldist::Vector{T}) where {T<:Real}
         # Ensure normalization
-        dist = exp.(ldist)
-        normconst = sum(dist) * one(T)
-        dist ./= normconst
+        normconst = logsumexp(ldist) + log(one(T))  # The second term is due to the step size, but is always zero as we assume a step size of 1.
         ldist .-= normconst
+        dist = exp.(ldist)
 
         # Cumulative distributions
         lcdist = nanlogcumsumexp(ldist)
@@ -31,10 +30,9 @@
         ldist = normlogproduct.(age_14C, age_14C_sigma, calibration.age_14C, calibration.age_sigma)
 
         # Ensure normalization
-        dist = exp.(ldist)
-        normconst = sum(dist) * calibration.dt
-        dist ./= normconst
+        normconst = logsumexp(ldist) + log(calibration.dt)
         ldist .-= normconst
+        dist = exp.(ldist)
 
         μ = histmean(dist, calibration.age_calendar)
         σ = histstd(dist, calibration.age_calendar, corrected=false)
