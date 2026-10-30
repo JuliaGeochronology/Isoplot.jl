@@ -387,7 +387,7 @@ function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Colle
     σym = sqrt(1.0 ./ sum(Z))
 
     # MSWD (reduced chi-squared) of the fit
-    mswd = 1.0 ./ length(x) .* sum(@. (y - a - b*x)^2 / (σy^2 + b^2 * σx^2) )
+    mswd = sum(@. (y - a - b*x)^2 / (σy^2 + b^2 * σx^2 - 2*b*r*σx*σy) ) / (length(x)-2)
 
     ## Results
     return YorkFit(a ± σa, b ± σb, xm, ym ± σym, mswd)

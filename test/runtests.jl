@@ -433,7 +433,7 @@ module BaseTests
         @test yf.intercept.err ≈ 0.2469541320914601
         @test yf.slope.val ≈ 1.0428730084538775
         @test yf.slope.err ≈ 0.039561084436542084
-        @test yf.mswd ≈ 1.1417951538670306
+        @test yf.mswd ≈ 1.4272439423337884
 
         yf = yorkfit(x, σx, y, σy, zeros(length(x)))
         @test yf isa Isoplot.YorkFit
@@ -441,7 +441,7 @@ module BaseTests
         @test yf.intercept.err ≈ 0.2469541320914601
         @test yf.slope.val ≈ 1.0428730084538775
         @test yf.slope.err ≈ 0.039561084436542084
-        @test yf.mswd ≈ 1.1417951538670306
+        @test yf.mswd ≈ 1.4272439423337884
 
         x = ((1:100) .+ randn.()) .± 1
         y = (2*(1:100) .+ randn.()) .± 1
@@ -460,7 +460,7 @@ module BaseTests
         @test yf.xm ≈ 1.095717612255557
         @test yf.ym.val ≈ 0.12339861666825475
         @test yf.ym.err ≈ 1.766877975316134e-5
-        @test yf.mswd ≈ 0.4201667519279949
+        @test yf.mswd ≈ 0.6650799396933331
 
         ui = upperintercept(analyses)
         @test ui.val ≈ 752.5343109308996 
@@ -608,7 +608,7 @@ module BaseTests
         @test calib.line.slope.err ≈ 0.03899573314785627
         @test calib.line.intercept.val ≈ 1.2967909641961666
         @test calib.line.intercept.err ≈ 0.1110710119605743
-        @test calib.line.mswd ≈ 0.3008822034482014
+        @test calib.line.mswd ≈ 0.9312416907930794 
 
         calib = calibration(standards, standardages, correction=:Pb208)
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
@@ -620,7 +620,7 @@ module BaseTests
         @test calib.line.slope.err ≈ 0.039125011815153266
         @test calib.line.intercept.val ≈ 1.4050424869569733
         @test calib.line.intercept.err ≈ 0.10832742287009742
-        @test calib.line.mswd ≈ 0.4258476619531879
+        @test calib.line.mswd ≈ 1.4293963635385418
 
         calib = calibration(standards, standardages, correction=:none)
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
@@ -632,7 +632,7 @@ module BaseTests
         @test calib.line.slope.err ≈ 0.03910134771335598
         @test calib.line.intercept.val ≈ 1.2802761320771174
         @test calib.line.intercept.err ≈ 0.11149066983333657
-        @test calib.line.mswd ≈ 0.2814290880244583
+        @test calib.line.mswd ≈ 0.8789962702237475 
 
         # Test import with baseline subtraction
         data = importsimsdata("../examples/data", baseline=0.25)
