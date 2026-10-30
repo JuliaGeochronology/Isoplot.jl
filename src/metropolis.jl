@@ -375,8 +375,8 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tminstep*randn())
-        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        (r < 0.5) && (tminₚ += tminstep*randn())
+        (r > 0.5) && (tmaxₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
@@ -737,8 +737,8 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tminstep*randn())
-        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        (r < 0.5) && (tminₚ += tminstep*randn())
+        (r > 0.5) && (tmaxₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
@@ -813,8 +813,8 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tminstep*randn())
-        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        (r < 0.5) && (tminₚ += tminstep*randn())
+        (r > 0.5) && (tmaxₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
