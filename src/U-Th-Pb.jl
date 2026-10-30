@@ -110,19 +110,19 @@ function age(d::UThPbAnalysis)
 end
 
 function age75(d::Union{UPbAnalysis{T}, UThPbAnalysis{T}}) where {T}
-    return log(1 + max(mean(d)[1], zero(T)) ± std(d)[1])/λ235U
+    return age(max(mean(d)[1], zero(T)) ± std(d)[1], λ235U)
 end
 function age68(d::Union{UPbAnalysis{T}, UThPbAnalysis{T}}) where {T}
-    return log(1 + max(mean(d)[2], zero(T)) ± std(d)[2])/λ238U
+    return age(max(mean(d)[2], zero(T)) ± std(d)[2], λ238U)
 end
 function age82(d::UThPbAnalysis{T}) where {T}
-    return log(1 + max(mean(d)[3], zero(T)) ± std(d)[3])/λ232Th
+    return age(max(mean(d)[3], zero(T)) ± std(d)[3], λ232Th)
 end
 
 # Percent discordance
 function discordance(d::UPbAnalysis{T}) where {T}
-    μ75 = mean(d)[1] > 0  ? log(1 + mean(d)[1])/value(λ235U) : T(NaN)
-    μ68 = mean(d)[2] > 0  ? log(1 + mean(d)[2])/value(λ238U) : T(NaN)
+    μ75 = mean(d)[1] > 0  ? age(mean(d)[1], value(λ235U)) : T(NaN)
+    μ68 = mean(d)[2] > 0  ? age(mean(d)[2], value(λ238U)) : T(NaN)
     return (μ75 - μ68) / μ75 * 100
 end
 
@@ -150,9 +150,10 @@ function stacey_kramers(t)
         Th_Pb = NaN
     end
 
-    r64 -= ((exp(value(λ238U)*t)-1) - (exp(value(λ238U)*t0)-1)) * U_Pb
-    r74 -= ((exp(value(λ235U)*t)-1) - (exp(value(λ235U)*t0)-1)) * U_Pb/137.818
-    r84 -= ((exp(value(λ232Th)*t)-1) - (exp(value(λ232Th)*t0)-1)) * Th_Pb
+    # Subtract ingrowth from younger end
+    r64 -= (ratio(t, value(λ238U)) - ratio(t0, value(λ238U))) * U_Pb
+    r74 -= (ratio(t, value(λ235U)) - ratio(t0, value(λ235U))) * U_Pb/137.818
+    r84 -= (ratio(t, value(λ232Th)) - ratio(t0, value(λ232Th))) * Th_Pb
 
     return r64, r74, r84
 end

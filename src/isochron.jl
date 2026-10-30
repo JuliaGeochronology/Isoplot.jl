@@ -1,6 +1,6 @@
 # Converting from age to ratio and back
-age(r::Number, λ::Number) = log(1+r)/λ
-ratio(t::Number, λ::Number) = exp(λ*t) - 1
+age(r::Number, λ::Number) = log1p(r)/λ      # Numerically accurate log(1 + r) / λ
+ratio(t::Number, λ::Number) = expm1(λ*t)    # Numerically accurate exp(λ * t) - 1
 
 # Define isochron type
 struct Isochron{T,A<:ParentDaughterAnalysis{T}} <: Data{T}
