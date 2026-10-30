@@ -23,14 +23,14 @@ module MakieExt
             end
             return pointList
         else
-            Throw(DimensionMismatch("Arguments must be the same length"))
+            throw(DimensionMismatch("Arguments must be the same length"))
         end
     end
 
     # Plot a line between two times in Wetherill Concordia space
     @recipe(ConcordiaLine, t₀, t₁) do scene
         Attributes(
-            concordiaType = :Wetherril,
+            concordiaType = :Wetherill,
             color = :black,
             linewidth = 1,
             errorcolor = (:black,0.15)
@@ -48,14 +48,15 @@ module MakieExt
     
         slope = 0.0 ± 0.0
         intercept = 0.0 ± 0.0
-        if cline[:concordiaType][] == :Wetherril
+        if cline[:concordiaType][] == :Wetherill
             slope = (r68₁-r68₀)/(r75₁-r75₀)
             
             intercept = r68₀ - r75₀*slope
         elseif cline[:concordiaType][] == :TeraWasserburg
             #TODO
+            error("concordiaType :TeraWasserburg not yet implemented")
         else   
-            throw(ArgumentError("concordiaType must be :Wetherril or :TeraWasserburg"))
+            throw(ArgumentError("concordiaType must be :Wetherill or :TeraWasserburg"))
         end
         xmin = value(r75₀)
         xmax = value(r75₁)
@@ -64,8 +65,8 @@ module MakieExt
         y_val = Observable(value.(y))
         y_err = stdev.(y)
         
-        upperError = as_points(x[],y_val[] .+ y_err)
-        lowerError = as_points(reverse(x[]),reverse(y_val[] .- y_err))
+        upperError = as_points(x[],y_val[] .+ 2y_err)
+        lowerError = as_points(reverse(x[]),reverse(y_val[] .- 2y_err))
         errorPoly = Observable([upperError;lowerError])
         poly!(cline,errorPoly,color=cline[:errorcolor][],strokewidth =0)
         lines!(cline,x,y_val,color = cline[:color][], linewidth = cline[:linewidth][])
@@ -74,7 +75,7 @@ module MakieExt
 
     @recipe(ConcordiaCurve,t₀, t₁) do scene
         Attributes(
-            concordiaType = :Wetherril,
+            concordiaType = :Wetherill,
             color = :black,
             linewidth = 1,
             errorcolor = (:black,0.15),
@@ -114,7 +115,7 @@ module MakieExt
         ticky = Observable(Float64[])
 
 
-        if ccurve[:concordiaType][] == :Wetherril
+        if ccurve[:concordiaType][] == :Wetherill
             xratio[]= ratio.(t, value(λ235U_jaffey)) # X axis values
             yratio[] = ratio.(t, value(λ238U))# Y axis values
 
@@ -125,16 +126,10 @@ module MakieExt
             ticky[] = ratio.(tticks, value(λ238U))# Y axis values
             
         elseif ccurve[:concordiaType][] == :TeraWasserburg
-            xratio[]= ratio.(t, value(λ235U_jaffey)) # X axis values
-            yratio[] = ratio.(t, value(λ238U))# Y axis values
-
-            errx = [ratio.(t, value(λ235U_jaffey)-σₜ*2); reverse(ratio.(t, value(λ235U_jaffey)+σₜ*2))]
-            erry = [yratio[]; reverse(yratio[])]
-
-            tickx[] = ratio.(tticks, value(λ235U_jaffey)) # X axis values
-            ticky[] = ratio.(tticks, value(λ238U))# Y axis values
+            #TODO
+            error("concordiaType :TeraWasserburg not yet implemented")
         else   
-            throw(ArgumentError("concordiaType must be :Wetherril or :TeraWasserburg"))
+            throw(ArgumentError("concordiaType must be :Wetherill or :TeraWasserburg"))
         end
         errorPts = Observable(as_points(errx,erry))
         poly!(ccurve,errorPts,color=ccurve[:errorcolor][],strokewidth =0)
