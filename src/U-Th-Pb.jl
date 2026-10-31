@@ -133,14 +133,14 @@ function stacey_kramers(t)
         r74 = 12.998
         r84 = 31.230
         U_Pb = 7.19
-        Th_Pb = 32.21
+        Th_Pb = 33.21
     elseif t < 3700
         t0 = 0
         r64 = 18.700
         r74 = 15.628
         r84 = 38.630
         U_Pb = 9.74
-        Th_Pb = 37.19
+        Th_Pb = 36.84
     else
         t0 = NaN
         r64 = NaN

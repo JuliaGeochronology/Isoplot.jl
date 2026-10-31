@@ -61,9 +61,11 @@ module BaseTests
         @test value(1±1) === 1.0
         @test stdev(1±1) === 1.0
         ci = CI(1:10)
+        display(ci)
         @test value(ci) ≈ 5.5
         @test stdev(ci) ≈ 3.0276503540974917
         a = Age(ci)
+        display(a)
         @test value(a) ≈ 5.5
         @test stdev(a) ≈ 3.0276503540974917
     end
@@ -169,10 +171,10 @@ module BaseTests
 
         # Stacey-Kramers common Pb model
         @test stacey_kramers(0) == (18.7, 15.628, 38.63)
-        @test stacey_kramers(1000) == (17.06558429108375, 15.509293514148855, 36.74374156479152)
+        @test stacey_kramers(1000) == (17.06558429108375, 15.509293514148855, 36.76149339195804)
         @test stacey_kramers(3700) == (11.152, 12.998, 31.23)
-        @test stacey_kramers(4000) == (10.543938494456278, 12.30939102227753, 30.651601108585144)
-        @test stacey_kramers(4567) == (9.314476625036953, 10.295372492782558, 29.534701766311084)
+        @test stacey_kramers(4000) == (10.543938494456278, 12.30939102227753, 30.633643986839882)
+        @test stacey_kramers(4567) == (9.314476625036953, 10.295372492782558, 29.482069098391527)
         @test stacey_kramers(5000) === (NaN, NaN, NaN)
 
     end
@@ -613,14 +615,14 @@ module BaseTests
         calib = calibration(standards, standardages, correction=:Pb208)
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.line isa Isoplot.YorkFit{Float64}
-        @test calib.line.xm ≈ 2.7633699841713986
-        @test calib.line.ym.val ≈ 3.580221586760041
-        @test calib.line.ym.err ≈ 0.006750544300109984
-        @test calib.line.slope.val ≈ 0.7871472546208862
-        @test calib.line.slope.err ≈ 0.039125011815153266
-        @test calib.line.intercept.val ≈ 1.4050424869569733
-        @test calib.line.intercept.err ≈ 0.10832742287009742
-        @test calib.line.mswd ≈ 1.4293963635385418
+        @test calib.line.xm ≈ 2.763415816255632
+        @test calib.line.ym.val ≈ 3.580223812971822
+        @test calib.line.ym.err ≈ 0.006750487134576503
+        @test calib.line.slope.val ≈ 0.787165013895737
+        @test calib.line.slope.err ≈ 0.0391249122375516
+        @test calib.line.intercept.val ≈ 1.4049595635692578
+        @test calib.line.intercept.err ≈ 0.10832893322368387
+        @test calib.line.mswd ≈ 1.4288314836259612
 
         calib = calibration(standards, standardages, correction=:none)
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
