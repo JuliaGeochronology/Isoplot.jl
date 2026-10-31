@@ -1,5 +1,5 @@
 # Söderlund et al. (2004) 0.1016/S0012-821X(04)00012-3
-const λ176Lu = 1.867e-5 ± 0.008e-5 # 1/Myr, calibrated against U-Pb
+const λ176Lu = 1.867e-5 ± 0.008e-5/2 # 1/Myr, calibrated against U-Pb
 export λ176Lu
 
 struct LuHfAnalysis{T} <: ParentDaughterAnalysis{T}
