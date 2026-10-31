@@ -414,8 +414,8 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tminstep*randn())
-        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        (r < 0.5) && (tminₚ += tminstep*randn())
+        (r > 0.5) && (tmaxₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
@@ -463,8 +463,8 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tminstep*randn())
-        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        (r < 0.5) && (tminₚ += tminstep*randn())
+        (r > 0.5) && (tmaxₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
@@ -489,8 +489,8 @@ function metropolis_min!(tmindist::DenseArray{<:Number}, dist::Collection{<:Numb
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tminstep*randn())
-        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        (r < 0.5) && (tminₚ += tminstep*randn())
+        (r > 0.5) && (tmaxₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
@@ -525,6 +525,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
     ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./value(λ238U)
     tllₚ = tll = zero(T)
     ages = @. upperintercept(tll, ellipses)
+    agesₚ = copy(ages)
 
     # Initial step sigma for Gaussian proposal distributions
     youngest, oldest = minimum(ages), maximum(ages)
@@ -556,7 +557,9 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
 
     # Burnin
     for i = 1:burnin
+        # Reset proposals
         tminₚ, tmaxₚ, tllₚ = tmin, tmax, tll
+        copyto!(agesₚ, ages)
         # Adjust upper or lower bounds, or Pb-loss time
         r = rand()
         if r < 0.35
@@ -565,6 +568,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
             tmaxₚ += tmaxstep * randn()
         else
             tllₚ += tllstep * randn()
+            @. agesₚ = upperintercept(tllₚ, ellipses)
         end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
@@ -582,7 +586,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
             elseif method === :bivariate
                 llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
             end
-            llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+            llₚ += prior_ll(agesₚ, tminₚ, tmaxₚ)
             for i in eachindex(ages, ages68)
                 loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
                 llₚ += logpdf(lossprior, loss)
@@ -606,7 +610,9 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
     end
     # Step through each of the N steps in the Markov chain
     @inbounds for i in eachindex(tmindist, tlldist)
+        # Reset proposals
         tminₚ, tmaxₚ, tllₚ = tmin, tmax, tll
+        copyto!(agesₚ, ages)
         # Adjust upper or lower bounds, or Pb-loss time
         r = rand()
         if r < 0.35
@@ -615,6 +621,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
             tmaxₚ += tmaxstep * randn()
         else
             tllₚ += tllstep * randn()
+            @. agesₚ = upperintercept(tllₚ, ellipses)
         end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
@@ -632,7 +639,7 @@ function metropolis_min!(tmindist::DenseArray{T}, tlldist::DenseArray{T}, dist::
             elseif method === :bivariate
                 llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
             end
-            llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+            llₚ += prior_ll(agesₚ, tminₚ, tmaxₚ)
             for i in eachindex(ages, ages68)
                 loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
                 llₚ += logpdf(lossprior, loss)
@@ -744,8 +751,8 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tminstep*randn())
-        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        (r < 0.5) && (tminₚ += tminstep*randn())
+        (r > 0.5) && (tmaxₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
@@ -823,8 +830,8 @@ function metropolis_minmax!(tmindist::DenseArray{<:Number}, tmaxdist::DenseArray
         # Adjust upper or lower bounds
         tminₚ, tmaxₚ = tmin, tmax
         r = rand()
-        (r < 0.5) && (tmaxₚ += tminstep*randn())
-        (r > 0.5) && (tminₚ += tmaxstep*randn())
+        (r < 0.5) && (tminₚ += tminstep*randn())
+        (r > 0.5) && (tmaxₚ += tmaxstep*randn())
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
 
@@ -888,6 +895,7 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
     ages68 = log.(one(T) .+ (ellipses .|> e->e.y₀))./value(λ238U)
     tllₚ = tll = zero(T)
     ages = @. upperintercept(tll, ellipses)
+    agesₚ = copy(ages)
 
     # Initial step sigma for Gaussian proposal distributions
     youngest, oldest = minimum(ages), maximum(ages)
@@ -919,7 +927,9 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
 
     # Burnin
     for i = 1:burnin
+        # Reset proposals
         tminₚ, tmaxₚ, tllₚ = tmin, tmax, tll
+        copyto!(agesₚ, ages)
         # Adjust upper or lower bounds, or Pb-loss time
         r = rand()
         if r < 0.35
@@ -928,6 +938,7 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
             tmaxₚ += tmaxstep * randn()
         else
             tllₚ += tllstep * randn()
+            @. agesₚ = upperintercept(tllₚ, ellipses)
         end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
@@ -936,16 +947,13 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
         if tllₚ >= tminₚ
             llₚ = -Inf
         else
-            if tllₚ != tll
-                @. ages = upperintercept(tllₚ, ellipses)
-            end
             llₚ = logpdf(tllprior, tllₚ)
             if method === :projection
                 llₚ += dist_ll(dist, ages, tminₚ, tmaxₚ)
             elseif method === :bivariate
                 llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
             end
-            llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+            llₚ += prior_ll(agesₚ, tminₚ, tmaxₚ)
             for i in eachindex(ages, ages68)
                 loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
                 llₚ += logpdf(lossprior, loss)
@@ -962,14 +970,15 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
             end
 
             ll = llₚ
-            tmin = tminₚ
-            tmax = tmaxₚ
-            tll = tllₚ
+            tmin, tmax, tll = tminₚ, tmaxₚ, tllₚ
+            copyto!(ages, agesₚ)
         end
     end
     # Step through each of the N steps in the Markov chain
     @inbounds for i in eachindex(tmindist, tlldist)
+        # Reset proposals
         tminₚ, tmaxₚ, tllₚ = tmin, tmax, tll
+        copyto!(agesₚ, ages)
         # Adjust upper or lower bounds, or Pb-loss time
         r = rand()
         if r < 0.35
@@ -978,6 +987,7 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
             tmaxₚ += tmaxstep * randn()
         else
             tllₚ += tllstep * randn()
+            @. agesₚ = upperintercept(tllₚ, ellipses)
         end
         # Flip bounds if reversed
         (tminₚ > tmaxₚ) && ((tminₚ, tmaxₚ) = (tmaxₚ, tminₚ))
@@ -995,7 +1005,7 @@ function metropolis_minmax!(tmindist::DenseArray{T}, tmaxdist::DenseArray{T}, tl
             elseif method === :bivariate
                 llₚ += dist_ll(dist, analyses, tminₚ, tmaxₚ, tllₚ)
             end
-            llₚ += prior_ll(ages, tminₚ, tmaxₚ)
+            llₚ += prior_ll(agesₚ, tminₚ, tmaxₚ)
             for i in eachindex(ages, ages68)
                 loss = 100*max(one(T) - (ages68[i] - tllₚ) / (value(ages[i]) - tllₚ), zero(T))
                 llₚ += logpdf(lossprior, loss)
