@@ -171,7 +171,7 @@ julia> standards = importsimsdata("./examples/data")
 """
 function importsimsdata(dir::String; kwargs...)
     @assert isdir(dir) "Expecting a directory"
-    files = filter(x->contains(x, ".asc"), readdir(dir))
+    files = filter(x->endswith(x, ".asc"), readdir(dir))
     @assert !isempty(files) "No .asc files found"
     return importsimsdata(joinpath.(dir, files); kwargs...)
 end
@@ -190,7 +190,7 @@ function importsimsfile(filepath::AbstractString;
         T::Type=Float64,
     )
     @assert system ∈ (:UThPb,) "System $system not recognized"
-    @assert contains(filepath, ".asc") "Expecting .asc file"
+    @assert endswith(filepath, ".asc") "Expecting .asc file"
 
     # Read data file
     file = readdlm(filepath, '\t', skipblanks=true)
