@@ -23,10 +23,10 @@ function ageconcordia(d::UPbAnalysis)
 
     # Evaluate at 256 points between -6σ and  +6σ
     agerange = range(value(μ)-6stdev(μ), value(μ)+6stdev(μ), length=256)
-    intersection = @SVector [pdf(dist, SVector(ratio(agerange[i], value(λ235U)), ratio(agerange[i], value(λ238U)))) for i in 1:256]
+    intersection = @SVector [logpdf(dist, SVector(ratio(agerange[i], value(λ235U)), ratio(agerange[i], value(λ238U)))) for i in 1:256]
     
     # Return Measurement
-    return histmean(intersection, agerange) ± histstd(intersection, agerange, corrected=false)
+    return histmeanexp(intersection, agerange) ± histstdexp(intersection, agerange, corrected=false)
 end
 ageconcordia(d::UThPbAnalysis) = ageconcordia(UPbAnalysis(d))
 
@@ -39,10 +39,10 @@ function ageconcordia3d(d::UThPbAnalysis)
 
     # Evaluate at 256 points between -6σ and  +6σ
     agerange = range(value(μ)-6stdev(μ), value(μ)+6stdev(μ), length=256)
-    intersection = @SVector [pdf(dist, SVector(ratio(agerange[i], value(λ235U)), ratio(agerange[i], value(λ238U)), ratio(agerange[i], value(λ232Th)))) for i in 1:256]
+    intersection = @SVector [logpdf(dist, SVector(ratio(agerange[i], value(λ235U)), ratio(agerange[i], value(λ238U)), ratio(agerange[i], value(λ232Th)))) for i in 1:256]
     
     # Return Measurement
-    return histmean(intersection, agerange) ± histstd(intersection, agerange, corrected=false)
+    return histmeanexp(intersection, agerange) ± histstdexp(intersection, agerange, corrected=false)
 end
 
 function isconcordant(d::UPbAnalysis;
