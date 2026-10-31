@@ -21,6 +21,7 @@ function dist_ll(dist::Collection, mu::Collection{<:Number}, sigma::Collection{<
     nbins = length(dist) - 1
     Δt = abs(tmax-tmin)
     Σdist = sum(dist)
+    distave = Σdist/length(dist)
     dt = Δt/nbins
 
     # Cycle through each datum in dataset
@@ -35,7 +36,7 @@ function dist_ll(dist::Collection, mu::Collection{<:Number}, sigma::Collection{<
             # Interpolate corresponding distribution value
             f = floor(Int, ix)
             δ = ix - f
-            likelihood = (dist[f+1]*δ + dist[f]*(1-δ)) / Δt
+            likelihood = (dist[f+1]*δ + dist[f]*(1-δ)) / (Δt * distave)
         else
             # Otherwise, sum contributions from Gaussians at each point in distribution
             𝑖 = 1:length(dist)
