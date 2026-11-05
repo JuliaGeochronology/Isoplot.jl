@@ -43,9 +43,12 @@ end
 ```julia
 calibration(data::Collection{UThPbSIMSData{T}}, standardages::Collection; 
     \tblank = stacey_kramers,       # Common Pb composition in order (206/204, 207/204, 208/204). If the stacey_kramers function itself is given without argument, the age of each standard will be used.
-    \tcorrection = :none,           # [:none, :Pb204, :Pb208]
+    \tcorrection = :none,           # [:none | :Pb204 | :Pb208] type of common Pb correction to apply
     \titerations = 8,               # Number of iterations for Pb-208 correction
-    \tThUrsf::Number = 1.0,         # For Pb-208 correction; default is no fractionation
+    \tnumerator::Symbol = :U238O2,  # Numerator for oxide ratio. Must be present in each data file.
+    \tdenominator::Symbol = :U238,  # Denominator for oxide ratio. Must be present in each data file.
+    \tU::Symbol = :U238,            # [:U238 | :U238O | :U238O2] Uranium metal or oxide species to use for U/Pb ratios. Must be present in each data file.
+    \tTh::Symbol = :Th232,          # [:Th232 | :Th232O | :Th232O2] Thorium metal or oxide species to use for Th/Pb ratios. Must be present in each data file.
 )
 ```
 Create a `UPbSIMSCalibration` object `calib` given a dataset of 
