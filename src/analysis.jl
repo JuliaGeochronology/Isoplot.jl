@@ -20,12 +20,18 @@ struct Analysis{N,T,N2} <: AbstractAnalysis{T}
     σ::SVector{N,T}
     Σ::SMatrix{N,N,T,N2}
 end
+# Type aliases for small N
 const Analysis1D{T} = Analysis{1,T,1}
 const Analysis2D{T} = Analysis{2,T,4}
 const Analysis3D{T} = Analysis{3,T,9}
 const Analysis4D{T} = Analysis{4,T,16}
 const Analysis5D{T} = Analysis{5,T,25}
-Analysis2D(μ::AbstractVector{T}, σ::AbstractVector{T}, Σ::AbstractMatrix{T}) where {T} = Analysis{2,T,4}(SVector{2,T}(μ), SVector{2,T}(σ), SMatrix{2,2,T,4}(Σ))
+# Convenience constructors for each type alias
+Analysis1D(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T}) where {T} = Analysis{1,T,1}(SVector{1,T}(μ), SVector{1,T}(σ), SMatrix{1,1,T,1}(Σ))
+Analysis2D(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T}) where {T} = Analysis{2,T,4}(SVector{2,T}(μ), SVector{2,T}(σ), SMatrix{2,2,T,4}(Σ))
+Analysis3D(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T}) where {T} = Analysis{3,T,9}(SVector{3,T}(μ), SVector{3,T}(σ), SMatrix{3,3,T,9}(Σ))
+Analysis4D(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T}) where {T} = Analysis{4,T,16}(SVector{4,T}(μ), SVector{4,T}(σ), SMatrix{4,4,T,16}(Σ))
+Analysis5D(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T}) where {T} = Analysis{5,T,25}(SVector{5,T}(μ), SVector{5,T}(σ), SMatrix{5,5,T,25}(Σ))
 
 # Additional constructors for n-dimensional Analysis types
 function Analysis(μ::AbstractVector, σ::AbstractVector, Σ::AbstractMatrix{T}) where {T}
