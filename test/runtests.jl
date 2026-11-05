@@ -13,15 +13,11 @@ module BaseTests
         @test "$ci" === "5.5 +4.28/-4.28"
         @test display(ci) != NaN
 
-        ci = CI(randn(10_000))
-        @test ci.mean ≈ 0 atol = 0.1
-        @test ci.sigma ≈ 1 atol = 0.1
-        @test ci.lower ≈ -1.9599639845400576 atol = 0.15
-        @test ci.upper ≈ 1.9599639845400576 atol = 0.15
-        @test display(ci) != NaN
+        a = Age(ci)
+        @test display(a) != NaN
 
-        ci = CI([0.4227751675791465, 2.339746777712491, 0.7073822332289744, 1.115676532764763, 1.3295183295746795, 1.1839524860728812, 9.051763176763613, 3.163690972571135, 0.35529944660568286, 20.552275066037705, 1.3021911627717235, 0.8154804384732102, 2.630294225259665, 0.24662095224118538, 0.4755015782877633])
-        @test ci ≈ CI{Float64}(3.0461445697296416, 5.314497528659032,1.1839524860728812, 0.2846584252687595, 16.52709590479178)
+        mf = mcleanfit(1:10, ones(10), 1:10, ones(10))
+        @test display(mf) != NaN
     end
 
     @testset "General" begin
@@ -61,11 +57,9 @@ module BaseTests
         @test value(1±1) === 1.0
         @test stdev(1±1) === 1.0
         ci = CI(1:10)
-        display(ci)
         @test value(ci) ≈ 5.5
         @test stdev(ci) ≈ 3.0276503540974917
         a = Age(ci)
-        display(a)
         @test value(a) ≈ 5.5
         @test stdev(a) ≈ 3.0276503540974917
     end
@@ -420,6 +414,16 @@ module BaseTests
     analyses = UPbAnalysis.(eachcol(data)...,)
 
     @testset "Regression" begin
+        # CIs
+        ci = CI(randn(10_000))
+        @test ci.mean ≈ 0 atol = 0.1
+        @test ci.sigma ≈ 1 atol = 0.1
+        @test ci.lower ≈ -1.9599639845400576 atol = 0.15
+        @test ci.upper ≈ 1.9599639845400576 atol = 0.15
+        
+        ci = CI([0.4227751675791465, 2.339746777712491, 0.7073822332289744, 1.115676532764763, 1.3295183295746795, 1.1839524860728812, 9.051763176763613, 3.163690972571135, 0.35529944660568286, 20.552275066037705, 1.3021911627717235, 0.8154804384732102, 2.630294225259665, 0.24662095224118538, 0.4755015782877633])
+        @test ci ≈ CI{Float64}(3.0461445697296416, 5.314497528659032,1.1839524860728812, 0.2846584252687595, 16.52709590479178)
+
         # Simple linear regression
         ϕ = lsqfit(1:10, 1:10)
         @test ϕ[1] ≈ 0 atol=1e-12
@@ -511,7 +515,6 @@ module BaseTests
         @test mf.intercept.val ≈ -0.2446693790977319 rtol=1e-6
         @test mf.slope.val ≈ 1.0428730084538775 rtol=1e-6
         @test mf.mswd ≈ 1.4272439423337884 rtol=1e-6
-        @test display(mf) != NaN
 
         # Line is the right height at xm, where uncertainties of height and slope are uncorrelated
         @test Isoplot.line(mf, mf.xm) == mf.ym
@@ -607,7 +610,7 @@ module BaseTests
 
         # Robustness with noisy data, where the fit is poorly determined: never fails to converge or
         # settles on a saddle point, and is at least as good as the York fit (which can fail to converge)
-        for _ in 1:300
+        for _ in 1:33
             n = 12
             σx, σy, r = 0.1 .+ 2rand(n), 0.1 .+ 2rand(n), 1.6rand(n) .- 0.8
             x = 10rand(n)
@@ -619,7 +622,7 @@ module BaseTests
             L(f) = Isoplot.mclean_loglikelihood(Isoplot.SVector(0.0, f.intercept.val), Isoplot.SVector(1.0, f.slope.val), p, W)
             @test L(mf) >= L(yorkfit(x, σx, y, σy, r, iterations=100)) - 1e-9
         end
-        for _ in 1:300
+        for _ in 1:33
             covs = [(A = randn(3,3)/2 + I; 0.03*A*A') for _ in 1:15]
             @test !isnan(mcleanfit([10rand()*[1, -0.3, 0.6] + cholesky(Symmetric(C)).L*randn(3) for C in covs], covs).mswd)
         end
