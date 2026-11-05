@@ -1,6 +1,6 @@
 module BaseTests
 
-    using Test, Statistics
+    using Test, Statistics, LinearAlgebra
     using Measurements, Distributions
     using Isoplot
 
@@ -485,6 +485,148 @@ module BaseTests
 
         m = mswd(age68.(analyses[1:10]))
         @test m ≈ 13.15644886325888
+    end
+
+    @testset "McLean fit" begin
+        x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
+        y = [0.8742, 2.1626, 3.042, 3.829, 5.0116, 5.5614, 6.7675, 7.8856, 9.6414, 10.4955]
+        σx = σy = ones(10)/4
+        r = [0.0, 0.3, -0.4, 0.0, 0.5, 0.1, 0.0, -0.2, 0.2, 0.0]
+
+        # The fitted line should be the same as for the York fit, in 2D
+        for ρ in (zeros(10), r)
+            mf, yf = mcleanfit(x, σx, y, σy, ρ), yorkfit(x, σx, y, σy, ρ)
+            @test mf isa Isoplot.McLeanFit{Float64}
+            @test mf.intercept.val ≈ yf.intercept.val rtol=1e-6
+            @test mf.slope.val ≈ yf.slope.val rtol=1e-6
+            @test mf.mswd ≈ yf.mswd rtol=1e-6
+            # The points where height and slope are uncorrelated can differ, but should be on the same line
+            @test Isoplot.line(mf, yf.xm).val ≈ yf.ym.val rtol=1e-6
+            # Uncertainties are from the exact Hessian rather than York's approximation
+            @test mf.intercept.err ≈ yf.intercept.err rtol=1e-2
+            @test mf.slope.err ≈ yf.slope.err rtol=1e-2
+            @test mf.ym.err ≈ yf.ym.err rtol=1e-2
+        end
+        mf = mcleanfit(x, σx, y, σy)
+        @test mf.intercept.val ≈ -0.2446693790977319 rtol=1e-6
+        @test mf.slope.val ≈ 1.0428730084538775 rtol=1e-6
+        @test mf.mswd ≈ 1.4272439423337884 rtol=1e-6
+        @test display(mf) != NaN
+
+        # Line is the right height at xm, where uncertainties of height and slope are uncorrelated
+        @test Isoplot.line(mf, mf.xm) == mf.ym
+        @test Isoplot.line(mf, 0.0).val ≈ mf.intercept.val atol=1e-8
+        @test Isoplot.invline(mf, Isoplot.line(mf, 3.0).val) ≈ 3.0
+
+        # Expanded uncertainties
+        mfc = mcleanfit(x, σx, y, σy, corrected=true)
+        @test mfc.slope.val == mf.slope.val
+        @test mfc.slope.err ≈ mf.slope.err * sqrt(mf.mswd)
+        @test mfc.intercept.err ≈ mf.intercept.err * sqrt(mf.mswd)
+        @test mcleanfit(x, σx, 10σy, 10σy, corrected=true).slope.err ≈ mcleanfit(x, σx, 10σy, 10σy).slope.err # mswd < 1
+
+        # Analytic gradient and Hessian against finite differences, in two and three dimensions
+        for N in (2, 3)
+            p = [Isoplot.SVector{N}(ntuple(k -> (i, 2i + sin(i), -i + cos(3i))[k], N)) for i in 1:8]
+            Σ = [(A = Isoplot.SMatrix{N,N}(cos.((1:N^2) .+ i)); A*A' + 0.1*Isoplot.SMatrix{N,N}(I)) for i in 1:8]
+            W = inv.(Σ)
+            z, h = Isoplot.SVector{2N}(ntuple(k -> (1.0, 0.5, 2.0, -0.3, 1.0, 0.8)[k], 2N)), 1e-5
+            L(z) = Isoplot.mclean_loglikelihood(Isoplot.mclean_halves(z, Val(N))..., p, W)
+            G(z) = first(Isoplot.mclean_derivatives(Isoplot.mclean_halves(z, Val(N))..., p, W))
+            e(k) = Isoplot.SVector{2N}(ntuple(i -> i == k ? h : 0.0, 2N))
+            Gz, Hz = Isoplot.mclean_derivatives(Isoplot.mclean_halves(z, Val(N))..., p, W)
+            for k in 1:2N
+                @test Gz[k] ≈ (L(z + e(k)) - L(z - e(k)))/2h rtol=1e-6
+                @test Hz[:,k] ≈ (G(z + e(k)) - G(z - e(k)))/2h rtol=1e-6
+            end
+        end
+
+        # Other input types
+        @test mcleanfit(Tuple(x), Tuple(σx), Tuple(y), Tuple(σy)).slope.val ≈ mf.slope.val
+        @test mcleanfit(Float32.(x), Float32.(σx), Float32.(y), Float32.(σy)) isa Isoplot.McLeanFit{Float32}
+        @test mcleanfit(Float32.(x), Float32.(σx), Float32.(y), Float32.(σy)).slope.val ≈ mf.slope.val rtol=1e-3
+        @test mcleanfit(x .± 0.25, y .± 0.25).slope.val ≈ mf.slope.val rtol=1e-6
+        mf = mcleanfit(analyses)
+        yf = yorkfit(analyses)
+        @test mf.slope.val ≈ yf.slope.val rtol=1e-6
+        @test mf.intercept.val ≈ yf.intercept.val rtol=1e-4
+        @test Isoplot.line(mf, yf.xm).val ≈ yf.ym.val rtol=1e-6
+        @test mf.mswd ≈ yf.mswd rtol=1e-6
+
+        # NaNs are ignored
+        xn = copy(x); xn[3] = NaN
+        keep = [1:2; 4:10]
+        @test mcleanfit(xn, σx, y, σy).slope.val ≈ mcleanfit(x[keep], σx[keep], y[keep], σy[keep]).slope.val
+
+        # Perfect fit, which has zero chi-squared and so a log-likelihood of zero
+        mf = mcleanfit(1.0:6.0, fill(0.1, 6), 2.0 .* (1:6) .+ 1, fill(0.1, 6))
+        @test mf.slope.val ≈ 2
+        @test mf.intercept.val ≈ 1
+        @test mf.mswd ≈ 0 atol=1e-10
+
+        # Fits in three dimensions
+        N, n = 3, 20
+        a₀, v₀ = [0.5, 1.0, 2.0], [1.0, 0.5, -2.0]
+        covs = [(A = [1 0.3 -0.2; 0.1 1 0.4; 0.2 -0.3 1] * (0.05 + 0.1*i/n); A*A') for i in 1:n]
+        ts = range(1, 10, length=n)
+        mf = mcleanfit([a₀ .+ v₀*t for t in ts], covs) # Exact line
+        @test mf isa Isoplot.McLeanFit{Float64,3}
+        @test mf.v ≈ v₀
+        @test mf.mswd ≈ 0 atol=1e-10
+        @test mf.slope isa Isoplot.SVector{2,<:Measurement}
+        @test mf.intercept[1].val ≈ a₀[2] - a₀[1]*v₀[2]
+        @test mf.intercept[2].val ≈ a₀[3] - a₀[1]*v₀[3]
+        @test_throws ArgumentError mf.ym
+
+        # Statistical behavior given noisy data: slope z-scores and MSWD should be ~standard
+        zs, mswds = Float64[], Float64[]
+        for _ in 1:200
+            pts = [a₀ .+ v₀*ts[i] .+ cholesky(Symmetric(covs[i])).L * randn(3) for i in 1:n]
+            mf = mcleanfit(pts, covs)
+            append!(zs, (mf.v[2:3] .- v₀[2:3]) ./ sqrt.(diag(mf.Σ)[3:4]))
+            push!(mswds, mf.mswd)
+        end
+        @test std(zs) ≈ 1 atol=0.2
+        @test abs(mean(zs)) < 0.2
+        @test mean(mswds) ≈ 1 atol=0.1
+
+        # Same fit regardless of the order of the other variables
+        pts = [a₀ .+ v₀*ts[i] .+ cholesky(Symmetric(covs[i])).L * randn(3) for i in 1:n]
+        mf = mcleanfit(pts, covs)
+        mfp = mcleanfit([q[[1,3,2]] for q in pts], [C[[1,3,2],[1,3,2]] for C in covs])
+        @test mfp.v ≈ mf.v[[1,3,2]]
+        @test mfp.a ≈ mf.a[[1,3,2]]
+        @test mfp.mswd ≈ mf.mswd
+        @test mfp.Σ ≈ mf.Σ[[2,1,4,3],[2,1,4,3]]
+        @test mcleanfit(pts, covs, corrected=true).Σ ≈ mf.Σ * max(mf.mswd, 1)
+
+        # From `Analysis` objects, and with NaNs
+        @test mcleanfit([Analysis(pts[i], covs[i]) for i in 1:n]).v ≈ mf.v
+        pts[4] = [NaN, 1, 1]
+        @test mcleanfit(pts, covs).v ≈ mcleanfit(pts[[1:3; 5:n]], covs[[1:3; 5:n]]).v
+
+        # Robustness with noisy data, where the fit is poorly determined: never fails to converge or
+        # settles on a saddle point, and is at least as good as the York fit (which can fail to converge)
+        for _ in 1:300
+            n = 12
+            σx, σy, r = 0.1 .+ 2rand(n), 0.1 .+ 2rand(n), 1.6rand(n) .- 0.8
+            x = 10rand(n)
+            y = 0.7 .* x .+ 1 .+ randn(n)
+            mf = mcleanfit(x, σx, y, σy, r)
+            @test !isnan(mf.mswd)
+            W = [inv(Isoplot.SMatrix{2,2}(σx[i]^2, r[i]*σx[i]*σy[i], r[i]*σx[i]*σy[i], σy[i]^2)) for i in 1:n]
+            p = [Isoplot.SVector(x[i], y[i]) for i in 1:n]
+            L(f) = Isoplot.mclean_loglikelihood(Isoplot.SVector(0.0, f.intercept.val), Isoplot.SVector(1.0, f.slope.val), p, W)
+            @test L(mf) >= L(yorkfit(x, σx, y, σy, r, iterations=100)) - 1e-9
+        end
+        for _ in 1:300
+            covs = [(A = randn(3,3)/2 + I; 0.03*A*A') for _ in 1:15]
+            @test !isnan(mcleanfit([10rand()*[1, -0.3, 0.6] + cholesky(Symmetric(C)).L*randn(3) for C in covs], covs).mswd)
+        end
+
+        # Degenerate cases
+        @test isnan(mcleanfit([1.0], [1.0], [1.0], [1.0]).slope)
+        @test isnan(mcleanfit([1.0, 2.0], [1.0, 1.0], [1.0, 2.5], [1.0, 1.0]).mswd) # no degrees of freedom
     end
 
     @testset "Concordia Metropolis" begin
