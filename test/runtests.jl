@@ -981,6 +981,21 @@ module PlotsTest
         @test sum(img)/length(img) ≈ RGB{Float64}(0.966250588235294,0.966250588235294,0.966250588235294) rtol = 0.01
         rm("concordia.png")
 
+        # Tera-Wasserburg concordia
+        h = twconcordialine(500, 1000, label="")
+        twconcordiacurve!(h, timerange=(300, 1500))
+        savefig(h, "concordia.png")
+        @test load("concordia.png") isa AbstractMatrix
+        rm("concordia.png")
+        h = twconcordialine(500, 1000, label="", truncate=true)
+        twconcordiacurve!(h)
+        @test h isa Plots.Plot
+        h = twconcordialine(10*randn(20).+500, 10*randn(20).+1000, label="")
+        twconcordiacurve!(h)
+        h = twconcordialine(10*randn(20).+500, 10*randn(20).+1000, label="", truncate=true)
+        twconcordiacurve!(h)
+        @test h isa Plots.Plot
+
         # Rank-order plot
         h = rankorder(1:10, 2*ones(10), label="")
         savefig(h, "rankorder.png")
@@ -1044,6 +1059,8 @@ module MakieTest
 
     import ..BaseTests: analyses
 
+    const MakieExt = Base.get_extension(Isoplot, :MakieExt)
+
     # Base.retry_load_extensions()
     @testset "Makie Plotting" begin
         f = Figure()
@@ -1081,6 +1098,45 @@ module MakieTest
         @test sum(img)/length(img) ≈ RGBA{Float64}(0.9847984095860566, 0.9847984095860566, 0.9847984095860566, 1.0) rtol = 0.01
         rm("concordia.png")
 
+        # Tera-Wasserburg concordia
+        f4 = Figure()
+        ax4 = Axis(f4[1,1])
+        l = concordialine!(ax4, 500, 1000, concordiaType=:TeraWasserburg, label="line")
+        c = concordiacurve!(ax4, 300, 1500, concordiaType=:TeraWasserburg, label="curve")
+        @test l isa MakieExt.ConcordiaLine
+        @test c isa MakieExt.ConcordiaCurve
+        axislegend(ax4)
+        save("concordia.png",f4)
+        @test size(load("concordia.png")) == (900, 1200)
+        rm("concordia.png")
+        @test_throws ArgumentError concordiacurve!(Axis(Figure()[1,1]), 0, 100, concordiaType=:Foo)
+
+        # Many concordia lines, and a plot of many analyses at once
+        f5 = Figure()
+        ax5 = Axis(f5[1,1])
+        concordialine!(ax5, 10*randn(20).+10, 100*randn(20).+1000)
+        plot!(ax5, analyses, color=(:blue, 0.3))
+        concordiacurve!(ax5) # Time range from axis limits (current axis)
+        save("concordia.png",f5)
+        @test size(load("concordia.png")) == (900, 1200)
+        rm("concordia.png")
+
+        # York fit
+        x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
+        y = [0.8742, 2.1626, 3.042, 3.829, 5.0116, 5.5614, 6.7675, 7.8856, 9.6414, 10.4955]
+        yf = yorkfit(x, fill(0.25, 10), y, fill(0.25, 10))
+        f6 = Figure()
+        ax6 = Axis(f6[1,1])
+        scatter!(ax6, x, y)
+        @test plot!(ax6, yf) isa MakieExt.YorkLine
+        @test plot!(ax6, yf, xlims=(0, 12)) isa MakieExt.YorkLine
+
+        # Rank-order plots
+        f7 = Figure()
+        ax7 = Axis(f7[1,1])
+        @test rankorder!(ax7, (1:10) .± (2*ones(10))) isa MakieExt.RankOrderPlot
+        @test rankorder!(ax7, 1:10, 2*ones(10)) isa MakieExt.RankOrderPlot
+        @test rankorder!(ax7, [CI(1:10) for _ in 1:10]) isa MakieExt.RankOrderPlot
     end
 end
 

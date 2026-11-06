@@ -145,6 +145,110 @@ module PlotsExt
         return hdl
     end
 
+    ## --- Tera-Wasserburg concordia (²³⁸U/²⁰⁶Pb vs. ²⁰⁷Pb/²⁰⁶Pb)
+
+    # Tera-Wasserburg coordinates for a given time, from the Wetherill ratios
+    # (Works with Numbers or Measurements)
+    function twcoords(t, λ235, λ238)
+        r75 = ratio(t, λ235)
+        r68 = ratio(t, λ238)
+        return 1/r68, r75/r68/value(Isoplot.U238_U235)
+    end
+
+    # Plot a line between two times in Tera-Wasserburg Concordia space
+    # (A straight line in Wetherill space is also a straight line in Tera-Wasserburg space)
+    function Isoplot.twconcordialine(t₀, t₁; framestyle=:box, kwargs...)
+        xl = extrema(first(twcoords(t, value(λ235U), value(λ238U))) for t in (first(t₀), first(t₁)))
+        return twconcordialine!(plot(xlims=xl), t₀, t₁; framestyle, kwargs...)
+    end
+    function Isoplot.twconcordialine!(hdl::PlotOrSubplot, t₀::Number, t₁::Number; truncate::Bool=false, kwargs...)
+        xl = Plots.xlims(hdl)
+        x₀, y₀ = twcoords(t₀, λ235U, λ238U)
+        x₁, y₁ = twcoords(t₁, λ235U, λ238U)
+        slope = (y₁-y₀)/(x₁-x₀)
+        intercept = y₀ - x₀*slope
+        x = if truncate
+            xmin = max(first(xl), min(value(x₀), value(x₁)))
+            xmax = min(last(xl), max(value(x₀), value(x₁)))
+            collect(range(xmin, xmax, length=50))
+        else
+            collect(range(xl..., length=50))
+        end
+        y = intercept .+ slope .* x
+        plot!(hdl, x, value.(y); ribbon=2stdev.(y), kwargs...)
+        Plots.xlims!(hdl, xl)
+        return hdl
+    end
+    function Isoplot.twconcordialine!(hdl::PlotOrSubplot, t₀::Collection, t₁::Collection; truncate::Bool=false, label="", color=:black, alpha=0.05, kwargs...)
+        xl = Plots.xlims(hdl)
+        x₀, y₀ = twcoords.(t₀, value(λ235U), value(λ238U)) |> v -> (first.(v), last.(v))
+        x₁, y₁ = twcoords.(t₁, value(λ235U), value(λ238U)) |> v -> (first.(v), last.(v))
+        slope = @. (y₁-y₀)/(x₁-x₀)
+        intercept = @. y₀ - x₀*slope
+        x = if truncate
+            xmin = max(first(xl), min(minimum(x₀), minimum(x₁)))
+            xmax = min(last(xl), max(maximum(x₀), maximum(x₁)))
+            collect(range(xmin, xmax, length=50))
+        else
+            collect(range(xl..., length=50))
+        end
+        ys = [@. b + m * x for (m, b) in zip(slope, intercept)]
+        plot!(hdl, x, ys; label="", color, alpha, kwargs...)
+        plot!(hdl, x, sum(ys)./length(ys); label, color, alpha=1, kwargs...)
+        Plots.xlims!(hdl, xl)
+        return hdl
+    end
+
+    # Plot the Tera-Wasserburg Concordia curve
+    function Isoplot.twconcordiacurve!(hdl::PlotOrSubplot=Plots.current(); timerange=:auto)
+        # Uncertainty of 235 decay constant relative to the 238 decay constant
+        σₜ = value(λ235U_jaffey) .* sqrt((stdev(λ238U)/value(λ238U)).^2 + (stdev(λ235U_jaffey)/value(λ235U_jaffey)).^2) # 1/Years
+        λ235, λ238 = value(λ235U_jaffey), value(λ238U)
+
+        xl, yl = Plots.xlims(hdl), Plots.ylims(hdl) # Note current size of figure
+        tlim = if timerange===:auto
+            tmax = 4567.0 # Don't extrapolate beyond the age of the Earth (Ma)
+            xmin = max(first(xl), 1/ratio(tmax, λ238)) # Time decreases with x
+            xmax = max(last(xl), xmin)
+            (age(1/xmax, λ238), age(1/xmin, λ238)) # Calculate time range of current window
+        else
+            timerange
+        end
+        dt = tlim[2] - tlim[1]
+        tmin = max(tlim[1]-0.1dt, 1e-3dt) # Tera-Wasserburg space diverges at t=0
+        tmax = tlim[2]+0.1dt
+        t = range(tmin, tmax, length=1000) # Time vector, including padding
+        x, y = twcoords.(t, λ235, λ238) |> v -> (first.(v), last.(v))
+        _, ylo = twcoords.(t, λ235-2σₜ, λ238) |> v -> (first.(v), last.(v))
+        _, yhi = twcoords.(t, λ235+2σₜ, λ238) |> v -> (first.(v), last.(v))
+        Plots.plot!(hdl, Shape([x; reverse(x)], [ylo; reverse(yhi)]), color=:black, alpha=0.15, label="") # Two-sigma concordia uncertainty
+        Plots.plot!(hdl, x, y, color=:black, label="") # Concordia line
+
+        xs, ys = twcoords.(t, value(λ235U), λ238) |> v -> (first.(v), last.(v))
+        Plots.plot!(hdl, xs, ys, color=:black, style=:dash, label="") # Concordia line, using Schoene et al. decay constants
+
+        Plots.xlims!(hdl, xl) # Ensure that figure size hasn't changed
+        Plots.ylims!(hdl, yl)
+
+        # Calculate desired range of age markers
+        scale = floor(log10(tlim[2]-tlim[1])) # Characteristic timescale (order of magnitude)
+        trange = round.(tlim./10.0^scale) # Minimum and maximum time to a round number
+        majorstep = 0.5
+        tticks = collect((trange[1]:majorstep:trange[2]).*10.0^scale) # Time ticks, to a round number
+        filter!(τ -> tmin <= τ <= tmax, tticks)
+        xticks, yticks = twcoords.(tticks, λ235, λ238) |> v -> (first.(v), last.(v))
+
+        # Plot age markers with text labels
+        Plots.plot!(hdl, xticks, yticks, color=:black, seriestype=:scatter, ms=2, label="")
+        xoffset = (xl[2]-xl[1])/200
+        yoffset = (yl[2]-yl[1])/100
+        visible = (xl[1]+8*xoffset) .< xticks .< xl[2]
+        ticklabels = Plots.text.(string.(round.(tticks[visible], digits=1)), 10, :right)
+        Plots.annotate!(hdl, xticks[visible].-xoffset, yticks[visible].+yoffset, ticklabels)
+
+        return hdl
+    end
+
     # Plot confidence intervals
     for P in (Plots.Plot, Plots.Subplot)
         @eval Plots.plot!(hdl::($P), y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), mscolor, kwargs...)
