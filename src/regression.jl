@@ -46,7 +46,7 @@ or as a single vector `x` of `Measurement`s equivalent to `x = μ .± σ`
 In all cases, `σ` is assumed to reported as _actual_ sigma (i.e., 1-sigma).
 
 If `corrected=true`, the resulting uncertainty of the weighted mean is expanded by a factor
-of `sqrt(mswd)` to attempt to account for dispersion dispersion when the MSWD is greater than `1`
+of `sqrt(mswd)` to attempt to account for excess dispersion when the MSWD is greater than `1`
 
 ### Examples
 ```julia
@@ -278,13 +278,19 @@ invline(yf::YorkFit, y::Number) = (y - yf.ym) / yf.slope + yf.xm
 
 """
 ```julia
-yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, [r])
-yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, [r])
-yorkfit(d::Collection{<:AbstractAnalysis})
+yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, [r]; maxiter=128, tol=1e-12, corrected=false)
+yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, [r]; maxiter=128, tol=1e-12, corrected=false)
+yorkfit(d::Collection{<:AbstractAnalysis}; maxiter=128, tol=1e-12, corrected=false)
 ```
-Uses the York (1968) two-dimensional least-squares fit to calculate `a`, `b`,
+Uses the York (1968) two-dimensional iterative least-squares fit to calculate `a`, `b`,
 and uncertanties `σa`, `σb` for the equation `y = a + bx`, given `x`, `y`,
-uncertaintes `σx`, and `σy`, and optially covarances `r`.
+uncertaintes `σx`, and `σy`, and optionally covarances `r`.
+Iteration continues until the slope converges to relative tolerance `tol`,
+or for at most `maxiter` iterations, whichever comes first.
+
+If `corrected=true`, the resulting uncertainties in slope (`σb`), intercept (`σa`),
+and midpoint (`σym`) are expanded by a factor of `sqrt(mswd)` 
+to attempt to account for excess dispersion when the MSWD is greater than `1`.
 
 For further reference, see:
 York, Derek (1968) "Least squares fitting of a straight line with correlated errors"
@@ -304,7 +310,7 @@ YorkFit{Float64}:
   MSWD     : 0.9457955207778813
 ```
 """
-function yorkfit(d::Collection{<:AbstractAnalysis}; iterations=10)
+function yorkfit(d::Collection{<:AbstractAnalysis}; kwargs...)
     @assert !isempty(d)
     # Using NTuples instead of Arrays can avoid allocations if length(d) can be const-prop'd
     # and should be more efficient for relatively small N, but could be less efficient for large N
@@ -313,84 +319,128 @@ function yorkfit(d::Collection{<:AbstractAnalysis}; iterations=10)
     σx = ntuple(i->std(d[i])[1], length(d))
     σy = ntuple(i->std(d[i])[2], length(d))
     r = ntuple(i->cov(d[i])[1,2]/(sqrt(cov(d[i])[1,1] * cov(d[i])[2,2])), length(d))
-    yorkfit(x, σx, y, σy, r; iterations)
+    yorkfit(x, σx, y, σy, r; kwargs...)
 end
-yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, r=ntuple(i->paircor(x[i], y[i]), length(x)); iterations=10) = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; iterations)
-function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Collection, r=zero(T); iterations=10) where {T}
-    @assert !isempty(x)
-    @assert eachindex(x) == eachindex(σx) == eachindex(y) == eachindex(σy)
+yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, r=ntuple(i->paircor(x[i], y[i]), length(x)); kwargs...) = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; kwargs...)
+function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Collection, r=zero(T); maxiter::Integer=128, tol::Number=1e-12, corrected::Bool=false) where {T}
+    @assert !isempty(x) "Cannot take York fit of empty data"
+    @assert eachindex(x) == eachindex(σx) == eachindex(y) == eachindex(σy) "Indices of x, σx, y, and σy must match"
+    @assert r isa Number || eachindex(r) == eachindex(x) "Indices of correlation coefficients must match data"
     @assert all(x->(-1<=x<=1), r) "Correlation coefficients must be between -1 and 1"
+    n = length(x)
 
-    ## For an initial estimate of slope and intercept, calculate the
-    # ordinary least-squares fit for the equation y=a+bx
-    a, b = lsqfit(x, y)
-
-    # Prepare for York fit
-    ∅ = zero(float(eltype(x)))
-    ωx = 1.0 ./ σx.^2           # x weights
-    ωy = 1.0 ./ σy.^2           # y weights
-    α = sqrt.(ωx .* ωy)
-
-    ## Perform the York fit (must iterate)
-    Z = @. ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
-
-    x̄ = sum(Z.*x) / sum(Z)
-    ȳ = sum(Z.*y) / sum(Z)
-
-    U = x .- x̄
-    V = y .- ȳ
-
-    if Z isa NTuple
-        Z = collect(Z)
-        U = collect(U)
-        V = collect(V)
+    ## For an initial estimate of the slope, calculate the ordinary
+    # least-squares fit for the equation y=a+bx
+    x̄ = sum(x) / n
+    ȳ = sum(y) / n
+    Σxy, Σxx = zero(x̄*ȳ), zero(x̄*x̄)
+    @inbounds for i in eachindex(x)
+        Σxy += (x[i] - x̄) * (y[i] - ȳ)
+        Σxx += (x[i] - x̄)^2
     end
+    b = Σxy / Σxx
+    ∅ = zero(b)
 
-    sV = @. Z^2 * V * (U/ωy + b*V/ωx - r*V/α)
-    sU = @. Z^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
-    b = sum(sV) / sum(sU)
-
-    a = ȳ - b * x̄
-    for _ in 2:iterations
-        @. Z = ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
-
+    ## Perform the York fit, iterating the slope to convergence
+    # Each pass recomputes the weights `Z` from the current slope, and then
+    # the weighted means and the updated slope.
+    tolₑ = max(tol, 10*eps(typeof(b)))
+    converged = false
+    for _ in 1:maxiter
         ΣZ, ΣZx, ΣZy = ∅, ∅, ∅
-        @inbounds for i in eachindex(Z)
-            ΣZ += Z[i]
-            ΣZx += Z[i] * x[i]
-            ΣZy += Z[i] * y[i]
+        @inbounds for i in eachindex(x)
+            Z = _york_weight(b, σx[i], σy[i], _maybe_index(r, i))
+            ΣZ += Z
+            ΣZx += Z * x[i]
+            ΣZy += Z * y[i]
         end
         x̄ = ΣZx / ΣZ
-        ȳ = ΣZy / ΣZ
+        ȳ = ΣZy / ΣZ
 
-        @. U = x - x̄
-        @. V = y - ȳ
-
-        @. sV = Z^2 * V * (U/ωy + b*V/ωx - r*V/α)
-        @. sU = Z^2 * U * (U/ωy + b*V/ωx - b*r*U/α)
-        b = sum(sV) / sum(sU)
-
-        a = ȳ - b * x̄
+        sV, sU = ∅, ∅
+        @inbounds for i in eachindex(x)
+            ωx, ωy = inv(σx[i]^2), inv(σy[i]^2)
+            ρ = _maybe_index(r, i)
+            α = sqrt(ωx * ωy)
+            Z = ωx*ωy / (b^2*ωy + ωx - 2*b*ρ*α)
+            U, V = x[i] - x̄, y[i] - ȳ
+            sV += Z^2 * V * (U/ωy + b*V/ωx - ρ*V/α)
+            sU += Z^2 * U * (U/ωy + b*V/ωx - b*ρ*U/α)
+        end
+        bₙ = sV / sU
+        converged = abs(bₙ - b) <= tolₑ * abs(bₙ)
+        b = bₙ
+        converged && break
     end
+    converged || @warn "York fit did not converge within $maxiter iterations; consider `mcleanfit`, which may be more robust"
 
-    ## 4. Calculate uncertainties and MSWD
-    β = @. Z * (U/ωy + b*V/ωx - (b*U+V)*r/α)
+    ## Weighted means and Z at the final slope
+    ΣZ, ΣZx, ΣZy = ∅, ∅, ∅
+    @inbounds for i in eachindex(x)
+        Z = _york_weight(b, σx[i], σy[i], _maybe_index(r, i))
+        ΣZ += Z
+        ΣZx += Z * x[i]
+        ΣZy += Z * y[i]
+    end
+    x̄ = ΣZx / ΣZ
+    ȳ = ΣZy / ΣZ
+    a = ȳ - b * x̄
 
-    u = x̄ .+ β
-    v = ȳ .+ b.*β
+    ## Adjusted points (u, v) and their weighted mean (xm, ym)
+    ΣZu, Σχ² = ∅, ∅
+    @inbounds for i in eachindex(x)
+        Z, u = _york_adjusted(b, x̄, ȳ, x[i], y[i], σx[i], σy[i], _maybe_index(r, i))
+        ΣZu += Z * u
+        Σχ² += (y[i] - a - b*x[i])^2 / (σy[i]^2 + b^2*σx[i]^2 - 2*b*_maybe_index(r, i)*σx[i]*σy[i])
+    end
+    xm = ΣZu / ΣZ
+    ym = ∅
+    @inbounds for i in eachindex(x)
+        Z, u = _york_adjusted(b, x̄, ȳ, x[i], y[i], σx[i], σy[i], _maybe_index(r, i))
+        ym += Z * (ȳ + b*(u - x̄))
+    end
+    ym /= ΣZ
 
-    xm = sum(Z.*u)./sum(Z)
-    ym = sum(Z.*v)./sum(Z)
-
-    σb = sqrt(1.0 ./ sum(Z .* (u .- xm).^2))
-    σa = sqrt(1.0 ./ sum(Z) + xm.^2 .* σb.^2)
-    σym = sqrt(1.0 ./ sum(Z))
+    ## Uncertainties and MSWD
+    Σd = ∅
+    @inbounds for i in eachindex(x)
+        Z, u = _york_adjusted(b, x̄, ȳ, x[i], y[i], σx[i], σy[i], _maybe_index(r, i))
+        Σd += Z * (u - xm)^2
+    end
+    σb = sqrt(inv(Σd))
+    σa = sqrt(inv(ΣZ) + xm^2 * σb^2)
+    σym = sqrt(inv(ΣZ))
 
     # MSWD (reduced chi-squared) of the fit
-    mswd = sum(@. (y - a - b*x)^2 / (σy^2 + b^2 * σx^2 - 2*b*r*σx*σy) ) / (length(x)-2)
+    mswd = Σχ² / (n-2)
+
+    # Optionally scale uncertainties by √MSWD if the data are overdispersed
+    if corrected
+        f = sqrt(max(mswd, one(mswd)))
+        σb *= f
+        σa *= f
+        σym *= f
+    end
 
     ## Results
     return YorkFit(a ± σa, b ± σb, xm, ym ± σym, mswd)
+end
+
+# Helpers for `yorkfit`
+@inline _maybe_index(r::Number, i) = r
+@inline _maybe_index(r, i) = @inbounds r[i]
+@inline function _york_weight(b, σx, σy, r)
+    ωx, ωy = inv(σx^2), inv(σy^2)
+    return ωx*ωy / (b^2*ωy + ωx - 2*b*r*sqrt(ωx*ωy))
+end
+# Weight `Z` and adjusted x-position `u` of a point, given the slope and weighted means
+@inline function _york_adjusted(b, x̄, ȳ, x, y, σx, σy, r)
+    ωx, ωy = inv(σx^2), inv(σy^2)
+    α = sqrt(ωx*ωy)
+    Z = ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
+    U, V = x - x̄, y - ȳ
+    β = Z * (U/ωy + b*V/ωx - (b*U+V)*r/α)
+    return Z, x̄ + β
 end
 
 # Correlation and covariance of two `Measurement`s

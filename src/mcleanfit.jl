@@ -82,7 +82,7 @@ invline(f::McLeanFit{<:Any,2}, y::Number) = (y - f.ym) / f.slope + f.xm
 
 """
 ```julia
-mcleanfit(x::Collection, σx::Collection, y::Collection, σy::Collection, [r]; maxiter=100, tol=1e-12, corrected=false)
+mcleanfit(x::Collection, σx::Collection, y::Collection, σy::Collection, [r]; maxiter=128, tol=1e-12, corrected=false)
 mcleanfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, [r]; kwargs...)
 mcleanfit(d::Collection{<:AbstractAnalysis}; kwargs...)
 mcleanfit(μ::Collection{<:AbstractVector}, Σ::Collection{<:AbstractMatrix}; kwargs...)
@@ -140,7 +140,7 @@ function mcleanfit(μ::Collection{<:AbstractVector}, Σ::Collection{<:AbstractMa
 end
 
 # Core method, given vectors of points and covariance matrices
-function mcleanfit(p::Vector{SVector{N,F}}, Σ::Vector{SMatrix{N,N,F,N²}}; maxiter::Integer=100, tol::Number=1e-12, corrected::Bool=false) where {N,F<:AbstractFloat,N²}
+function mcleanfit(p::Vector{SVector{N,F}}, Σ::Vector{SMatrix{N,N,F,N²}}; maxiter::Integer=128, tol::Number=1e-12, corrected::Bool=false) where {N,F<:AbstractFloat,N²}
     @assert N >= 2 "Data must have at least two dimensions"
     @assert eachindex(p) == eachindex(Σ)
     nanfit = mclean_nanfit(Val(N), F)
