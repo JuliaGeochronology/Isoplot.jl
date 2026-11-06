@@ -240,25 +240,25 @@ the form `y = a + bx`
 ### Examples
 ```
 julia> a, b = lsqfit(1:10, 1:10)
-2-element Vector{Float64}:
- -1.19542133983862e-15
-  1.0
-
-julia> isapprox(a, 0, atol = 1e-12)
-true
-
-julia> isapprox(b, 1, atol = 1e-12)
-true
+(0.0, 1.0)
 ```
 """
-lsqfit(x::Collection{<:Number}, y::Collection{<:Number}) = lsqfit(x, collect(y))
-function lsqfit(x::Collection{T}, y::AbstractVector{<:Number}) where {T<:Number}
-    A = Array{T}(undef, length(x), 2)
-    A[:,1] .= one(T)
-    A[:,2] .= x
-    return A\y
+function lsqfit(x::Collection{<:Number}, y::Collection{<:Number})
+    n = length(x)
+    n == length(y) || throw(DimensionMismatch("x and y must have the same length"))
+    x̄ = sum(x) / n
+    ȳ = sum(y) / n
+    Σxx = zero(x̄ * x̄)
+    Σxy = zero(x̄ * ȳ)
+    @inbounds for (xi, yi) in zip(x, y)
+        dx = xi - x̄
+        Σxx += dx * dx
+        Σxy += dx * (yi - ȳ)
+    end
+    b = Σxy / Σxx
+    a = ȳ - b * x̄
+    return (a, b)
 end
-# Identical to the one in StatGeochemBase
 
 ## --- York (1968) two-dimensional linear regression with x and y uncertainties and optional correlation, as commonly used in isochrons
 
