@@ -108,6 +108,19 @@ function wmeanband(data::AbstractVector{<:Measurement})
     return (; μ=value(μ), σ, mswd, label)
 end
 
+## --- Uncertainty ellipsoids for 3D analyses
+
+# Surface of the covariance ellipsoid of a 3D analysis, as three `npoints`×`npoints` matrices of x, y, and z.
+# Default `sigmalevel` is the trivariate p=0.05 level: sqrt(invlogccdf(Chisq(3), log(0.05)))
+function ellipsoid(d::Analysis3D{T}; sigmalevel::Number=2.7954, npoints::Integer=24) where {T}
+    F = eigen(Symmetric(d.Σ))
+    A = F.vectors * Diagonal(T(sigmalevel) .* sqrt.(abs.(F.values))) # Maps the unit sphere onto the ellipsoid
+    θ = range(0, π, length=npoints)
+    φ = range(0, 2π, length=npoints)
+    x, y, z = ntuple(k -> [d.μ[k] + A[k,1]*sin(t)*cos(p) + A[k,2]*sin(t)*sin(p) + A[k,3]*cos(t) for t in θ, p in φ], 3)
+    return x, y, z
+end
+
 ## --- Placeholder methods for plotting functions; see ext/ for (library-dependent) implementations
 
 function concordiacurve end

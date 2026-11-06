@@ -640,6 +640,15 @@ module BaseTests
         @test Isoplot.line(yf, 2.0, 2) == Isoplot.line(yf, 2.0)
         @test_throws ArgumentError Isoplot.line(yf, 2.0, 3)
         mf3 = mcleanfit(pts, covs)
+        # Ellipse of a pair of variables, and ellipsoid, of a 3D analysis
+        a3 = Analysis([1.0, 2.0, 3.0], [0.2, 0.3, 0.4], [0.04 0.03 0.0; 0.03 0.09 0.05; 0.0 0.05 0.16])
+        e13 = Ellipse(a3, 1, 3)
+        @test (e13.x₀, e13.y₀, e13.σx₀, e13.σy₀) == (1.0, 3.0, 0.2, 0.4)
+        @test e13.x == Ellipse(Analysis2D([1.0, 3.0], [0.2, 0.4], [0.04 0.0; 0.0 0.16])).x
+        x, y, z = Isoplot.ellipsoid(a3, sigmalevel=2, npoints=10)
+        @test size(x) == size(y) == size(z) == (10, 10)
+        Σ⁻¹ = inv(Matrix(a3.Σ))
+        @test all(isapprox(([x[i]-1, y[i]-2, z[i]-3]' * Σ⁻¹ * [x[i]-1, y[i]-2, z[i]-3]), 4) for i in eachindex(x))
         a, v = mf3.a, mf3.v
         @test Isoplot.line(mf3, 1.5, 3).val ≈ a[3] + v[3]*(1.5 - a[1])
         @test Isoplot.line(mf3, a[1], 2).err ≈ sqrt(mf3.Σ[1,1]) # At a₁ only the uncertainty of a₂ contributes
@@ -1055,6 +1064,16 @@ module PlotsTest
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9842757843137254,0.9882103758169932,0.9906218464052285) rtol = 0.01
         rm("rankorder.png")
 
+        # 3D analyses: 2D projection and ellipsoid
+        a3 = [Analysis([t, 1+t/2, 2t], [0.2, 0.3, 0.4], [0.04 0.03 0.0; 0.03 0.09 0.05; 0.0 0.05 0.16]) for t in 0:3]
+        @test plot(a3, dims=(1,3)) isa Plots.Plot
+        @test plot!(plot(), a3[1]) isa Plots.Plot
+        @test plot3d!(plot3d(), a3[1]) isa Plots.Plot
+        h = plot3d!(plot3d(), a3, label="ellipsoids")
+        savefig(h, "ell3.png")
+        @test load("ell3.png") isa AbstractMatrix
+        rm("ell3.png")
+
         # With weighted mean
         d = [10.0, 10.3, 9.8, 10.6, 10.1] .± 0.2
         m = Isoplot.wmeanband(d)
@@ -1254,6 +1273,15 @@ module MakieTest
         @test rankorder!(ax7, (1:10) .± (2*ones(10))) isa MakieExt.RankOrderPlot
         @test rankorder!(ax7, 1:10, 2*ones(10)) isa MakieExt.RankOrderPlot
         @test rankorder!(ax7, [CI(1:10) for _ in 1:10]) isa MakieExt.RankOrderPlot
+        # 3D analyses: ellipsoids, and 2D projections
+        a3 = [Analysis([t, 1+t/2, 2t], [0.2, 0.3, 0.4], [0.04 0.03 0.0; 0.03 0.09 0.05; 0.0 0.05 0.16]) for t in 0:3]
+        f3 = Figure(size=(600, 300))
+        @test plot!(Axis3(f3[1,1]), a3) isa MakieExt.Ellipsoids
+        @test plot!(Axis3(f3[1,2]), a3[1]) isa MakieExt.Ellipsoids
+        @test plot!(Axis(f3[1,3]), Ellipse.(a3, 1, 3)) isa Makie.Poly
+        save("ell3.png", f3)
+        @test load("ell3.png") isa AbstractMatrix
+        rm("ell3.png")
         @test rankorder!(ax7, [10.0, 10.3, 9.8, 10.6, 10.1] .± 0.2, wmean=true) isa MakieExt.RankOrderPlot
     end
 end

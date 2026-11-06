@@ -4,7 +4,7 @@ module PlotsExt
     using Plots: Shape, plot, plot!, plot3d!
     import Plots
     using Measurements
-    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband
+    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband, ellipsoid
     # export plot, plot!
 
     const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
@@ -24,6 +24,21 @@ module PlotsExt
         @eval function Plots.plot!(hdl::($P), e::Vector{<:Ellipse}, args...; label="", color=1, kwargs...)
             for i in eachindex(e)
                 plot!(hdl, Shape(e[i]), args...; label=(i==firstindex(e) ? label : ""), color, kwargs...)
+            end
+            return hdl
+        end
+    end
+
+    # 3D analyses are plotted in 2D as the ellipse of any pair of variables `dims` (default 1 and 2),
+    # or in 3D as an ellipsoid by `plot3d!`
+    for P in (Plots.Plot, Plots.Subplot)
+        @eval Plots.plot!(hdl::($P), a::Analysis3D, args...; dims=(1,2), kwargs...) = plot!(hdl, Ellipse(a, dims...), args...; kwargs...)
+        @eval Plots.plot!(hdl::($P), a::Vector{<:Analysis3D}, args...; dims=(1,2), kwargs...) = plot!(hdl, Ellipse.(a, dims...), args...; kwargs...)
+        @eval Plots.plot3d!(hdl::($P), a::Analysis3D; color=1, alpha=0.3, label="", sigmalevel=2.7954, npoints=24, kwargs...) =
+            plot!(hdl, ellipsoid(a; sigmalevel, npoints)...; seriestype=:surface, color=Plots.cgrad(fill(color isa Integer ? Plots.palette(:default)[color] : color, 2)), colorbar=false, alpha, label, kwargs...)
+        @eval function Plots.plot3d!(hdl::($P), a::Vector{<:Analysis3D}; label="", color=1, kwargs...)
+            for i in eachindex(a)
+                plot3d!(hdl, a[i]; label=(i==firstindex(a) ? label : ""), color, kwargs...)
             end
             return hdl
         end

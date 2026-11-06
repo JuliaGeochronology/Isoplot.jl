@@ -4,7 +4,7 @@ module MakieExt
     using Makie
     using Measurements
     import Isoplot: concordialine, concordialine!, concordiacurve, concordiacurve!
-    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband
+    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband, ellipsoid
 
     ## --- Ellipses and analyses
 
@@ -17,6 +17,30 @@ module MakieExt
     Makie.plottype(::AbstractAnalysis) = Poly
     Makie.plottype(::AbstractVector{<:Ellipse}) = Poly
     Makie.plottype(::AbstractVector{<:AbstractAnalysis}) = Poly
+
+    # 3D analyses are drawn as translucent ellipsoids; use `Ellipse(a, i, j)` for a 2D projection onto variables i and j
+    @recipe(Ellipsoids, a) do scene
+        Attributes(
+            color = Makie.wong_colors()[1],
+            alpha = 0.3,
+            sigmalevel = 2.7954,
+            npoints = 24,
+            label = nothing,
+        )
+    end
+    Makie.convert_arguments(::Type{<:Ellipsoids}, a::Union{Analysis3D, AbstractVector{<:Analysis3D}}) = (a,)
+    Makie.plottype(::Analysis3D) = Ellipsoids
+    Makie.plottype(::AbstractVector{<:Analysis3D}) = Ellipsoids
+    Makie.legendelements(p::Ellipsoids, legend) = [PolyElement(color=(p.color[], p.alpha[]))]
+
+    function Makie.plot!(p::Ellipsoids)
+        as = p.a[] isa Analysis3D ? [p.a[]] : p.a[]
+        for a in as
+            x, y, z = ellipsoid(a; sigmalevel=p.sigmalevel[], npoints=p.npoints[])
+            surface!(p, x, y, z; color=fill(p.color[], size(x)), alpha=p.alpha[], transparency=true, shading=NoShading)
+        end
+        return p
+    end
 
     function as_points(v1, v2)
         length(v1) == length(v2) || throw(DimensionMismatch("Arguments must be the same length"))
