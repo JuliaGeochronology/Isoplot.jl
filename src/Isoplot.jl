@@ -78,7 +78,7 @@ module Isoplot
 
     include("generic_plotting.jl")
     export concordiacurve, concordiacurve!, concordialine, concordialine!,
-    twconcordiacurve, twconcordiacurve!, twconcordialine, twconcordialine!,
+    twconcordiacurve, twconcordiacurve!, twconcordialine, twconcordialine!, twanalysis,
     rankorder, rankorder!
 
     include("metropolis.jl")

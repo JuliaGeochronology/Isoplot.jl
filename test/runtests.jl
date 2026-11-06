@@ -429,6 +429,24 @@ module BaseTests
         @test ϕ[1] ≈ 0 atol=1e-12
         @test ϕ[2] ≈ 1 atol=1e-12
 
+        # Tera-Wasserburg conversion
+        d = UPbAnalysis(0.6, 0.006, 0.08, 0.0008, 0.7)
+        t = twanalysis(d)
+        @test t isa Analysis2D{Float64}
+        @test t.μ ≈ [1/0.08, 0.6/0.08/value(Isoplot.U238_U235)]
+        samples = rand(d, 1_000_000) # Compare to Monte Carlo
+        X = 1 ./ samples[2,:]
+        Y = samples[1,:] ./ samples[2,:] ./ value(Isoplot.U238_U235)
+        @test t.σ ≈ [std(X), std(Y)] rtol=0.02
+        @test t.Σ[1,2]/prod(t.σ) ≈ cor(X, Y) atol=0.02
+        @test t.Σ == t.Σ'
+        @test twanalysis(UThPbAnalysis([0.6, 0.08, 0.02], [0.006, 0.0008, 0.0002], [0.006^2 0.7*0.006*0.0008 0; 0.7*0.006*0.0008 0.0008^2 0; 0 0 0.0002^2])).μ ≈ t.μ
+        # Concordia in Tera-Wasserburg space
+        x, y = Isoplot.concordiacoords(1000, value(λ235U), value(λ238U), tw=true)
+        @test x ≈ 1/Isoplot.ratio(1000, value(λ238U))
+        @test y ≈ Isoplot.ratio(1000, value(λ235U))/Isoplot.ratio(1000, value(λ238U))/value(Isoplot.U238_U235)
+        @test Isoplot.ageticks((0, 1000)) == [0.0, 500.0, 1000.0]
+
         # York (1968) fit
         x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
         y = [0.8742, 2.1626, 3.042, 3.829, 5.0116, 5.5614, 6.7675, 7.8856, 9.6414, 10.4955]
@@ -981,6 +999,13 @@ module PlotsTest
         @test sum(img)/length(img) ≈ RGB{Float64}(0.966250588235294,0.966250588235294,0.966250588235294) rtol = 0.01
         rm("concordia.png")
 
+        # Tera-Wasserburg analyses
+        h = plot(twanalysis.(analyses), color=:blue, alpha=0.3, label="")
+        twconcordiacurve!(h)
+        @test h isa Plots.Plot
+        savefig(h, "concordia.png")
+        rm("concordia.png")
+
         # Tera-Wasserburg concordia
         h = twconcordialine(500, 1000, label="")
         twconcordiacurve!(h, timerange=(300, 1500))
@@ -1118,6 +1143,17 @@ module MakieTest
         plot!(ax5, analyses, color=(:blue, 0.3))
         concordiacurve!(ax5) # Time range from axis limits (current axis)
         save("concordia.png",f5)
+        @test size(load("concordia.png")) == (900, 1200)
+        rm("concordia.png")
+
+        # Tera-Wasserburg analyses
+        f8 = Figure()
+        ax8 = Axis(f8[1,1])
+        plot!(ax8, twanalysis.(analyses), color=(:blue, 0.3))
+        concordiacurve!(ax8, 100, 3000, concordiaType=:TeraWasserburg)
+        twconcordiacurve!(ax8, 100, 3000)
+        twconcordialine!(ax8, 500, 1000)
+        save("concordia.png",f8)
         @test size(load("concordia.png")) == (900, 1200)
         rm("concordia.png")
 
