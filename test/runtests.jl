@@ -550,10 +550,10 @@ module BaseTests
             Σ = [(A = Isoplot.SMatrix{N,N}(cos.((1:N^2) .+ i)); A*A' + 0.1*Isoplot.SMatrix{N,N}(I)) for i in 1:8]
             W = inv.(Σ)
             z, h = Isoplot.SVector{2N}(ntuple(k -> (1.0, 0.5, 2.0, -0.3, 1.0, 0.8)[k], 2N)), 1e-5
-            L(z) = Isoplot.mclean_loglikelihood(Isoplot.mclean_halves(z, Val(N))..., p, W)
-            G(z) = first(Isoplot.mclean_derivatives(Isoplot.mclean_halves(z, Val(N))..., p, W))
+            L(z) = Isoplot._mclean_loglikelihood(Isoplot._mclean_halves(z, Val(N))..., p, W)
+            G(z) = first(Isoplot._mclean_derivatives(Isoplot._mclean_halves(z, Val(N))..., p, W))
             e(k) = Isoplot.SVector{2N}(ntuple(i -> i == k ? h : 0.0, 2N))
-            Gz, Hz = Isoplot.mclean_derivatives(Isoplot.mclean_halves(z, Val(N))..., p, W)
+            Gz, Hz = Isoplot._mclean_derivatives(Isoplot._mclean_halves(z, Val(N))..., p, W)
             for k in 1:2N
                 @test Gz[k] ≈ (L(z + e(k)) - L(z - e(k)))/2h rtol=1e-6
                 @test Hz[:,k] ≈ (G(z + e(k)) - G(z - e(k)))/2h rtol=1e-6
@@ -635,7 +635,7 @@ module BaseTests
             @test !isnan(mf.mswd)
             W = [inv(Isoplot.SMatrix{2,2}(σx[i]^2, r[i]*σx[i]*σy[i], r[i]*σx[i]*σy[i], σy[i]^2)) for i in 1:n]
             p = [Isoplot.SVector(x[i], y[i]) for i in 1:n]
-            L(f) = Isoplot.mclean_loglikelihood(Isoplot.SVector(0.0, f.intercept.val), Isoplot.SVector(1.0, f.slope.val), p, W)
+            L(f) = Isoplot._mclean_loglikelihood(Isoplot.SVector(0.0, f.intercept.val), Isoplot.SVector(1.0, f.slope.val), p, W)
             @test L(mf) >= L(yorkfit(x, σx, y, σy, r, maxiter=100)) - 1e-9
         end
         for _ in 1:33

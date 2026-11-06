@@ -232,3 +232,12 @@ function err(x)
     @warn "`Isoplot.err` is deprecated, use `stdev` instead"
     return stdev(x)
 end
+
+# Correlation and covariance of two `Measurement`s
+function paircov(a::Measurement{T}, b::Measurement{T}) where T
+    overlap = keys(a.der) ∩ keys(b.der)
+    return isempty(overlap) ? zero(T) : sum(overlap) do var
+        a.der[var] * b.der[var] * var[2]^2
+    end
+end
+paircor(a::Measurement, b::Measurement) = paircov(a,b)/(a.err*b.err)

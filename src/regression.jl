@@ -260,8 +260,7 @@ function lsqfit(x::Collection{T}, y::AbstractVector{<:Number}) where {T<:Number}
 end
 # Identical to the one in StatGeochemBase
 
-## -- The York (1968) two-dimensional linear regression with x and y uncertainties
-    # as commonly used in isochrons
+## --- York (1968) two-dimensional linear regression with x and y uncertainties and optional correlation, as commonly used in isochrons
 
 # Custom type to hold York fit resutls
 struct YorkFit{T<:Number} <: Data{T}
@@ -278,13 +277,13 @@ invline(yf::YorkFit, y::Number) = (y - yf.ym) / yf.slope + yf.xm
 
 """
 ```julia
-yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, [r]; maxiter=128, tol=1e-12, corrected=false)
-yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, [r]; maxiter=128, tol=1e-12, corrected=false)
+yorkfit(x::Collection, σx::Collection, y::Collection, σy::Collection, [ρ]; maxiter=128, tol=1e-12, corrected=false)
+yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, [ρ]; maxiter=128, tol=1e-12, corrected=false)
 yorkfit(d::Collection{<:AbstractAnalysis}; maxiter=128, tol=1e-12, corrected=false)
 ```
 Uses the York (1968) two-dimensional iterative least-squares fit to calculate `a`, `b`,
 and uncertanties `σa`, `σb` for the equation `y = a + bx`, given `x`, `y`,
-uncertaintes `σx`, and `σy`, and optionally covarances `r`.
+uncertaintes `σx`, and `σy`, and optionally correlations `ρ`.
 Iteration continues until the slope converges to relative tolerance `tol`,
 or for at most `maxiter` iterations, whichever comes first.
 
@@ -318,15 +317,15 @@ function yorkfit(d::Collection{<:AbstractAnalysis}; kwargs...)
     y = ntuple(i->mean(d[i])[2], length(d))
     σx = ntuple(i->std(d[i])[1], length(d))
     σy = ntuple(i->std(d[i])[2], length(d))
-    r = ntuple(i->cov(d[i])[1,2]/(sqrt(cov(d[i])[1,1] * cov(d[i])[2,2])), length(d))
-    yorkfit(x, σx, y, σy, r; kwargs...)
+    ρ = ntuple(i->cov(d[i])[1,2]/(sqrt(cov(d[i])[1,1] * cov(d[i])[2,2])), length(d))
+    yorkfit(x, σx, y, σy, ρ; kwargs...)
 end
-yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, r=ntuple(i->paircor(x[i], y[i]), length(x)); kwargs...) = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), r; kwargs...)
-function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Collection, r=zero(T); maxiter::Integer=128, tol::Number=1e-12, corrected::Bool=false) where {T}
-    @assert !isempty(x) "Cannot take York fit of empty data"
+yorkfit(x::Collection{<:Measurement}, y::Collection{<:Measurement}, ρ=ntuple(i->paircor(x[i], y[i]), length(x)); kwargs...) = yorkfit(value.(x), stdev.(x), value.(y), stdev.(y), ρ; kwargs...)
+function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Collection, ρ=zero(T); maxiter::Integer=128, tol::Number=1e-12, corrected::Bool=false) where {T}
     @assert eachindex(x) == eachindex(σx) == eachindex(y) == eachindex(σy) "Indices of x, σx, y, and σy must match"
-    @assert r isa Number || eachindex(r) == eachindex(x) "Indices of correlation coefficients must match data"
-    @assert all(x->(-1<=x<=1), r) "Correlation coefficients must be between -1 and 1"
+    @assert !isempty(x) "York Fit requires at least one data point"
+    @assert ρ isa Number || eachindex(ρ) == eachindex(x) "Indices of correlation coefficients must match data"
+    @assert all(x->(-1 <= x <= 1), ρ) "Correlation coefficients must be between -1 and 1"
     n = length(x)
 
     ## For an initial estimate of the slope, calculate the ordinary
@@ -349,7 +348,7 @@ function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Colle
     for _ in 1:maxiter
         ΣZ, ΣZx, ΣZy = ∅, ∅, ∅
         @inbounds for i in eachindex(x)
-            Z = _york_weight(b, σx[i], σy[i], _maybe_index(r, i))
+            Z = _york_weight(b, σx[i], σy[i], _maybe_index(ρ, i))
             ΣZ += Z
             ΣZx += Z * x[i]
             ΣZy += Z * y[i]
@@ -360,12 +359,12 @@ function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Colle
         sV, sU = ∅, ∅
         @inbounds for i in eachindex(x)
             ωx, ωy = inv(σx[i]^2), inv(σy[i]^2)
-            ρ = _maybe_index(r, i)
+            ρᵢ = _maybe_index(ρ, i)
             α = sqrt(ωx * ωy)
-            Z = ωx*ωy / (b^2*ωy + ωx - 2*b*ρ*α)
+            Z = ωx*ωy / (b^2*ωy + ωx - 2*b*ρᵢ*α)
             U, V = x[i] - x̄, y[i] - ȳ
-            sV += Z^2 * V * (U/ωy + b*V/ωx - ρ*V/α)
-            sU += Z^2 * U * (U/ωy + b*V/ωx - b*ρ*U/α)
+            sV += Z^2 * V * (U/ωy + b*V/ωx - ρᵢ*V/α)
+            sU += Z^2 * U * (U/ωy + b*V/ωx - b*ρᵢ*U/α)
         end
         bₙ = sV / sU
         converged = abs(bₙ - b) <= tolₑ * abs(bₙ)
@@ -377,7 +376,7 @@ function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Colle
     ## Weighted means and Z at the final slope
     ΣZ, ΣZx, ΣZy = ∅, ∅, ∅
     @inbounds for i in eachindex(x)
-        Z = _york_weight(b, σx[i], σy[i], _maybe_index(r, i))
+        Z = _york_weight(b, σx[i], σy[i], _maybe_index(ρ, i))
         ΣZ += Z
         ΣZx += Z * x[i]
         ΣZy += Z * y[i]
@@ -389,14 +388,14 @@ function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Colle
     ## Adjusted points (u, v) and their weighted mean (xm, ym)
     ΣZu, Σχ² = ∅, ∅
     @inbounds for i in eachindex(x)
-        Z, u = _york_adjusted(b, x̄, ȳ, x[i], y[i], σx[i], σy[i], _maybe_index(r, i))
+        Z, u = _york_adjusted(b, x̄, ȳ, x[i], y[i], σx[i], σy[i], _maybe_index(ρ, i))
         ΣZu += Z * u
-        Σχ² += (y[i] - a - b*x[i])^2 / (σy[i]^2 + b^2*σx[i]^2 - 2*b*_maybe_index(r, i)*σx[i]*σy[i])
+        Σχ² += (y[i] - a - b*x[i])^2 / (σy[i]^2 + b^2*σx[i]^2 - 2*b*_maybe_index(ρ, i)*σx[i]*σy[i])
     end
     xm = ΣZu / ΣZ
     ym = ∅
     @inbounds for i in eachindex(x)
-        Z, u = _york_adjusted(b, x̄, ȳ, x[i], y[i], σx[i], σy[i], _maybe_index(r, i))
+        Z, u = _york_adjusted(b, x̄, ȳ, x[i], y[i], σx[i], σy[i], _maybe_index(ρ, i))
         ym += Z * (ȳ + b*(u - x̄))
     end
     ym /= ΣZ
@@ -404,7 +403,7 @@ function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Colle
     ## Uncertainties and MSWD
     Σd = ∅
     @inbounds for i in eachindex(x)
-        Z, u = _york_adjusted(b, x̄, ȳ, x[i], y[i], σx[i], σy[i], _maybe_index(r, i))
+        Z, u = _york_adjusted(b, x̄, ȳ, x[i], y[i], σx[i], σy[i], _maybe_index(ρ, i))
         Σd += Z * (u - xm)^2
     end
     σb = sqrt(inv(Σd))
@@ -427,27 +426,18 @@ function yorkfit(x::Collection{T}, σx::Collection, y::Collection{T}, σy::Colle
 end
 
 # Helpers for `yorkfit`
-@inline _maybe_index(r::Number, i) = r
-@inline _maybe_index(r, i) = @inbounds r[i]
-@inline function _york_weight(b, σx, σy, r)
+@inline _maybe_index(x::Number, i) = x
+@inline _maybe_index(x, i) = @inbounds x[i]
+@inline function _york_weight(b, σx, σy, ρ)
     ωx, ωy = inv(σx^2), inv(σy^2)
-    return ωx*ωy / (b^2*ωy + ωx - 2*b*r*sqrt(ωx*ωy))
+    return ωx*ωy / (b^2*ωy + ωx - 2*b*ρ*sqrt(ωx*ωy))
 end
 # Weight `Z` and adjusted x-position `u` of a point, given the slope and weighted means
-@inline function _york_adjusted(b, x̄, ȳ, x, y, σx, σy, r)
+@inline function _york_adjusted(b, x̄, ȳ, x, y, σx, σy, ρ)
     ωx, ωy = inv(σx^2), inv(σy^2)
     α = sqrt(ωx*ωy)
-    Z = ωx*ωy / (b^2*ωy + ωx - 2*b*r*α)
+    Z = ωx*ωy / (b^2*ωy + ωx - 2*b*ρ*α)
     U, V = x - x̄, y - ȳ
-    β = Z * (U/ωy + b*V/ωx - (b*U+V)*r/α)
+    β = Z * (U/ωy + b*V/ωx - (b*U+V)*ρ/α)
     return Z, x̄ + β
 end
-
-# Correlation and covariance of two `Measurement`s
-function paircov(a::Measurement{T}, b::Measurement{T}) where T
-    overlap = keys(a.der) ∩ keys(b.der)
-    return isempty(overlap) ? zero(T) : sum(overlap) do var
-        a.der[var] * b.der[var] * var[2]^2
-    end
-end
-paircor(a::Measurement, b::Measurement) = paircov(a,b)/(a.err*b.err)
