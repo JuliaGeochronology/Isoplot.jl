@@ -17,6 +17,34 @@ function Base.show(io::IO, ::MIME"text/plain", x::YorkFit{T}) where T
     )
 end
 
+# Custom pretty-printing for McLean fit results
+function Base.show(io::IO, x::McLeanFit{T,N}) where {T,N}
+    if get(io, :compact, false)
+        print(io, "McLeanFit{$T,$N}(…)")
+    else
+        Base.show_default(io, x)
+    end
+end
+function Base.show(io::IO, ::MIME"text/plain", x::McLeanFit{T,N}) where {T,N}
+    if N == 2
+        print(io, """McLeanFit{$T}:
+         Maximum-likelihood linear fit of the form y = a + bx with
+          intercept: $(x.intercept) (1σ)
+          slope    : $(x.slope) (1σ)
+          MSWD     : $(x.mswd)
+        """
+        )
+    else
+        print(io, """McLeanFit{$T}:
+         Maximum-likelihood linear fit in $N dimensions of the form x = a + vt with
+          intercept: $(x.intercept) (1σ, where x₁ = 0)
+          slope    : $(x.slope) (1σ, v₁ = 1)
+          MSWD     : $(x.mswd)
+        """
+        )
+    end
+end
+
 function Base.show(io::IO, x::CI{T}) where T
     if get(io, :compact, false)
         l = round(x.mean - x.lower, sigdigits=2)

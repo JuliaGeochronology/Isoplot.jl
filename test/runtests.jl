@@ -1,6 +1,6 @@
 module BaseTests
 
-    using Test, Statistics
+    using Test, Statistics, LinearAlgebra
     using Measurements, Distributions
     using Isoplot
 
@@ -13,15 +13,11 @@ module BaseTests
         @test "$ci" === "5.5 +4.28/-4.28"
         @test display(ci) != NaN
 
-        ci = CI(randn(10_000))
-        @test ci.mean ≈ 0 atol = 0.1
-        @test ci.sigma ≈ 1 atol = 0.1
-        @test ci.lower ≈ -1.9599639845400576 atol = 0.15
-        @test ci.upper ≈ 1.9599639845400576 atol = 0.15
-        @test display(ci) != NaN
+        a = Age(ci)
+        @test display(a) != NaN
 
-        ci = CI([0.4227751675791465, 2.339746777712491, 0.7073822332289744, 1.115676532764763, 1.3295183295746795, 1.1839524860728812, 9.051763176763613, 3.163690972571135, 0.35529944660568286, 20.552275066037705, 1.3021911627717235, 0.8154804384732102, 2.630294225259665, 0.24662095224118538, 0.4755015782877633])
-        @test ci ≈ CI{Float64}(3.0461445697296416, 5.314497528659032,1.1839524860728812, 0.2846584252687595, 16.52709590479178)
+        mf = mcleanfit(1:10, ones(10), 1:10, ones(10))
+        @test display(mf) != NaN
     end
 
     @testset "General" begin
@@ -61,11 +57,9 @@ module BaseTests
         @test value(1±1) === 1.0
         @test stdev(1±1) === 1.0
         ci = CI(1:10)
-        display(ci)
         @test value(ci) ≈ 5.5
         @test stdev(ci) ≈ 3.0276503540974917
         a = Age(ci)
-        display(a)
         @test value(a) ≈ 5.5
         @test stdev(a) ≈ 3.0276503540974917
     end
@@ -420,6 +414,16 @@ module BaseTests
     analyses = UPbAnalysis.(eachcol(data)...,)
 
     @testset "Regression" begin
+        # CIs
+        ci = CI(randn(10_000))
+        @test ci.mean ≈ 0 atol = 0.1
+        @test ci.sigma ≈ 1 atol = 0.1
+        @test ci.lower ≈ -1.9599639845400576 atol = 0.15
+        @test ci.upper ≈ 1.9599639845400576 atol = 0.15
+        
+        ci = CI([0.4227751675791465, 2.339746777712491, 0.7073822332289744, 1.115676532764763, 1.3295183295746795, 1.1839524860728812, 9.051763176763613, 3.163690972571135, 0.35529944660568286, 20.552275066037705, 1.3021911627717235, 0.8154804384732102, 2.630294225259665, 0.24662095224118538, 0.4755015782877633])
+        @test ci ≈ CI{Float64}(3.0461445697296416, 5.314497528659032,1.1839524860728812, 0.2846584252687595, 16.52709590479178)
+
         # Simple linear regression
         ϕ = lsqfit(1:10, 1:10)
         @test ϕ[1] ≈ 0 atol=1e-12
@@ -445,6 +449,22 @@ module BaseTests
         @test yf.slope.err ≈ 0.039561084436542084
         @test yf.mswd ≈ 1.4272439423337884
 
+        # `corrected` scales uncertainties by √max(MSWD,1), and nothing else
+        yc = yorkfit(x, σx, y, σy, zeros(length(x)); corrected=true)
+        yu = yorkfit(x, σx, y, σy, zeros(length(x)))
+        f = sqrt(max(yu.mswd, 1))
+        @test yc.slope.val == yu.slope.val
+        @test yc.mswd == yu.mswd
+        @test yc.slope.err ≈ f * yu.slope.err
+        @test yc.intercept.err ≈ f * yu.intercept.err
+        @test yc.ym.err ≈ f * yu.ym.err
+        # Underdispersed data are not shrunk
+        ys = yorkfit(x, 10σx, y, 10σy, zeros(length(x)); corrected=true)
+        @test ys.slope.err == yorkfit(x, 10σx, y, 10σy, zeros(length(x))).slope.err
+        # Agrees with mcleanfit
+        mc = mcleanfit(x, σx, y, σy; corrected=true)
+        @test yc.slope.err ≈ mc.slope.err rtol=0.01
+
         x = ((1:100) .+ randn.()) .± 1
         y = (2*(1:100) .+ randn.()) .± 1
         yf = yorkfit(x, y)
@@ -455,28 +475,28 @@ module BaseTests
 
         yf = yorkfit(analyses)
         @test yf isa Isoplot.YorkFit
-        @test yf.intercept.val ≈ 0.004516889708317304 
-        @test yf.intercept.err ≈ 0.0030190965485973496
-        @test yf.slope.val ≈ 0.10849668347962117
-        @test yf.slope.err ≈ 0.002755312876723662
-        @test yf.xm ≈ 1.095717612255557
+        @test yf.intercept.val ≈ 0.004516874477465516 
+        @test yf.intercept.err ≈ 0.0030191000542899014
+        @test yf.slope.val ≈ 0.10849669738014765
+        @test yf.slope.err ≈ 0.0027553160759274534
+        @test yf.xm ≈ 1.095717612358936
         @test yf.ym.val ≈ 0.12339861666825475
-        @test yf.ym.err ≈ 1.766877975316134e-5
-        @test yf.mswd ≈ 0.6650799396933331
+        @test yf.ym.err ≈ 1.7668787238429157e-5
+        @test yf.mswd ≈ 0.665079939690809
 
         ui = upperintercept(analyses)
         @test ui.val ≈ 752.5343109308996 
-        @test ui.err ≈ 0.4124832736605828
+        @test ui.err ≈ 0.4124832290832207
 
         li = lowerintercept(analyses)
-        @test li.val ≈ 103.11359587031025
-        @test li.err ≈ 69.42478116801568
+        @test li.val ≈ 103.1132456354392
+        @test li.err ≈ 69.42485829479817
 
         ui, li = intercepts(analyses)
         @test ui.val ≈ 752.5343109308996
-        @test ui.err ≈ 0.4124832736605828
-        @test li.val ≈ 103.11359587031025
-        @test li.err ≈ 69.42478116801568
+        @test ui.err ≈ 0.4124832290832207
+        @test li.val ≈ 103.1132456354392
+        @test li.err ≈ 69.42485829479817
 
         wm, m = wmean(age68.(analyses[1:10]))
         @test wm.val ≈ 752.2453179272093
@@ -485,6 +505,147 @@ module BaseTests
 
         m = mswd(age68.(analyses[1:10]))
         @test m ≈ 13.15644886325888
+    end
+
+    @testset "McLean fit" begin
+        x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
+        y = [0.8742, 2.1626, 3.042, 3.829, 5.0116, 5.5614, 6.7675, 7.8856, 9.6414, 10.4955]
+        σx = σy = ones(10)/4
+        r = [0.0, 0.3, -0.4, 0.0, 0.5, 0.1, 0.0, -0.2, 0.2, 0.0]
+
+        # The fitted line should be the same as for the York fit, in 2D
+        for ρ in (zeros(10), r)
+            mf, yf = mcleanfit(x, σx, y, σy, ρ), yorkfit(x, σx, y, σy, ρ)
+            @test mf isa Isoplot.McLeanFit{Float64}
+            @test mf.intercept.val ≈ yf.intercept.val rtol=1e-6
+            @test mf.slope.val ≈ yf.slope.val rtol=1e-6
+            @test mf.mswd ≈ yf.mswd rtol=1e-6
+            # The points where height and slope are uncorrelated can differ, but should be on the same line
+            @test Isoplot.line(mf, yf.xm).val ≈ yf.ym.val rtol=1e-6
+            # Uncertainties are from the exact Hessian rather than York's approximation
+            @test mf.intercept.err ≈ yf.intercept.err rtol=1e-2
+            @test mf.slope.err ≈ yf.slope.err rtol=1e-2
+            @test mf.ym.err ≈ yf.ym.err rtol=1e-2
+        end
+        mf = mcleanfit(x, σx, y, σy)
+        @test mf.intercept.val ≈ -0.2446693790977319 rtol=1e-6
+        @test mf.slope.val ≈ 1.0428730084538775 rtol=1e-6
+        @test mf.mswd ≈ 1.4272439423337884 rtol=1e-6
+
+        # Line is the right height at xm, where uncertainties of height and slope are uncorrelated
+        @test Isoplot.line(mf, mf.xm) == mf.ym
+        @test Isoplot.line(mf, 0.0).val ≈ mf.intercept.val atol=1e-8
+        @test Isoplot.invline(mf, Isoplot.line(mf, 3.0).val) ≈ 3.0
+
+        # Expanded uncertainties
+        mfc = mcleanfit(x, σx, y, σy, corrected=true)
+        @test mfc.slope.val == mf.slope.val
+        @test mfc.slope.err ≈ mf.slope.err * sqrt(mf.mswd)
+        @test mfc.intercept.err ≈ mf.intercept.err * sqrt(mf.mswd)
+        @test mcleanfit(x, σx, 10σy, 10σy, corrected=true).slope.err ≈ mcleanfit(x, σx, 10σy, 10σy).slope.err # mswd < 1
+
+        # Analytic gradient and Hessian against finite differences, in two and three dimensions
+        for N in (2, 3)
+            p = [Isoplot.SVector{N}(ntuple(k -> (i, 2i + sin(i), -i + cos(3i))[k], N)) for i in 1:8]
+            Σ = [(A = Isoplot.SMatrix{N,N}(cos.((1:N^2) .+ i)); A*A' + 0.1*Isoplot.SMatrix{N,N}(I)) for i in 1:8]
+            W = inv.(Σ)
+            z, h = Isoplot.SVector{2N}(ntuple(k -> (1.0, 0.5, 2.0, -0.3, 1.0, 0.8)[k], 2N)), 1e-5
+            L(z) = Isoplot._mclean_loglikelihood(Isoplot._mclean_halves(z, Val(N))..., p, W)
+            G(z) = first(Isoplot._mclean_derivatives(Isoplot._mclean_halves(z, Val(N))..., p, W))
+            e(k) = Isoplot.SVector{2N}(ntuple(i -> i == k ? h : 0.0, 2N))
+            Gz, Hz = Isoplot._mclean_derivatives(Isoplot._mclean_halves(z, Val(N))..., p, W)
+            for k in 1:2N
+                @test Gz[k] ≈ (L(z + e(k)) - L(z - e(k)))/2h rtol=1e-6
+                @test Hz[:,k] ≈ (G(z + e(k)) - G(z - e(k)))/2h rtol=1e-6
+            end
+        end
+
+        # Other input types
+        @test mcleanfit(Tuple(x), Tuple(σx), Tuple(y), Tuple(σy)).slope.val ≈ mf.slope.val
+        @test mcleanfit(Float32.(x), Float32.(σx), Float32.(y), Float32.(σy)) isa Isoplot.McLeanFit{Float32}
+        @test mcleanfit(Float32.(x), Float32.(σx), Float32.(y), Float32.(σy)).slope.val ≈ mf.slope.val rtol=1e-3
+        @test mcleanfit(x .± 0.25, y .± 0.25).slope.val ≈ mf.slope.val rtol=1e-6
+        mf = mcleanfit(analyses)
+        yf = yorkfit(analyses)
+        @test mf.slope.val ≈ yf.slope.val rtol=1e-6
+        @test mf.intercept.val ≈ yf.intercept.val rtol=1e-4
+        @test Isoplot.line(mf, yf.xm).val ≈ yf.ym.val rtol=1e-6
+        @test mf.mswd ≈ yf.mswd rtol=1e-6
+
+        # NaNs are ignored
+        xn = copy(x); xn[3] = NaN
+        keep = [1:2; 4:10]
+        @test mcleanfit(xn, σx, y, σy).slope.val ≈ mcleanfit(x[keep], σx[keep], y[keep], σy[keep]).slope.val
+
+        # Perfect fit, which has zero chi-squared and so a log-likelihood of zero
+        mf = mcleanfit(1.0:6.0, fill(0.1, 6), 2.0 .* (1:6) .+ 1, fill(0.1, 6))
+        @test mf.slope.val ≈ 2
+        @test mf.intercept.val ≈ 1
+        @test mf.mswd ≈ 0 atol=1e-10
+
+        # Fits in three dimensions
+        N, n = 3, 20
+        a₀, v₀ = [0.5, 1.0, 2.0], [1.0, 0.5, -2.0]
+        covs = [(A = [1 0.3 -0.2; 0.1 1 0.4; 0.2 -0.3 1] * (0.05 + 0.1*i/n); A*A') for i in 1:n]
+        ts = range(1, 10, length=n)
+        mf = mcleanfit([a₀ .+ v₀*t for t in ts], covs) # Exact line
+        @test mf isa Isoplot.McLeanFit{Float64,3}
+        @test mf.v ≈ v₀
+        @test mf.mswd ≈ 0 atol=1e-10
+        @test mf.slope isa Isoplot.SVector{2,<:Measurement}
+        @test mf.intercept[1].val ≈ a₀[2] - a₀[1]*v₀[2]
+        @test mf.intercept[2].val ≈ a₀[3] - a₀[1]*v₀[3]
+        @test_throws ArgumentError mf.ym
+
+        # Statistical behavior given noisy data: slope z-scores and MSWD should be ~standard
+        zs, mswds = Float64[], Float64[]
+        for _ in 1:200
+            pts = [a₀ .+ v₀*ts[i] .+ cholesky(Symmetric(covs[i])).L * randn(3) for i in 1:n]
+            mf = mcleanfit(pts, covs)
+            append!(zs, (mf.v[2:3] .- v₀[2:3]) ./ sqrt.(diag(mf.Σ)[3:4]))
+            push!(mswds, mf.mswd)
+        end
+        @test std(zs) ≈ 1 atol=0.2
+        @test abs(mean(zs)) < 0.2
+        @test mean(mswds) ≈ 1 atol=0.1
+
+        # Same fit regardless of the order of the other variables
+        pts = [a₀ .+ v₀*ts[i] .+ cholesky(Symmetric(covs[i])).L * randn(3) for i in 1:n]
+        mf = mcleanfit(pts, covs)
+        mfp = mcleanfit([q[[1,3,2]] for q in pts], [C[[1,3,2],[1,3,2]] for C in covs])
+        @test mfp.v ≈ mf.v[[1,3,2]]
+        @test mfp.a ≈ mf.a[[1,3,2]]
+        @test mfp.mswd ≈ mf.mswd
+        @test mfp.Σ ≈ mf.Σ[[2,1,4,3],[2,1,4,3]]
+        @test mcleanfit(pts, covs, corrected=true).Σ ≈ mf.Σ * max(mf.mswd, 1)
+
+        # From `Analysis` objects, and with NaNs
+        @test mcleanfit([Analysis(pts[i], covs[i]) for i in 1:n]).v ≈ mf.v
+        pts[4] = [NaN, 1, 1]
+        @test mcleanfit(pts, covs).v ≈ mcleanfit(pts[[1:3; 5:n]], covs[[1:3; 5:n]]).v
+
+        # Robustness with noisy data, where the fit is poorly determined: never fails to converge or
+        # settles on a saddle point, and is at least as good as the York fit (which can fail to converge)
+        for _ in 1:33
+            n = 12
+            σx, σy, r = 0.1 .+ 2rand(n), 0.1 .+ 2rand(n), 1.6rand(n) .- 0.8
+            x = 10rand(n)
+            y = 0.7 .* x .+ 1 .+ randn(n)
+            mf = mcleanfit(x, σx, y, σy, r)
+            @test !isnan(mf.mswd)
+            W = [inv(Isoplot.SMatrix{2,2}(σx[i]^2, r[i]*σx[i]*σy[i], r[i]*σx[i]*σy[i], σy[i]^2)) for i in 1:n]
+            p = [Isoplot.SVector(x[i], y[i]) for i in 1:n]
+            L(f) = Isoplot._mclean_loglikelihood(Isoplot.SVector(0.0, f.intercept.val), Isoplot.SVector(1.0, f.slope.val), p, W)
+            @test L(mf) >= L(yorkfit(x, σx, y, σy, r, maxiter=100)) - 1e-9
+        end
+        for _ in 1:33
+            covs = [(A = randn(3,3)/2 + I; 0.03*A*A') for _ in 1:15]
+            @test !isnan(mcleanfit([10rand()*[1, -0.3, 0.6] + cholesky(Symmetric(C)).L*randn(3) for C in covs], covs).mswd)
+        end
+
+        # Degenerate cases
+        @test isnan(mcleanfit([1.0], [1.0], [1.0], [1.0]).slope)
+        @test isnan(mcleanfit([1.0, 2.0], [1.0, 1.0], [1.0, 2.5], [1.0, 1.0]).mswd) # no degrees of freedom
     end
 
     @testset "Concordia Metropolis" begin
@@ -603,37 +764,37 @@ module BaseTests
         calib = calibration(standards, standardages, correction=:Pb204)
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.line isa Isoplot.YorkFit{Float64}
-        @test calib.line.xm ≈ 2.843134111771891
-        @test calib.line.ym.val ≈ 3.5857272302639482
-        @test calib.line.ym.err ≈ 0.006677635636009364
-        @test calib.line.slope.val ≈ 0.8050750249840576
-        @test calib.line.slope.err ≈ 0.03899573314785627
-        @test calib.line.intercept.val ≈ 1.2967909641961666
-        @test calib.line.intercept.err ≈ 0.1110710119605743
+        @test calib.line.xm ≈ 2.8431334173416767
+        @test calib.line.ym.val ≈ 3.5857266263911396
+        @test calib.line.ym.err ≈ 0.0066776603378822415
+        @test calib.line.slope.val ≈ 0.8050681793138171
+        @test calib.line.slope.err ≈ 0.03899643939328304
+        @test calib.line.intercept.val ≈ 1.2968103825456048
+        @test calib.line.intercept.err ≈ 0.11107299073272647
         @test calib.line.mswd ≈ 0.9312416907930794 
 
         calib = calibration(standards, standardages, correction=:Pb208)
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.line isa Isoplot.YorkFit{Float64}
-        @test calib.line.xm ≈ 2.763415816255632
-        @test calib.line.ym.val ≈ 3.580223812971822
-        @test calib.line.ym.err ≈ 0.006750487134576503
-        @test calib.line.slope.val ≈ 0.787165013895737
-        @test calib.line.slope.err ≈ 0.0391249122375516
-        @test calib.line.intercept.val ≈ 1.4049595635692578
-        @test calib.line.intercept.err ≈ 0.10832893322368387
-        @test calib.line.mswd ≈ 1.4288314836259612
+        @test calib.line.xm ≈ 2.763415189906566
+        @test calib.line.ym.val ≈ 3.5802230412292295
+        @test calib.line.ym.err ≈ 0.006750554163821435
+        @test calib.line.slope.val ≈ 0.7871464039573363
+        @test calib.line.slope.err ≈ 0.03912661929741835
+        @test calib.line.intercept.val ≈ 1.4050107118531958
+        @test calib.line.intercept.err ≈ 0.1083336210898975
+        @test calib.line.mswd ≈ 1.428831456701787
 
         calib = calibration(standards, standardages, correction=:none)
         @test calib isa Isoplot.UPbSIMSCalibration{Float64}
         @test calib.line isa Isoplot.YorkFit{Float64}
-        @test calib.line.xm ≈ 2.8461853552754524 
-        @test calib.line.ym.val ≈ 3.5852539632208216
-        @test calib.line.ym.err ≈ 0.006691477095581028
-        @test calib.line.slope.val ≈ 0.8098481101630957
-        @test calib.line.slope.err ≈ 0.03910134771335598
-        @test calib.line.intercept.val ≈ 1.2802761320771174
-        @test calib.line.intercept.err ≈ 0.11149066983333657
+        @test calib.line.xm ≈ 2.8461846235947252 
+        @test calib.line.ym.val ≈ 3.585253321652293
+        @test calib.line.ym.err ≈ 0.006691503076240842
+        @test calib.line.slope.val ≈ 0.8098407435571999
+        @test calib.line.slope.err ≈ 0.039102112286309
+        @test calib.line.intercept.val ≈ 1.2802970497792723
+        @test calib.line.intercept.err ≈ 0.11149281502742348
         @test calib.line.mswd ≈ 0.8789962702237475 
 
         # Test import with baseline subtraction
@@ -642,58 +803,58 @@ module BaseTests
         @test analyses isa Vector{UThPbAnalysis{Float64}}
         @test analyses[1] isa UThPbAnalysis{Float64}
         @test isconcordant(analyses[1]) === true
-        @test value(age68(analyses[1])) ≈ 1089.1403262167232
-        @test stdev(age68(analyses[1])) ≈ 6.273970719204299
+        @test value(age68(analyses[1])) ≈ 1089.1405666597918
+        @test stdev(age68(analyses[1])) ≈ 6.273971991547559
         @test isconcordant(analyses[10]) === true
-        @test value(age68(analyses[10])) ≈ 1101.269174993504
-        @test stdev(age68(analyses[10])) ≈ 5.185553271002563
-        @test value(age76(analyses[10])) ≈ 1099.6693566866418 
-        @test stdev(age76(analyses[10])) ≈ 4.402727111764174
-        @test value(age75(analyses[10])) ≈ 1095.3358498205891
-        @test stdev(age75(analyses[10])) ≈ 8.500821278467406
-        @test value(ageconcordia(analyses[10])) ≈ 1100.7521984539392
-        @test stdev(ageconcordia(analyses[10])) ≈ 5.107336790295968
-        @test value(ageconcordia3d(analyses[10])) ≈ 1096.507010573444
-        @test stdev(ageconcordia3d(analyses[10])) ≈ 5.046402829634531
+        @test value(age68(analyses[10])) ≈ 1101.2698237147065
+        @test stdev(age68(analyses[10])) ≈ 5.18555607544457
+        @test value(age76(analyses[10])) ≈ 1099.669945482014 
+        @test stdev(age76(analyses[10])) ≈ 4.402729107204171
+        @test value(age75(analyses[10])) ≈ 1095.3362790870392
+        @test stdev(age75(analyses[10])) ≈ 8.500823136680218
+        @test value(ageconcordia(analyses[10])) ≈ 1100.752826666941
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.1073391063212235
+        @test value(ageconcordia3d(analyses[10])) ≈ 1096.507620343022
+        @test stdev(ageconcordia3d(analyses[10])) ≈ 5.046405074810369
 
         # Test import without baseline subtraction
         data = importsimsdata("../examples/data")
-        @test age75(data[1], calib) ≈ [1114.596570231467, 1054.1517196834907, 1035.545967746529, 1055.8328997091878, 1070.1313862977486, 1070.34931893277, 1098.606975329027, 1105.0224253751176, 1052.8990508874456, 1098.2825492822153, 1120.1707647158244, 1073.3374699162075, 1111.4137578599225, 1128.9275752333785, 1088.9310104833544, 1159.3579061128014, 1070.5772290946077, 1049.3330597374338, 1126.4175692757142, 1088.5575374659616]
-        @test age68(data[1], calib) ≈ [1103.5344980788757, 1055.6696442474617, 1057.6900395037655, 1044.1247571691376, 1021.09394078642, 1063.6389495538233, 1084.7918609624876, 1096.685562504694, 1108.974483418046, 1089.7596501796181, 1112.3637393425324, 1112.2014110667944, 1099.1038983574824, 1120.9110285164775, 1099.7090413099584, 1121.1714155568905, 1112.9987946325018, 1072.1197709441205, 1095.392382303994, 1111.537609733524]
+        @test age75(data[1], calib) ≈ [1114.5967327821122, 1054.1518772448574, 1035.546123711327, 1055.8330574133802, 1070.131545207158, 1070.3494778604183, 1098.607136588629, 1105.0225871551654, 1052.899208342237, 1098.2827105154104, 1120.1709277117836, 1073.337629093534, 1111.4139201551982, 1128.9277389239833, 1088.931170951752, 1159.3580721712417, 1070.5773880413249, 1049.3332168881145, 1126.4177327678221, 1088.5576979036687]
+        @test age68(data[1], calib) ≈ [1103.5347418354286, 1055.6698782743545, 1057.6902739428133, 1044.1249888384261, 1021.094167739909, 1063.6391852056834, 1084.7921009177614, 1096.6858048734648, 1108.9747282758387, 1089.7598911435075, 1112.363984885957, 1112.201656577389, 1099.104141216443, 1120.9112757873825, 1099.7092842915501, 1121.1716628803867, 1112.999040304355, 1072.12000832304, 1095.3926244105648, 1111.5378551098597]
 
         analyses = calibrate(data, calib)
         @test analyses isa Vector{UThPbAnalysis{Float64}}
         @test analyses[1] isa UThPbAnalysis{Float64}
         @test isconcordant(analyses[1]) === true
-        @test value(age68(analyses[1])) ≈ 1087.8408983160473
-        @test stdev(age68(analyses[1])) ≈ 6.258423764224166
+        @test value(age68(analyses[1])) ≈ 1087.841138890462
+        @test stdev(age68(analyses[1])) ≈ 6.258425035757806
         @test isconcordant(analyses[10]) === false
-        @test value(age68(analyses[10])) ≈ 1098.3570739171782
-        @test stdev(age68(analyses[10])) ≈ 5.156535018832662
-        @test value(age76(analyses[10])) ≈ 1091.921724912869
-        @test stdev(age76(analyses[10])) ≈ 10.736262253151212
-        @test value(age75(analyses[10])) ≈ 1074.0101357991698
-        @test stdev(age75(analyses[10])) ≈ 8.56728206795363
-        @test value(ageconcordia(analyses[10])) ≈ 1095.9288408812718 
-        @test stdev(ageconcordia(analyses[10])) ≈ 5.046883161892715
-        @test value(ageconcordia3d(analyses[10])) ≈ 1093.1098397056223
-        @test stdev(ageconcordia3d(analyses[10])) ≈ 4.986433944581977
+        @test value(age68(analyses[10])) ≈ 1098.3577219643148
+        @test stdev(age68(analyses[10])) ≈ 5.156537812728746
+        @test value(age76(analyses[10])) ≈ 1091.9223110317737
+        @test stdev(age76(analyses[10])) ≈ 10.736362149559248
+        @test value(age75(analyses[10])) ≈ 1074.0105609640939
+        @test stdev(age75(analyses[10])) ≈ 8.567283982507155
+        @test value(ageconcordia(analyses[10])) ≈ 1095.9294600191558
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.046885422306974
+        @test value(ageconcordia3d(analyses[10])) ≈ 1093.1104415499756
+        @test stdev(ageconcordia3d(analyses[10])) ≈ 4.986436132488419
 
         analyses = calibrate(data, calib, correction=:Pb208)
         @test analyses isa Vector{UThPbAnalysis{Float64}}
         @test analyses[1] isa UThPbAnalysis{Float64}
         @test isconcordant(analyses[1]) === false
-        @test value(age68(analyses[1])) ≈ 1053.7227390071946
-        @test stdev(age68(analyses[1])) ≈ 6.261711149703558
+        @test value(age68(analyses[1])) ≈ 1053.7229717728435
+        @test stdev(age68(analyses[1])) ≈ 6.261712417143128
         @test isconcordant(analyses[10]) === false
-        @test value(age68(analyses[10])) ≈ 1066.993234136693
-        @test stdev(age68(analyses[10])) ≈ 5.225169671870751
-        @test value(age76(analyses[10])) ≈ 1030.3027067863845
-        @test stdev(age76(analyses[10])) ≈ 90.12995119930991
-        @test value(age75(analyses[10])) ≈ 808.8992904323351
-        @test stdev(age75(analyses[10])) ≈ 12.76612514107005
-        @test value(ageconcordia(analyses[10])) ≈ 1060.9330668133198 
-        @test stdev(ageconcordia(analyses[10])) ≈ 5.02642962319151
+        @test value(age68(analyses[10])) ≈ 1066.9938629249943
+        @test stdev(age68(analyses[10])) ≈ 5.225172489705245
+        @test value(age76(analyses[10])) ≈ 1030.3032786714866
+        @test stdev(age76(analyses[10])) ≈ 90.13006908470071
+        @test value(age75(analyses[10])) ≈ 808.8996265223315
+        @test stdev(age75(analyses[10])) ≈ 12.76612891824328
+        @test value(ageconcordia(analyses[10])) ≈ 1060.933644369098 
+        @test stdev(ageconcordia(analyses[10])) ≈ 5.026431992041755
         @test isnan(value(ageconcordia3d(analyses[10])))
         @test isnan(stdev(ageconcordia3d(analyses[10])))
 
@@ -701,55 +862,55 @@ module BaseTests
         @test analyses isa Vector{UThPbAnalysis{Float64}}
         @test analyses[1] isa UThPbAnalysis{Float64}
         @test isconcordant(analyses[1]) === true
-        @test value(age68(analyses[1])) ≈ 1089.2309863382145
-        @test stdev(age68(analyses[1])) ≈ 6.2582939732193115
+        @test value(age68(analyses[1])) ≈ 1089.231227194806
+        @test stdev(age68(analyses[1])) ≈ 6.2582952444563364
         @test isconcordant(analyses[10]) === true
-        @test value(age68(analyses[10])) ≈ 1101.7661528233955
-        @test stdev(age68(analyses[10])) ≈ 5.093890546968541
-        @test value(age76(analyses[10])) ≈ 1100.921403770263
-        @test stdev(age76(analyses[10])) ≈ 4.173011600334088 
-        @test value(age75(analyses[10])) ≈ 1099.1238243186738
-        @test stdev(age75(analyses[10])) ≈ 7.405824967337639
-        @test value(ageconcordia(analyses[10])) ≈ 1101.2736368091792
-        @test stdev(ageconcordia(analyses[10])) ≈ 4.906482880832643
-        @test value(ageconcordia3d(analyses[10])) ≈ 1122.4631228507028
-        @test stdev(ageconcordia3d(analyses[10])) ≈ 4.8200450463770474
+        @test value(age68(analyses[10])) ≈ 1101.7668027149605
+        @test stdev(age68(analyses[10])) ≈ 5.09389330557594
+        @test value(age76(analyses[10])) ≈ 1100.9219832103886
+        @test stdev(age76(analyses[10])) ≈ 4.173013425616315
+        @test value(age75(analyses[10])) ≈ 1099.1242550059007
+        @test stdev(age75(analyses[10])) ≈ 7.405826584618455
+        @test value(ageconcordia(analyses[10])) ≈ 1101.2742458636797
+        @test stdev(ageconcordia(analyses[10])) ≈ 4.906484873056218
+        @test value(ageconcordia3d(analyses[10])) ≈ 1122.4637364497573
+        @test stdev(ageconcordia3d(analyses[10])) ≈ 4.8200469677696
 
         analyses = calibrate_blockwise(data, calib, blocksize=5, correction=:Pb204)
         @test analyses isa Vector{Vector{UThPbAnalysis{Float64}}}
         @test analyses[1] isa Vector{UThPbAnalysis{Float64}}
         @test analyses[1][1] isa UThPbAnalysis{Float64}
         @test isconcordant(analyses[1][1]) === true
-        @test value(age68(analyses[1][1])) ≈ 1134.9088069798336
-        @test stdev(age68(analyses[1][1])) ≈ 14.45619125345241
+        @test value(age68(analyses[1][1])) ≈ 1134.9098618894166
+        @test stdev(age68(analyses[1][1])) ≈ 14.456203544532643
         @test isconcordant(analyses[10][1]) === false
-        @test value(age68(analyses[10][1])) ≈ 1168.6828104908395
-        @test stdev(age68(analyses[10][1])) ≈ 5.504554708938923
-        @test value(age76(analyses[10][1])) ≈ 1165.2961931884743
-        @test stdev(age76(analyses[10][1])) ≈ 13.882389119810675
-        @test value(age75(analyses[10][1])) ≈ 1108.3896370390012
-        @test stdev(age75(analyses[10][1])) ≈ 22.425551633239973
-        @test value(ageconcordia(analyses[10][1])) ≈ 1175.1284182082527
-        @test stdev(ageconcordia(analyses[10][1])) ≈ 5.061796384203235 
-        @test value(ageconcordia3d(analyses[1][1])) ≈ 1194.3700928960031
-        @test stdev(ageconcordia3d(analyses[1][1])) ≈ 12.154632402446628
+        @test value(age68(analyses[10][1])) ≈ 1168.6844678115342
+        @test stdev(age68(analyses[10][1])) ≈ 5.504561837703628
+        @test value(age76(analyses[10][1])) ≈ 1165.2978111991247
+        @test stdev(age76(analyses[10][1])) ≈ 13.882539521778183
+        @test value(age75(analyses[10][1])) ≈ 1108.390682537911
+        @test stdev(age75(analyses[10][1])) ≈ 22.425563301735476
+        @test value(ageconcordia(analyses[10][1])) ≈ 1175.1301425017025
+        @test stdev(ageconcordia(analyses[10][1])) ≈ 5.061803558541107
+        @test value(ageconcordia3d(analyses[1][1])) ≈ 1194.3710016032248
+        @test stdev(ageconcordia3d(analyses[1][1])) ≈ 12.154638963214998
 
         analyses = calibrate_blockwise(data, calib, blocksize=5, correction=:Pb208)
         @test analyses isa Vector{Vector{UThPbAnalysis{Float64}}}
         @test analyses[1] isa Vector{UThPbAnalysis{Float64}}
         @test analyses[1][1] isa UThPbAnalysis{Float64}
         @test isconcordant(analyses[1][1]) === false
-        @test value(age68(analyses[1][1])) ≈ 1098.1471540737275
-        @test stdev(age68(analyses[1][1])) ≈ 15.39129206855998
+        @test value(age68(analyses[1][1])) ≈ 1098.1481738040404
+        @test stdev(age68(analyses[1][1])) ≈ 15.391305095639025
         @test isconcordant(analyses[10][1]) === false
-        @test value(age68(analyses[10][1])) ≈ 1134.408958205585
-        @test stdev(age68(analyses[10][1])) ≈ 4.469366588406542
-        @test value(age76(analyses[10][1])) ≈ 1112.5616836086601
-        @test stdev(age76(analyses[10][1])) ≈ 79.59853741913108
-        @test value(age75(analyses[10][1])) ≈ 822.5517269362339
-        @test stdev(age75(analyses[10][1])) ≈ 16.13822022182851
-        @test value(ageconcordia(analyses[10][1])) ≈ 1114.8519986024403
-        @test stdev(ageconcordia(analyses[10][1])) ≈ 4.292885427107948
+        @test value(age68(analyses[10][1])) ≈ 1134.4105650817942
+        @test stdev(age68(analyses[10][1])) ≈ 4.469372331888714
+        @test value(age76(analyses[10][1])) ≈ 1112.5632113093047
+        @test stdev(age76(analyses[10][1])) ≈ 79.59877929401242
+        @test value(age75(analyses[10][1])) ≈ 822.5525431488766
+        @test stdev(age75(analyses[10][1])) ≈ 16.13823147769109
+        @test value(ageconcordia(analyses[10][1])) ≈ 1114.8534888779454
+        @test stdev(ageconcordia(analyses[10][1])) ≈ 4.2928903087922405
         @test isnan(value(ageconcordia3d(analyses[1][1])))
         @test isnan(stdev(ageconcordia3d(analyses[1][1])))
     end
