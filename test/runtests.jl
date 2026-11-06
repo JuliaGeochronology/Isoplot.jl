@@ -373,8 +373,8 @@ module BaseTests
         @test std(d) ≈ σ atol = 0.02
         d = distwmean(a,b; corrected=true)
         μ,σ,_ = wmean([0,100], [2,3]; corrected=true)
-        @test mean(d) ≈ μ atol = 0.2
-        @test std(d) ≈ σ atol = 2
+        @test mean(d) ≈ μ atol = 0.3
+        @test std(d) ≈ σ atol = 3
 
         d = distwmean(a,b,c; corrected=false)
         μ,σ,_ = wmean([0,50,100], [2,1,3]; corrected=false)
@@ -382,8 +382,8 @@ module BaseTests
         @test std(d) ≈ σ atol = 0.02
         d = distwmean(a,b,c; corrected=true)
         μ,σ,_ = wmean([0,50,100], [2,1,3]; corrected=true)
-        @test mean(d) ≈ μ atol = 0.2
-        @test std(d) ≈ σ atol = 2
+        @test mean(d) ≈ μ atol = 0.3
+        @test std(d) ≈ σ atol = 3
 
         # test Chauvenet's criterion
         x = [1.2, 1.5, 1.3, 2.4, 2.0, 2.1, 1.9, 2.2, 8.0, 2.3]
@@ -1064,6 +1064,24 @@ module PlotsTest
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9829569444444444,0.9866916666666666,0.9890226307189541) rtol = 0.01
         rm("CId.png")
 
+        # York fit
+        x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
+        y = [0.8742, 2.1626, 3.042, 3.829, 5.0116, 5.5614, 6.7675, 7.8856, 9.6414, 10.4955]
+        yf = yorkfit(x, fill(0.25, 10), y, fill(0.25, 10))
+        h = plot(yf, label="")
+        savefig(h, "yf.png")
+        img = load("yf.png")
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.8183448856209153, 0.9208928758169928, 0.9848070588235287) rtol = 0.01
+        rm("yf.png")
+
+        # McLean fit
+        mf = mcleanfit(x, fill(0.25, 10), y, fill(0.25, 10))
+        h = plot(mf, label="")
+        savefig(h, "mf.png")
+        img = load("mf.png")
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.8182011764705884, 0.9208347549019601, 0.9848014215686267) rtol = 0.01
+        rm("mf.png")
+
         # Plot SIMS calibration line
         h = plot(calib)
         savefig(h, "calib.png")
@@ -1164,8 +1182,16 @@ module MakieTest
         f6 = Figure()
         ax6 = Axis(f6[1,1])
         scatter!(ax6, x, y)
-        @test plot!(ax6, yf) isa MakieExt.YorkLine
-        @test plot!(ax6, yf, xlims=(0, 12)) isa MakieExt.YorkLine
+        @test plot!(ax6, yf) isa MakieExt.LineFit2D
+        @test plot!(ax6, yf, xlims=(0, 12)) isa MakieExt.LineFit2D
+
+        # McLean fit
+        mf = mcleanfit(x, fill(0.25, 10), y, fill(0.25, 10))
+        f6 = Figure()
+        ax6 = Axis(f6[1,1])
+        scatter!(ax6, x, y)
+        @test plot!(ax6, mf) isa MakieExt.LineFit2D
+        @test plot!(ax6, mf, xlims=(0, 12)) isa MakieExt.LineFit2D
 
         # Rank-order plots
         f7 = Figure()

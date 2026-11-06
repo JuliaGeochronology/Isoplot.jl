@@ -129,7 +129,7 @@ module MakieExt
 
     ## --- York fits
 
-    @recipe(YorkLine, yf) do scene
+    @recipe(LineFit2D, lf) do scene
         Attributes(
             color = Makie.wong_colors()[2],
             linewidth = 2,
@@ -139,14 +139,14 @@ module MakieExt
             label = nothing,
         )
     end
-    Makie.convert_arguments(::Type{<:YorkLine}, yf::YorkFit) = (yf,)
-    Makie.plottype(::YorkFit) = YorkLine
+    Makie.convert_arguments(::Type{<:LineFit2D}, lf::Union{YorkFit, McLeanFit}) = (lf,)
+    Makie.plottype(::Union{YorkFit, McLeanFit}) = LineFit2D
 
-    function Makie.plot!(p::YorkLine)
-        yf = p.yf[]
+    function Makie.plot!(p::LineFit2D)
+        lf = p.lf[]
         xl = p.xlims[] === nothing ? first(axislimits()) : p.xlims[]
         x = range(xl..., length=p.npoints[])
-        y = Isoplot.line.(yf, x)
+        y = Isoplot.line.(lf, x)
         ŷ, σ = value.(y), 2stdev.(y)
         band!(p, x, ŷ .- σ, ŷ .+ σ; color=(p.color[], p.bandalpha[]))
         lines!(p, x, ŷ; color=p.color, linewidth=p.linewidth, label=p.label)

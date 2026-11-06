@@ -30,9 +30,9 @@ module PlotsExt
     end
 
     for P in (Plots.Plot, Plots.Subplot)
-        @eval function Plots.plot!(hdl::($P), yf::YorkFit; npoints=25, kwargs...)
+        @eval function Plots.plot!(hdl::($P), lf::Union{YorkFit, McLeanFit}; npoints=25, kwargs...)
             x = range(Plots.xlims(hdl)..., length=npoints)
-            y = Isoplot.line.(yf, x)
+            y = Isoplot.line.(lf, x)
             plot!(hdl, x, value.(y); ribbon=2stdev.(y), kwargs...)
             return hdl
         end
