@@ -97,6 +97,17 @@ function twanalysis(d::UPbAnalysis{T}) where {T}
 end
 twanalysis(d::UThPbAnalysis) = twanalysis(UPbAnalysis(d))
 
+## --- Weighted mean summary for rank-order plots
+
+# Weighted mean of `data`, with the half-width of its 95% (2σ) interval, MSWD, and a legend label
+function wmeanband(data::AbstractVector{<:Measurement})
+    μ, mswd = wmean(data, corrected=true)
+    σ = 2stdev(μ)
+    digits = 1 - floor(Int, log10(σ)) # Two significant digits of uncertainty
+    label = "Mean = $(round(value(μ), digits=digits)) ± $(round(σ, digits=digits)) (2σ), MSWD = $(round(mswd, sigdigits=2)), n = $(length(data))"
+    return (; μ=value(μ), σ, mswd, label)
+end
+
 ## --- Placeholder methods for plotting functions; see ext/ for (library-dependent) implementations
 
 function concordiacurve end

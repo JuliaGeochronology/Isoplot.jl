@@ -4,7 +4,7 @@ module MakieExt
     using Makie
     using Measurements
     import Isoplot: concordialine, concordialine!, concordiacurve, concordiacurve!
-    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange
+    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband
 
     ## --- Ellipses and analyses
 
@@ -180,7 +180,32 @@ module MakieExt
     Makie.convert_arguments(::Type{<:RankOrderPlot}, data::AbstractVector, sigma) = (data .± sigma,)
 
     # Methods are restricted to Makie axes so as not to collide with the Plots.jl extension
-    Isoplot.rankorder!(ax::Makie.AbstractAxis, args...; kwargs...) = rankorderplot!(ax, args...; kwargs...)
+    # With `wmean=true`, also overlay the weighted mean and its 2σ interval
+    function Isoplot.rankorder!(ax::Makie.AbstractAxis, args...; wmean=false, meancolor=:black, meanlabel=:auto, scale=1, offset=0, kwargs...)
+        p = rankorderplot!(ax, args...; scale, offset, kwargs...)
+        if wmean
+            data = p.data[]
+            data isa AbstractVector{<:Measurement} || throw(ArgumentError("`wmean` is only supported for `Measurement` data"))
+            wmeanplot!(ax, data; scale, offset, color=meancolor, label=meanlabel === :auto ? wmeanband(data).label : meanlabel)
+        end
+        return p
+    end
+
+    # Weighted mean of rank-ordered data, as a line with a 2σ band
+    @recipe(WMeanPlot, data) do scene
+        Attributes(color = :black, scale = 1, offset = 0, label = nothing)
+    end
+    Makie.legendelements(p::WMeanPlot, legend) = [PolyElement(color=(p.color[], 0.15)), LineElement(color=p.color[])]
+
+    function Makie.plot!(p::WMeanPlot)
+        data = p.data[]
+        m = wmeanband(data)
+        n = length(data)
+        xs = [p.offset[] + p.scale[]*(1 - 1/2), p.offset[] + p.scale[]*(n + 1/2)]
+        band!(p, xs, fill(m.μ - m.σ, 2), fill(m.μ + m.σ, 2); color=(p.color[], 0.15))
+        lines!(p, xs, fill(m.μ, 2); color=p.color, label=p.label)
+        return p
+    end
 
     function Makie.plot!(p::RankOrderPlot)
         data = p.data[]

@@ -1055,6 +1055,16 @@ module PlotsTest
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9842757843137254,0.9882103758169932,0.9906218464052285) rtol = 0.01
         rm("rankorder.png")
 
+        # With weighted mean
+        d = [10.0, 10.3, 9.8, 10.6, 10.1] .± 0.2
+        m = Isoplot.wmeanband(d)
+        @test m.μ ≈ value(first(wmean(d))) && m.σ ≈ 2stdev(first(wmean(d)))
+        @test occursin("MSWD", m.label)
+        h = rankorder(d, label="", wmean=true)
+        @test h isa Plots.Plot
+        @test length(h.series_list) > length(rankorder(d, label="").series_list)
+        @test_throws ArgumentError rankorder([CI(1:10) for _ in 1:3], wmean=true)
+
         h = rankorder([CI(1:10) for _ in 1:10], label="")
         savefig(h, "CIa.png")
         img = load("CIa.png")
@@ -1244,6 +1254,7 @@ module MakieTest
         @test rankorder!(ax7, (1:10) .± (2*ones(10))) isa MakieExt.RankOrderPlot
         @test rankorder!(ax7, 1:10, 2*ones(10)) isa MakieExt.RankOrderPlot
         @test rankorder!(ax7, [CI(1:10) for _ in 1:10]) isa MakieExt.RankOrderPlot
+        @test rankorder!(ax7, [10.0, 10.3, 9.8, 10.6, 10.1] .± 0.2, wmean=true) isa MakieExt.RankOrderPlot
     end
 end
 

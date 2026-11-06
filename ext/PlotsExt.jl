@@ -4,7 +4,7 @@ module PlotsExt
     using Plots: Shape, plot, plot!, plot3d!
     import Plots
     using Measurements
-    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange
+    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband
     # export plot, plot!
 
     const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
@@ -135,11 +135,17 @@ module PlotsExt
             mscolor=:auto,
             seriestype=:scatter,
             xticks=Float64[],
+            wmean=false, # Overlay the weighted mean and its 2σ interval
             kwargs...
         )
         x = i0 .+ scale.*(1:length(data))
         ds = sort(data)
         plot!(h, x, value.(ds), yerror=2*stdev.(ds); label, mscolor, seriestype, xticks, kwargs...)
+        if wmean
+            m = wmeanband(data)
+            plot!(h, [first(x)-scale/2, last(x)+scale/2], [m.μ, m.μ]; ribbon=m.σ, color=:black, fillalpha=0.15, label=m.label)
+        end
+        return h
     end
     function Isoplot.rankorder!(h::PlotOrSubplot, data::Vector{<:CI}, i0::Number=0;
             scale=1,
@@ -147,8 +153,10 @@ module PlotsExt
             mscolor=:auto,
             seriestype=:scatter,
             xticks=Float64[],
+            wmean=false,
             kwargs...
         )
+        wmean && throw(ArgumentError("`wmean` is only supported for `Measurement` data"))
         x = i0 .+ scale.*(1:length(data))
         y = sort(data)
         plot!(h, x, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), label, mscolor, seriestype, xticks, kwargs...)
