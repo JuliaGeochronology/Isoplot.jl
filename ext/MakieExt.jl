@@ -25,13 +25,13 @@ module MakieExt
 
     ## --- Helpers
 
-    # Current limits of the active axis, as ((xmin, xmax), (ymin, ymax))
+    # Current limits of the active axis, as a tuple of `(min, max)` for each dimension
     function axislimits()
         ax = Makie.current_axis()
-        ax isa Makie.Axis || throw(ArgumentError("No current Axis to take limits from; pass the time range explicitly"))
+        ax isa Union{Makie.Axis, Makie.Axis3} || throw(ArgumentError("No current Axis to take limits from; pass limits explicitly"))
         Makie.reset_limits!(ax)
         r = ax.finallimits[]
-        return (r.origin[1], r.origin[1] + r.widths[1]), (r.origin[2], r.origin[2] + r.widths[2])
+        return ntuple(i -> (r.origin[i], r.origin[i] + r.widths[i]), length(r.origin))
     end
 
     # Whether the `concordiaType` is Tera-Wasserburg (otherwise Wetherill)
@@ -127,29 +127,39 @@ module MakieExt
     Isoplot.twconcordialine!(args...; kwargs...) = concordialine!(args...; kwargs..., concordiaType=:TeraWasserburg)
     Isoplot.twconcordiacurve!(args...; kwargs...) = concordiacurve!(args...; kwargs..., concordiaType=:TeraWasserburg)
 
-    ## --- York fits
+    ## --- Line fits (York and McLean)
 
-    @recipe(LineFit2D, lf) do scene
+    # The axis decides the dimensionality, as in Makie generally. On an `Axis`, `dims` is an integer: plot that
+    # variable against the first, with 2σ uncertainty. On an `Axis3`, `dims` is a tuple of two integers: plot a
+    # line through those variables against the first (no uncertainty).
+    @recipe(LineFit, lf) do scene
         Attributes(
             color = Makie.wong_colors()[2],
             linewidth = 2,
             bandalpha = 0.3,
             npoints = 25,
+            dims = nothing, # Defaults to 2 on an `Axis`, or (2,3) on an `Axis3`
             xlims = nothing, # Defaults to the limits of the current axis
             label = nothing,
         )
     end
-    Makie.convert_arguments(::Type{<:LineFit2D}, lf::Union{YorkFit, McLeanFit}) = (lf,)
-    Makie.plottype(::Union{YorkFit, McLeanFit}) = LineFit2D
+    Makie.convert_arguments(::Type{<:LineFit}, lf::Union{YorkFit, McLeanFit}) = (lf,)
+    Makie.plottype(::Union{YorkFit, McLeanFit}) = LineFit
 
-    function Makie.plot!(p::LineFit2D)
+    function Makie.plot!(p::LineFit)
         lf = p.lf[]
+        dims = p.dims[] === nothing ? (Makie.current_axis() isa Makie.Axis3 ? (2,3) : 2) : p.dims[]
         xl = p.xlims[] === nothing ? first(axislimits()) : p.xlims[]
-        x = range(xl..., length=p.npoints[])
-        y = Isoplot.line.(lf, x)
-        ŷ, σ = value.(y), 2stdev.(y)
-        band!(p, x, ŷ .- σ, ŷ .+ σ; color=(p.color[], p.bandalpha[]))
-        lines!(p, x, ŷ; color=p.color, linewidth=p.linewidth, label=p.label)
+        x = collect(range(xl..., length=p.npoints[]))
+        if dims isa Integer
+            y = Isoplot.line.(lf, x, dims)
+            ŷ, σ = value.(y), 2stdev.(y)
+            band!(p, x, ŷ .- σ, ŷ .+ σ; color=(p.color[], p.bandalpha[]))
+            lines!(p, x, ŷ; color=p.color, linewidth=p.linewidth, label=p.label)
+        else
+            y, z = (value.(Isoplot.line.(lf, x, d)) for d in dims)
+            lines!(p, x, y, z; color=p.color, linewidth=p.linewidth, label=p.label)
+        end
         return p
     end
 

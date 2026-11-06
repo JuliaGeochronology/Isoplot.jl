@@ -84,8 +84,21 @@ function Base.getproperty(f::McLeanFit{T,N}, s::Symbol) where {T,N}
 end
 
 # Calculate a line given data (see also `line` and `invline` for `YorkFit`s)
-line(f::McLeanFit{<:Any,2}, x::Number) = f.ym + (x - f.xm) * f.slope
-invline(f::McLeanFit{<:Any,2}, y::Number) = (y - f.ym) / f.slope + f.xm
+line(f::McLeanFit{<:Any,2}, x::Number) = f.ym + (x - f.xm) * f.slope        # Calculate independent variable from dependent variable
+invline(f::McLeanFit{<:Any,2}, y::Number) = (y - f.ym) / f.slope + f.xm     # Calculate dependent variable from independent variable
+
+# Calculate the `j`th variable (dimension), i.e., the `j-1`th independent variable
+# of the fitted line, with uncertainty, where the first variable (dimension) 
+# is the dependent variable `x`.
+function line(f::McLeanFit{<:Any,N}, x::Number, j::Integer) where {N}
+    2 <= j <= N || throw(ArgumentError("Variable index must be between 2 and $N"))
+    a, v, Σ = getfield(f, :a), getfield(f, :v), getfield(f, :Σ)
+    δ = x - a[1]
+    iₐ, iᵥ = j - 1, N + j - 2
+    # Components of `Σ` are ordered (a₂, ..., a_N, v₂, ..., v_N), and `a₁` is fixed
+    σ² = Σ[iₐ,iₐ] + δ^2*Σ[iᵥ,iᵥ] + 2δ*Σ[iₐ,iᵥ]
+    return (a[j] + v[j]*δ) ± sqrt(max(σ², zero(σ²)))
+end
 
 """
 ```julia

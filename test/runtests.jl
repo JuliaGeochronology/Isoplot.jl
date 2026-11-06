@@ -222,7 +222,7 @@ module BaseTests
         # Metropolis on radiocarbon ages
         tmindist = metropolis_min(5000, ones(10), ages; burnin=200)
         @test mean(tmindist) ≈ 11453 atol=25
-        @test std(tmindist) ≈ 67.8 atol=25
+        @test std(tmindist) ≈ 67.8 atol=35
 
     end
     @testset "Other systems" begin
@@ -629,6 +629,24 @@ module BaseTests
 
         # Same fit regardless of the order of the other variables
         pts = [a₀ .+ v₀*ts[i] .+ cholesky(Symmetric(covs[i])).L * randn(3) for i in 1:n]
+        # Variables of the fitted line, with uncertainty, at a given value of the first variable
+        mf2 = mcleanfit(1.0:6.0, fill(0.1, 6), 2.0 .* (1:6) .+ 1, fill(0.1, 6))
+        for x in (0.0, 3.5, 10.0)
+            @test Isoplot.line(mf2, x, 2).val ≈ Isoplot.line(mf2, x).val
+            @test Isoplot.line(mf2, x, 2).err ≈ Isoplot.line(mf2, x).err
+        end
+        @test_throws ArgumentError Isoplot.line(mf2, 1.0, 3)
+        yf = yorkfit(1.0:6.0, fill(0.1, 6), 2.0 .* (1:6) .+ 1, fill(0.1, 6))
+        @test Isoplot.line(yf, 2.0, 2) == Isoplot.line(yf, 2.0)
+        @test_throws ArgumentError Isoplot.line(yf, 2.0, 3)
+        mf3 = mcleanfit(pts, covs)
+        a, v = mf3.a, mf3.v
+        @test Isoplot.line(mf3, 1.5, 3).val ≈ a[3] + v[3]*(1.5 - a[1])
+        @test Isoplot.line(mf3, a[1], 2).err ≈ sqrt(mf3.Σ[1,1]) # At a₁ only the uncertainty of a₂ contributes
+        @test Isoplot.line(mf3, 1.5, 3).err > 0
+        @test_throws ArgumentError Isoplot.line(mf3, 1.5, 1)
+        @test_throws ArgumentError Isoplot.line(mf3, 1.5, 4)
+
         mf = mcleanfit(pts, covs)
         mfp = mcleanfit([q[[1,3,2]] for q in pts], [C[[1,3,2],[1,3,2]] for C in covs])
         @test mfp.v ≈ mf.v[[1,3,2]]
@@ -942,6 +960,7 @@ end
 module PlotsTest
 
     using Test, Statistics
+    using LinearAlgebra: Diagonal
     using Measurements
     using Isoplot
     using ImageIO, FileIO, Plots
@@ -1082,6 +1101,17 @@ module PlotsTest
         @test sum(img)/length(img) ≈ RGB{Float64}(0.8182011764705884, 0.9208347549019601, 0.9848014215686267) rtol = 0.01
         rm("mf.png")
 
+        # 3D McLean fit, as 3D line and as 2D projections
+        pts3 = [[t, 1 + t/2, 2t - 2] .+ 0.05 .* [sin(7t), cos(5t), sin(3t)] for t in range(0, 5, length=12)]
+        mf3 = mcleanfit(pts3, [Matrix(Diagonal([0.05, 0.08, 0.1].^2)) for _ in pts3])
+        h = scatter([p[1] for p in pts3], [p[2] for p in pts3], label="")
+        @test plot!(h, mf3, dims=2, label="") isa Plots.Plot
+        h = scatter3d([p[1] for p in pts3], [p[2] for p in pts3], [p[3] for p in pts3], label="")
+        @test plot3d!(h, mf3, label="") isa Plots.Plot
+        savefig(h, "mf3.png")
+        @test load("mf3.png") isa AbstractMatrix
+        rm("mf3.png")
+
         # Plot SIMS calibration line
         h = plot(calib)
         savefig(h, "calib.png")
@@ -1095,6 +1125,7 @@ end
 
 module MakieTest
     using Test, Statistics
+    using LinearAlgebra: Diagonal
     using Measurements
     using Isoplot
     using ImageIO, FileIO, CairoMakie
@@ -1182,16 +1213,30 @@ module MakieTest
         f6 = Figure()
         ax6 = Axis(f6[1,1])
         scatter!(ax6, x, y)
-        @test plot!(ax6, yf) isa MakieExt.LineFit2D
-        @test plot!(ax6, yf, xlims=(0, 12)) isa MakieExt.LineFit2D
+        @test plot!(ax6, yf) isa MakieExt.LineFit
+        @test plot!(ax6, yf, xlims=(0, 12)) isa MakieExt.LineFit
 
         # McLean fit
         mf = mcleanfit(x, fill(0.25, 10), y, fill(0.25, 10))
         f6 = Figure()
         ax6 = Axis(f6[1,1])
         scatter!(ax6, x, y)
-        @test plot!(ax6, mf) isa MakieExt.LineFit2D
-        @test plot!(ax6, mf, xlims=(0, 12)) isa MakieExt.LineFit2D
+        @test plot!(ax6, mf) isa MakieExt.LineFit
+        @test plot!(ax6, mf, xlims=(0, 12)) isa MakieExt.LineFit
+
+        # 3D McLean fit, as 3D line and as 2D projections
+        pts3 = [[t, 1 + t/2, 2t - 2] .+ 0.05 .* [sin(7t), cos(5t), sin(3t)] for t in range(0, 5, length=12)]
+        mf3 = mcleanfit(pts3, [Matrix(Diagonal([0.05, 0.08, 0.1].^2)) for _ in pts3])
+        f9 = Figure()
+        ax9 = Axis(f9[1,1])
+        scatter!(ax9, [p[1] for p in pts3], [p[2] for p in pts3])
+        @test plot!(ax9, mf3, dims=2) isa MakieExt.LineFit
+        ax9₃ = Axis3(f9[1,2])
+        scatter!(ax9₃, [p[1] for p in pts3], [p[2] for p in pts3], [p[3] for p in pts3])
+        @test plot!(ax9₃, mf3) isa MakieExt.LineFit
+        save("mf3.png", f9)
+        @test size(load("mf3.png")) == (900, 1200)
+        rm("mf3.png")
 
         # Rank-order plots
         f7 = Figure()

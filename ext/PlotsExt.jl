@@ -1,7 +1,7 @@
 module PlotsExt
 
     using Isoplot
-    using Plots: Shape, plot, plot!
+    using Plots: Shape, plot, plot!, plot3d!
     import Plots
     using Measurements
     import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange
@@ -29,12 +29,18 @@ module PlotsExt
         end
     end
 
+    # Line fits are plotted in 2D by `plot!` (variable `dims` against the first, with 2σ uncertainty),
+    # and in 3D by `plot3d!` (variables `dims` = (j, k) against the first, without uncertainty)
     for P in (Plots.Plot, Plots.Subplot)
-        @eval function Plots.plot!(hdl::($P), lf::Union{YorkFit, McLeanFit}; npoints=25, kwargs...)
-            x = range(Plots.xlims(hdl)..., length=npoints)
-            y = Isoplot.line.(lf, x)
-            plot!(hdl, x, value.(y); ribbon=2stdev.(y), kwargs...)
-            return hdl
+        @eval function Plots.plot!(hdl::($P), lf::Union{YorkFit, McLeanFit}; npoints=25, dims::Integer=2, kwargs...)
+            x = collect(range(Plots.xlims(hdl)..., length=npoints))
+            y = Isoplot.line.(lf, x, dims)
+            return plot!(hdl, x, value.(y); ribbon=2stdev.(y), kwargs...)
+        end
+        @eval function Plots.plot3d!(hdl::($P), lf::McLeanFit; npoints=25, dims=(2,3), kwargs...)
+            x = collect(range(Plots.xlims(hdl)..., length=npoints))
+            y, z = (value.(Isoplot.line.(lf, x, d)) for d in dims)
+            return plot3d!(hdl, x, y, z; kwargs...)
         end
     end
 
