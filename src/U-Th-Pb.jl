@@ -1,15 +1,17 @@
 # Decay constants:
-const λ238U = log(2)/(4.4683e3 ± 0.0024e3) # [1/Myr] Jaffey et al. (1971)
-const λ235U = 9.8569E-4 ± 0.0110E-4/2 # [1/Myr] Schoene et al. (2006)
-const λ235U_internal = 9.8569E-4 ± 0.0017E-4/2 # [1/Myr] Schoene et al. (2006), including only internal uncertainty [U-238 years]
+const λ238U = log(2)/(4.4683e3 ± 0.0024e3) # [1/Myr] Jaffey et al. (1971) 10.1103/PhysRevC.4.1889
+const λ235U = 9.8569E-4 ± 0.0110E-4/2 # [1/Myr] Schoene et al. (2006) 10.1016/j.gca.2005.09.007
+const λ235U_internal = 9.8569E-4 ± 0.0017E-4/2 # [1/Myr] Schoene et al. (2006), including only internal uncertainty (U-238 years)
 export λ238U, λ235U
 
-const λ235U_jaffey = log(2)/(7.0381e2 ± 0.0048e2) # [1/Myr] Jaffey et al (1971)
+const λ235U_jaffey = log(2)/(7.0381e2 ± 0.0048e2) # [1/Myr] Jaffey et al. (1971) 10.1103/PhysRevC.4.1889
 export λ235U_jaffey
 
 const λ232Th = log(2)/(1.401e4 ± 0.007e4) # [1/Myr] LeRoux & Glendenin (1963)
 export λ232Th
 
+# Present-day terrestrial U-238/U-235 ratio
+const U238_U235 = 137.818 ± 0.045/2 # [unitless] Hiess et al. (2012) 10.1126/science.1215507
 
 """
 ```
@@ -152,7 +154,7 @@ function stacey_kramers(t)
 
     # Subtract ingrowth from younger end
     r64 -= (ratio(t, value(λ238U)) - ratio(t0, value(λ238U))) * U_Pb
-    r74 -= (ratio(t, value(λ235U)) - ratio(t0, value(λ235U))) * U_Pb/137.818
+    r74 -= (ratio(t, value(λ235U)) - ratio(t0, value(λ235U))) * U_Pb/value(U238_U235)
     r84 -= (ratio(t, value(λ232Th)) - ratio(t0, value(λ232Th))) * Th_Pb
 
     return r64, r74, r84

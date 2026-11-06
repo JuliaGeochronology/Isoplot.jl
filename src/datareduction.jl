@@ -261,7 +261,7 @@ function age68(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank64::Numbe
     # Return 206Pb/238U age
     return @. log(1 + r68)/value(λ238U)
 end
-function age75(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank74::Number=0, U58::Number=1/137.818) where {T}
+function age75(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; blank74::Number=0, U58::Number=1/value(U238_U235)) where {T}
     # Determine appropriate pb/u rsf correction
     oxideratio = getfield(d, calib.numerator) ./ getfield(d, calib.denominator)
     PbUrsf = value(invline(calib.line, nanmean(oxideratio)))
@@ -280,7 +280,7 @@ end
 ```julia
 calibrate(d::UThPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
     \tblank = stacey_kramers(0),
-    \tU58 = 1/137.818, 
+    \tU58 = 1/value(U238_U235), 
     \tcorrection = :Pb204,
     \titerations = 8
 )
@@ -293,7 +293,7 @@ A Pb-204 based blank subtraction (common-Pb subtraction) is performed,
 using by default a present-day Stacey-Kramers common Pb composition.
 
 U-235 is estimated based on measured U-238, assuming a 235/238 ratio 
-of `U58` -- by default 1/137.818 (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
+of `U58` -- by default 1/value(U238_U235) (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
 
 ### Examples
 ```
@@ -322,7 +322,7 @@ function calibrate(data::Collection{<:RawData}, calib::Calibration, cyclefilter=
 end
 function calibrate(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}, cf=:; 
         blank::NTuple{3,Number} = stacey_kramers(0),
-        U58::Number = 1/137.818, 
+        U58::Number = 1/value(U238_U235), 
         correction::Symbol = :Pb204,
         iterations::Integer = 8,
     ) where {T}
@@ -374,7 +374,7 @@ end
 calibrate_blockwise(d::UThPbSIMSData, calib::UPbSIMSCalibration, [cyclefilter]; 
     \tblocksize::Integer = 3,
     \tblank::NTuple{3,Number} = stacey_kramers(0),
-    \tU58::Number = 1/137.818, 
+    \tU58::Number = 1/value(U238_U235), 
     \tcorrection::Symbol = :Pb204,
     \titerations::Integer = 8,
 )
@@ -388,7 +388,7 @@ A Pb-204 based blank subtraction (common-Pb subtraction) is performed,
 using by default a present-day Stacey-Kramers common Pb composition.
 
 U-235 is estimated based on measured U-238, assuming a 235/238 ratio 
-of `U58` -- by default 1/137.818 (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
+of `U58` -- by default 1/value(U238_U235) (i.e., Heiss et al. 2012, doi: 10.1126/science.1215507)
 
 ### Examples
 ```
@@ -420,7 +420,7 @@ end
 function calibrate_blockwise(d::UThPbSIMSData{T}, calib::UPbSIMSCalibration{T}; 
         blocksize::Integer = 3,
         blank::NTuple{3,Number} = stacey_kramers(0),
-        U58::Number = 1/137.818, 
+        U58::Number = 1/value(U238_U235), 
         correction::Symbol = :Pb204,
         iterations::Integer = 8,
     ) where {T}
