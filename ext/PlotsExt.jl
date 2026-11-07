@@ -1,9 +1,10 @@
 module PlotsExt
 
     using Isoplot
-    using Plots: Shape, plot, plot!
+    using Plots: Shape, plot, plot!, plot3d!
     import Plots
     using Measurements
+    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband, ellipsoid, calibrationlabels, calibrationlabel
     # export plot, plot!
 
     const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
@@ -28,12 +29,33 @@ module PlotsExt
         end
     end
 
+    # 3D analyses are plotted in 2D as the ellipse of any pair of variables `dims` (default 1 and 2),
+    # or in 3D as an ellipsoid by `plot3d!`
     for P in (Plots.Plot, Plots.Subplot)
-        @eval function Plots.plot!(hdl::($P), yf::YorkFit; npoints=25, kwargs...)
-            x = range(Plots.xlims(hdl)..., length=npoints)
-            y = Isoplot.line.(yf, x)
-            plot!(hdl, x, value.(y); ribbon=2stdev.(y), kwargs...)
+        @eval Plots.plot!(hdl::($P), a::Analysis3D, args...; dims=(1,2), kwargs...) = plot!(hdl, Ellipse(a, dims...), args...; kwargs...)
+        @eval Plots.plot!(hdl::($P), a::Vector{<:Analysis3D}, args...; dims=(1,2), kwargs...) = plot!(hdl, Ellipse.(a, dims...), args...; kwargs...)
+        @eval Plots.plot3d!(hdl::($P), a::Analysis3D; color=1, alpha=0.3, label="", sigmalevel=2.7954, npoints=24, kwargs...) =
+            plot!(hdl, ellipsoid(a; sigmalevel, npoints)...; seriestype=:surface, color=Plots.cgrad(fill(color isa Integer ? Plots.palette(:default)[color] : color, 2)), colorbar=false, alpha, label, kwargs...)
+        @eval function Plots.plot3d!(hdl::($P), a::Vector{<:Analysis3D}; label="", color=1, kwargs...)
+            for i in eachindex(a)
+                plot3d!(hdl, a[i]; label=(i==firstindex(a) ? label : ""), color, kwargs...)
+            end
             return hdl
+        end
+    end
+
+    # Line fits are plotted in 2D by `plot!` (variable `dims` against the first, with 2σ uncertainty),
+    # and in 3D by `plot3d!` (variables `dims` = (j, k) against the first, without uncertainty)
+    for P in (Plots.Plot, Plots.Subplot)
+        @eval function Plots.plot!(hdl::($P), lf::Union{YorkFit, McLeanFit}; npoints=25, dims::Integer=2, kwargs...)
+            x = collect(range(Plots.xlims(hdl)..., length=npoints))
+            y = Isoplot.line.(lf, x, dims)
+            return plot!(hdl, x, value.(y); ribbon=2stdev.(y), kwargs...)
+        end
+        @eval function Plots.plot3d!(hdl::($P), lf::McLeanFit; npoints=25, dims=(2,3), kwargs...)
+            x = collect(range(Plots.xlims(hdl)..., length=npoints))
+            y, z = (value.(Isoplot.line.(lf, x, d)) for d in dims)
+            return plot3d!(hdl, x, y, z; kwargs...)
         end
     end
 
@@ -42,114 +64,80 @@ module PlotsExt
         @eval function Plots.plot!(hdl::($P), calib::Isoplot.UPbSIMSCalibration; 
                 color = :auto,
                 alpha = 0.75,
-                xlabel="$(Isoplot.prettify(:Pb206)) / $(Isoplot.prettify(calib.U)) RSF",
-                ylabel="$(Isoplot.prettify(calib.numerator)) / $(Isoplot.prettify(calib.denominator))",
+                xlabel=calibrationlabels(calib).xlabel,
+                ylabel=calibrationlabels(calib).ylabel,
                 kwargs...
             )
             plot!(hdl, calib.data; color=(color===:auto ? 1 : color), alpha, xlabel, ylabel, label="Data (95% CI)", kwargs...)
-            plot!(hdl, calib.line; color=(color===:auto ? 2 : color), label="York fit (N=$(length(calib.data)), MSWD=$(round(calib.line.mswd, sigdigits=3)))", kwargs...)
+            plot!(hdl, calib.line; color=(color===:auto ? 2 : color), label=calibrationlabel(calib), kwargs...)
             return hdl
         end
     end
 
-    # Plot a line between two times in Wetherill Concordia space
-    Isoplot.concordialine(t₀, t₁; framestyle=:box, kwargs...) = concordialine!(plot(xlims=ratio.((first(t₀), first(t₁)), value(λ235U))), t₀, t₁; framestyle, kwargs...)
-    function Isoplot.concordialine!(hdl::PlotOrSubplot, t₀::Number, t₁::Number; truncate::Bool=false, kwargs...)
-        xl = Plots.xlims(hdl)
-        r75₀ = ratio(t₀, value(λ235U))
-        r68₀ = ratio(t₀, value(λ238U))
-        r75₁ = ratio(t₁, value(λ235U))
-        r68₁ = ratio(t₁, value(λ238U))
-        slope = (r68₁-r68₀)/(r75₁-r75₀)
-        intercept = r68₀ - r75₀*slope
-        x = if truncate
-            xmin = max(first(xl), value(r75₀))
-            xmax = min(last(xl), value(r75₁))
-            range(xmin, xmax, length=50)
-        else
-            range(xl..., length=50)
+    ## --- Concordia lines and curves, in Wetherill space (`concordia*`) or Tera-Wasserburg space (`twconcordia*`)
+
+    for (tw, line, curve) in ((false, :concordialine, :concordiacurve), (true, :twconcordialine, :twconcordiacurve))
+        # Plot a line between two times, or between many pairs of times
+        @eval function Isoplot.$line(t₀, t₁; framestyle=:box, kwargs...)
+            xl = extrema(first(concordiacoords((first(t₀), first(t₁)), value(λ235U), value(λ238U); tw=$tw)))
+            return Isoplot.$(Symbol(line, :!))(plot(xlims=xl), t₀, t₁; framestyle, kwargs...)
         end
+        @eval Isoplot.$(Symbol(line, :!))(hdl::PlotOrSubplot, t₀, t₁; kwargs...) = plotconcordialine!(hdl, t₀, t₁, $tw; kwargs...)
+        # Plot the concordia curve
+        @eval Isoplot.$(Symbol(curve, :!))(hdl::PlotOrSubplot=Plots.current(); kwargs...) = plotconcordiacurve!(hdl, $tw; kwargs...)
+    end
+
+    # Points spanning the x limits of a plot, or just the part of them between `xmin` and `xmax` if `truncate`
+    xrange(xl, xmin, xmax, truncate::Bool) = collect(range((truncate ? (max(first(xl), xmin), min(last(xl), xmax)) : xl)..., length=50))
+
+    # Single line, with uncertainty from the decay constants
+    function plotconcordialine!(hdl::PlotOrSubplot, t₀::Number, t₁::Number, tw::Bool; truncate::Bool=false, kwargs...)
+        xl = Plots.xlims(hdl)
+        intercept, slope, x₀, x₁ = concordialinecoeffs(t₀, t₁; tw)
+        x = xrange(xl, min(value(x₀), value(x₁)), max(value(x₀), value(x₁)), truncate)
         y = intercept .+ slope .* x
         plot!(hdl, x, value.(y); ribbon=2stdev.(y), kwargs...)
         Plots.xlims!(hdl, xl)
         return hdl
     end
-    function Isoplot.concordialine!(hdl::PlotOrSubplot, t₀::Collection, t₁::Collection; truncate::Bool=false, label="", color=:black, alpha=0.05, kwargs...)
+    # Many lines, plus their mean
+    function plotconcordialine!(hdl::PlotOrSubplot, t₀::Collection, t₁::Collection, tw::Bool; truncate::Bool=false, label="", color=:black, alpha=0.05, kwargs...)
         xl = Plots.xlims(hdl)
-        r75₀ = ratio.(t₀, value(λ235U))
-        r68₀ = ratio.(t₀, value(λ238U))
-        r75₁ = ratio.(t₁, value(λ235U))
-        r68₁ = ratio.(t₁, value(λ238U))
-        slope = @. (r68₁-r68₀)/(r75₁-r75₀)
-        intercept = @. r68₀ - r75₀*slope
-        x = if truncate
-            xmin = max(first(xl), minimum(r75₀))
-            xmax = min(last(xl), maximum(r75₁))
-            collect(range(xmin, xmax, length=50))
-        else
-            collect(range(xl..., length=50))
-        end
-        y(slope, intercept) = @. intercept + slope * x
-        ys = y.(slope, intercept)
+        intercept, slope, x₀, x₁ = concordialinecoeffs(t₀, t₁, value(λ235U), value(λ238U); tw)
+        x = xrange(xl, min(minimum(x₀), minimum(x₁)), max(maximum(x₀), maximum(x₁)), truncate)
+        ys = [@. b + m * x for (m, b) in zip(slope, intercept)]
         plot!(hdl, x, ys; label="", color, alpha, kwargs...)
         plot!(hdl, x, sum(ys)./length(ys); label, color, alpha=1, kwargs...)
         Plots.xlims!(hdl, xl)
         return hdl
     end
 
-    # Plot the Wetherill Concordia curve
-    function Isoplot.concordiacurve!(hdl::PlotOrSubplot=Plots.current(); timerange=:auto)
-        # Uncertainty of 235 decay constant relative to the 238 decay constant
-        σₜ = value(λ235U_jaffey) .* sqrt((stdev(λ238U)/value(λ238U)).^2 + (stdev(λ235U_jaffey)/value(λ235U_jaffey)).^2) # 1/Years
-
-        # Plot the concordia curve
+    function plotconcordiacurve!(hdl::PlotOrSubplot, tw::Bool; timerange=:auto)
         xl, yl = Plots.xlims(hdl), Plots.ylims(hdl) # Note current size of figure
-        tlim = if timerange===:auto
-             age.(max.(xl, 0.0), value(λ235U_jaffey)) # Calculate time range of current window
-        else
-            timerange
-        end
-        dt = tlim[2] - tlim[1]
-        tmin = max(tlim[1]-0.1dt, 0.0)
-        tmax = tlim[2]+0.1dt
-        t = range(tmin, tmax, length=1000) # Time vector, including padding
-        r75t = ratio.(t, value(λ235U_jaffey)) # X axis values
-        r68t = ratio.(t, value(λ238U)) # Y axis values
-        x = [ratio.(t, value(λ235U_jaffey)-σₜ*2); reverse(ratio.(t, value(λ235U_jaffey)+σₜ*2))]
-        y = [r68t; reverse(r68t)]
-        Plots.plot!(hdl, Shape(x,y), color=:black, alpha=0.15, label="") # Two-sigma concordia uncertainty
-        Plots.plot!(hdl, r75t, r68t, color=:black, label="") # Concordia line
-
-        r75t_Schoene = ratio.(t, value(λ235U)) # X axis values
-        Plots.plot!(hdl, r75t_Schoene,r68t,color=:black,style=:dash, label="") # Concordia line
-
+        tlim = timerange===:auto ? xtimerange(xl; tw) : timerange # Time range of current window
+        c = concordiacurvedata(tlim; tw)
+        Plots.plot!(hdl, Shape(c.envelope...), color=:black, alpha=0.15, label="") # Two-sigma concordia uncertainty
+        Plots.plot!(hdl, c.curve..., color=:black, label="") # Concordia line
+        Plots.plot!(hdl, c.schoene..., color=:black, style=:dash, label="") # Concordia line, using Schoene et al. decay constants
         Plots.xlims!(hdl, xl) # Ensure that figure size hasn't changed
         Plots.ylims!(hdl, yl)
 
-        # Calculate desired range of age markers
-        scale = floor(log10(tlim[2]-tlim[1])) # Characteristic timescale (order of magnitude)
-        trange = round.(tlim./10.0^scale) # Minimum and maximum time to a round number
-        majorstep = 0.5
-        tticks = (trange[1]:majorstep:trange[2]).*10.0^scale # Time ticks, to a round number
-        r75tticks = ratio.(tticks, value(λ235U_jaffey)) # X axis values
-        r68tticks = ratio.(tticks, value(λ238U)) # Y axis values
-
         # Plot age markers with text labels
-        Plots.plot!(hdl, r75tticks,r68tticks, color=:black, seriestype=:scatter, ms=2, label="")
+        xticks, yticks = c.ticks
+        Plots.plot!(hdl, xticks, yticks, color=:black, seriestype=:scatter, ms=2, label="")
         xoffset = (xl[2]-xl[1])/200
         yoffset = (yl[2]-yl[1])/100
-        t = (xl[1]+8*xoffset) .< r75tticks .< xl[2]
-        ticklabels = Plots.text.(string.(round.(tticks[t], digits=1)), 10, :right)
-        Plots.annotate!(hdl, r75tticks[t].-xoffset,r68tticks[t].+yoffset,ticklabels)
-
+        visible = (xl[1]+8*xoffset) .< xticks .< xl[2]
+        ticklabels = Plots.text.(string.(round.(c.tticks[visible], digits=1)), 10, :right)
+        Plots.annotate!(hdl, xticks[visible].-xoffset, yticks[visible].+yoffset, ticklabels)
         return hdl
     end
 
     # Plot confidence intervals
     for P in (Plots.Plot, Plots.Subplot)
-        @eval Plots.plot!(hdl::($P), y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), mscolor, kwargs...)
-        @eval Plots.plot!(hdl::($P), x, y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, x, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), mscolor, kwargs...)
-        @eval Plots.plot!(hdl::($P), x::Vector{<:CI}, y; mscolor=:auto, kwargs...) = plot!(hdl, x.|>c->c.mean, y; xerror=(x.|>c->c.upper-c.mean, x.|>c->c.mean-c.lower), mscolor, kwargs...)
+        @eval Plots.plot!(hdl::($P), y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, y.|>c->c.mean; yerror=(y.|>c->c.mean-c.lower, y.|>c->c.upper-c.mean), mscolor, kwargs...)
+        @eval Plots.plot!(hdl::($P), x, y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, x, y.|>c->c.mean; yerror=(y.|>c->c.mean-c.lower, y.|>c->c.upper-c.mean), mscolor, kwargs...)
+        @eval Plots.plot!(hdl::($P), x::Vector{<:CI}, y; mscolor=:auto, kwargs...) = plot!(hdl, x.|>c->c.mean, y; xerror=(x.|>c->c.mean-c.lower, x.|>c->c.upper-c.mean), mscolor, kwargs...)
         @eval Plots.plot!(hdl::($P), x::Vector{<:CI}, y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, x.|>c->c.mean, y.|>c->c.mean; xerror=(x.|>c->c.mean-c.lower, x.|>c->c.upper-c.mean), yerror=(y.|>c->c.mean-c.lower, y.|>c->c.upper-c.mean), mscolor, kwargs...)
     end
 
@@ -162,11 +150,17 @@ module PlotsExt
             mscolor=:auto,
             seriestype=:scatter,
             xticks=Float64[],
+            wmean=false, # Overlay the weighted mean and its 2σ interval
             kwargs...
         )
         x = i0 .+ scale.*(1:length(data))
         ds = sort(data)
         plot!(h, x, value.(ds), yerror=2*stdev.(ds); label, mscolor, seriestype, xticks, kwargs...)
+        if wmean
+            m = wmeanband(data)
+            plot!(h, [first(x)-scale/2, last(x)+scale/2], [m.μ, m.μ]; ribbon=m.σ, color=:black, fillalpha=0.15, label=m.label)
+        end
+        return h
     end
     function Isoplot.rankorder!(h::PlotOrSubplot, data::Vector{<:CI}, i0::Number=0;
             scale=1,
@@ -174,11 +168,13 @@ module PlotsExt
             mscolor=:auto,
             seriestype=:scatter,
             xticks=Float64[],
+            wmean=false,
             kwargs...
         )
+        wmean && throw(ArgumentError("`wmean` is only supported for `Measurement` data"))
         x = i0 .+ scale.*(1:length(data))
         y = sort(data)
-        plot!(h, x, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), label, mscolor, seriestype, xticks, kwargs...)
+        plot!(h, x, y.|>c->c.mean; yerror=(y.|>c->c.mean-c.lower, y.|>c->c.upper-c.mean), label, mscolor, seriestype, xticks, kwargs...)
     end
 
 end

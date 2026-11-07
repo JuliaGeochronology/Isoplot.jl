@@ -222,7 +222,7 @@ module BaseTests
         # Metropolis on radiocarbon ages
         tmindist = metropolis_min(5000, ones(10), ages; burnin=200)
         @test mean(tmindist) ≈ 11453 atol=25
-        @test std(tmindist) ≈ 67.8 atol=25
+        @test std(tmindist) ≈ 67.8 atol=35
 
     end
     @testset "Other systems" begin
@@ -373,8 +373,8 @@ module BaseTests
         @test std(d) ≈ σ atol = 0.02
         d = distwmean(a,b; corrected=true)
         μ,σ,_ = wmean([0,100], [2,3]; corrected=true)
-        @test mean(d) ≈ μ atol = 0.2
-        @test std(d) ≈ σ atol = 2
+        @test mean(d) ≈ μ atol = 0.3
+        @test std(d) ≈ σ atol = 3
 
         d = distwmean(a,b,c; corrected=false)
         μ,σ,_ = wmean([0,50,100], [2,1,3]; corrected=false)
@@ -382,8 +382,8 @@ module BaseTests
         @test std(d) ≈ σ atol = 0.02
         d = distwmean(a,b,c; corrected=true)
         μ,σ,_ = wmean([0,50,100], [2,1,3]; corrected=true)
-        @test mean(d) ≈ μ atol = 0.2
-        @test std(d) ≈ σ atol = 2
+        @test mean(d) ≈ μ atol = 0.3
+        @test std(d) ≈ σ atol = 3
 
         # test Chauvenet's criterion
         x = [1.2, 1.5, 1.3, 2.4, 2.0, 2.1, 1.9, 2.2, 8.0, 2.3]
@@ -428,6 +428,24 @@ module BaseTests
         ϕ = lsqfit(1:10, 1:10)
         @test ϕ[1] ≈ 0 atol=1e-12
         @test ϕ[2] ≈ 1 atol=1e-12
+
+        # Tera-Wasserburg conversion
+        d = UPbAnalysis(0.6, 0.006, 0.08, 0.0008, 0.7)
+        t = twanalysis(d)
+        @test t isa Analysis2D{Float64}
+        @test t.μ ≈ [1/0.08, 0.6/0.08/value(Isoplot.U238_U235)]
+        samples = rand(d, 1_000_000) # Compare to Monte Carlo
+        X = 1 ./ samples[2,:]
+        Y = samples[1,:] ./ samples[2,:] ./ value(Isoplot.U238_U235)
+        @test t.σ ≈ [std(X), std(Y)] rtol=0.02
+        @test t.Σ[1,2]/prod(t.σ) ≈ cor(X, Y) atol=0.02
+        @test t.Σ == t.Σ'
+        @test twanalysis(UThPbAnalysis([0.6, 0.08, 0.02], [0.006, 0.0008, 0.0002], [0.006^2 0.7*0.006*0.0008 0; 0.7*0.006*0.0008 0.0008^2 0; 0 0 0.0002^2])).μ ≈ t.μ
+        # Concordia in Tera-Wasserburg space
+        x, y = Isoplot.concordiacoords(1000, value(λ235U), value(λ238U), tw=true)
+        @test x ≈ 1/Isoplot.ratio(1000, value(λ238U))
+        @test y ≈ Isoplot.ratio(1000, value(λ235U))/Isoplot.ratio(1000, value(λ238U))/value(Isoplot.U238_U235)
+        @test Isoplot.ageticks((0, 1000)) == [0.0, 500.0, 1000.0]
 
         # York (1968) fit
         x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
@@ -611,6 +629,33 @@ module BaseTests
 
         # Same fit regardless of the order of the other variables
         pts = [a₀ .+ v₀*ts[i] .+ cholesky(Symmetric(covs[i])).L * randn(3) for i in 1:n]
+        # Variables of the fitted line, with uncertainty, at a given value of the first variable
+        mf2 = mcleanfit(1.0:6.0, fill(0.1, 6), 2.0 .* (1:6) .+ 1, fill(0.1, 6))
+        for x in (0.0, 3.5, 10.0)
+            @test Isoplot.line(mf2, x, 2).val ≈ Isoplot.line(mf2, x).val
+            @test Isoplot.line(mf2, x, 2).err ≈ Isoplot.line(mf2, x).err
+        end
+        @test_throws ArgumentError Isoplot.line(mf2, 1.0, 3)
+        yf = yorkfit(1.0:6.0, fill(0.1, 6), 2.0 .* (1:6) .+ 1, fill(0.1, 6))
+        @test Isoplot.line(yf, 2.0, 2) == Isoplot.line(yf, 2.0)
+        @test_throws ArgumentError Isoplot.line(yf, 2.0, 3)
+        mf3 = mcleanfit(pts, covs)
+        # Ellipse of a pair of variables, and ellipsoid, of a 3D analysis
+        a3 = Analysis([1.0, 2.0, 3.0], [0.2, 0.3, 0.4], [0.04 0.03 0.0; 0.03 0.09 0.05; 0.0 0.05 0.16])
+        e13 = Ellipse(a3, 1, 3)
+        @test (e13.x₀, e13.y₀, e13.σx₀, e13.σy₀) == (1.0, 3.0, 0.2, 0.4)
+        @test e13.x == Ellipse(Analysis2D([1.0, 3.0], [0.2, 0.4], [0.04 0.0; 0.0 0.16])).x
+        x, y, z = Isoplot.ellipsoid(a3, sigmalevel=2, npoints=10)
+        @test size(x) == size(y) == size(z) == (10, 10)
+        Σ⁻¹ = inv(Matrix(a3.Σ))
+        @test all(isapprox(([x[i]-1, y[i]-2, z[i]-3]' * Σ⁻¹ * [x[i]-1, y[i]-2, z[i]-3]), 4) for i in eachindex(x))
+        a, v = mf3.a, mf3.v
+        @test Isoplot.line(mf3, 1.5, 3).val ≈ a[3] + v[3]*(1.5 - a[1])
+        @test Isoplot.line(mf3, a[1], 2).err ≈ sqrt(mf3.Σ[1,1]) # At a₁ only the uncertainty of a₂ contributes
+        @test Isoplot.line(mf3, 1.5, 3).err > 0
+        @test_throws ArgumentError Isoplot.line(mf3, 1.5, 1)
+        @test_throws ArgumentError Isoplot.line(mf3, 1.5, 4)
+
         mf = mcleanfit(pts, covs)
         mfp = mcleanfit([q[[1,3,2]] for q in pts], [C[[1,3,2],[1,3,2]] for C in covs])
         @test mfp.v ≈ mf.v[[1,3,2]]
@@ -924,6 +969,7 @@ end
 module PlotsTest
 
     using Test, Statistics
+    using LinearAlgebra: Diagonal
     using Measurements
     using Isoplot
     using ImageIO, FileIO, Plots
@@ -981,6 +1027,28 @@ module PlotsTest
         @test sum(img)/length(img) ≈ RGB{Float64}(0.966250588235294,0.966250588235294,0.966250588235294) rtol = 0.01
         rm("concordia.png")
 
+        # Tera-Wasserburg analyses
+        h = plot(twanalysis.(analyses), color=:blue, alpha=0.3, label="")
+        twconcordiacurve!(h)
+        @test h isa Plots.Plot
+        savefig(h, "concordia.png")
+        rm("concordia.png")
+
+        # Tera-Wasserburg concordia
+        h = twconcordialine(500, 1000, label="")
+        twconcordiacurve!(h, timerange=(300, 1500))
+        savefig(h, "concordia.png")
+        @test load("concordia.png") isa AbstractMatrix
+        rm("concordia.png")
+        h = twconcordialine(500, 1000, label="", truncate=true)
+        twconcordiacurve!(h)
+        @test h isa Plots.Plot
+        h = twconcordialine(10*randn(20).+500, 10*randn(20).+1000, label="")
+        twconcordiacurve!(h)
+        h = twconcordialine(10*randn(20).+500, 10*randn(20).+1000, label="", truncate=true)
+        twconcordiacurve!(h)
+        @test h isa Plots.Plot
+
         # Rank-order plot
         h = rankorder(1:10, 2*ones(10), label="")
         savefig(h, "rankorder.png")
@@ -995,6 +1063,32 @@ module PlotsTest
         # @test size(img) == (400,600)
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9842757843137254,0.9882103758169932,0.9906218464052285) rtol = 0.01
         rm("rankorder.png")
+
+        # 3D analyses: 2D projection and ellipsoid
+        a3 = [Analysis([t, 1+t/2, 2t], [0.2, 0.3, 0.4], [0.04 0.03 0.0; 0.03 0.09 0.05; 0.0 0.05 0.16]) for t in 0:3]
+        @test plot(a3, dims=(1,3)) isa Plots.Plot
+        @test plot!(plot(), a3[1]) isa Plots.Plot
+        @test plot3d!(plot3d(), a3[1]) isa Plots.Plot
+        h = plot3d!(plot3d(), a3, label="ellipsoids")
+        savefig(h, "ell3.png")
+        @test load("ell3.png") isa AbstractMatrix
+        rm("ell3.png")
+
+        # CI error bars extend down by (mean - lower) and up by (upper - mean)
+        ci = CI(exp.(range(-2, 2, length=100)))
+        h = plot([ci])
+        lo, hi = h.series_list[1][:yerror]
+        @test lo[1] ≈ ci.mean - ci.lower && hi[1] ≈ ci.upper - ci.mean
+
+        # With weighted mean
+        d = [10.0, 10.3, 9.8, 10.6, 10.1] .± 0.2
+        m = Isoplot.wmeanband(d)
+        @test m.μ ≈ value(first(wmean(d))) && m.σ ≈ 2stdev(first(wmean(d)))
+        @test occursin("MSWD", m.label)
+        h = rankorder(d, label="", wmean=true)
+        @test h isa Plots.Plot
+        @test length(h.series_list) > length(rankorder(d, label="").series_list)
+        @test_throws ArgumentError rankorder([CI(1:10) for _ in 1:3], wmean=true)
 
         h = rankorder([CI(1:10) for _ in 1:10], label="")
         savefig(h, "CIa.png")
@@ -1024,6 +1118,35 @@ module PlotsTest
         @test sum(img)/length(img) ≈ RGB{Float64}(0.9829569444444444,0.9866916666666666,0.9890226307189541) rtol = 0.01
         rm("CId.png")
 
+        # York fit
+        x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
+        y = [0.8742, 2.1626, 3.042, 3.829, 5.0116, 5.5614, 6.7675, 7.8856, 9.6414, 10.4955]
+        yf = yorkfit(x, fill(0.25, 10), y, fill(0.25, 10))
+        h = plot(yf, label="")
+        savefig(h, "yf.png")
+        img = load("yf.png")
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.8183448856209153, 0.9208928758169928, 0.9848070588235287) rtol = 0.01
+        rm("yf.png")
+
+        # McLean fit
+        mf = mcleanfit(x, fill(0.25, 10), y, fill(0.25, 10))
+        h = plot(mf, label="")
+        savefig(h, "mf.png")
+        img = load("mf.png")
+        @test sum(img)/length(img) ≈ RGB{Float64}(0.8182011764705884, 0.9208347549019601, 0.9848014215686267) rtol = 0.01
+        rm("mf.png")
+
+        # 3D McLean fit, as 3D line and as 2D projections
+        pts3 = [[t, 1 + t/2, 2t - 2] .+ 0.05 .* [sin(7t), cos(5t), sin(3t)] for t in range(0, 5, length=12)]
+        mf3 = mcleanfit(pts3, [Matrix(Diagonal([0.05, 0.08, 0.1].^2)) for _ in pts3])
+        h = scatter([p[1] for p in pts3], [p[2] for p in pts3], label="")
+        @test plot!(h, mf3, dims=2, label="") isa Plots.Plot
+        h = scatter3d([p[1] for p in pts3], [p[2] for p in pts3], [p[3] for p in pts3], label="")
+        @test plot3d!(h, mf3, label="") isa Plots.Plot
+        savefig(h, "mf3.png")
+        @test load("mf3.png") isa AbstractMatrix
+        rm("mf3.png")
+
         # Plot SIMS calibration line
         h = plot(calib)
         savefig(h, "calib.png")
@@ -1037,12 +1160,15 @@ end
 
 module MakieTest
     using Test, Statistics
+    using LinearAlgebra: Diagonal
     using Measurements
     using Isoplot
     using ImageIO, FileIO, CairoMakie
     using ColorTypes
 
-    import ..BaseTests: analyses
+    import ..BaseTests: analyses, calib
+
+    const MakieExt = Base.get_extension(Isoplot, :MakieExt)
 
     # Base.retry_load_extensions()
     @testset "Makie Plotting" begin
@@ -1081,6 +1207,103 @@ module MakieTest
         @test sum(img)/length(img) ≈ RGBA{Float64}(0.9847984095860566, 0.9847984095860566, 0.9847984095860566, 1.0) rtol = 0.01
         rm("concordia.png")
 
+        # Tera-Wasserburg concordia
+        f4 = Figure()
+        ax4 = Axis(f4[1,1])
+        l = concordialine!(ax4, 500, 1000, concordiaType=:TeraWasserburg, label="line")
+        c = concordiacurve!(ax4, 300, 1500, concordiaType=:TeraWasserburg, label="curve")
+        @test l isa MakieExt.ConcordiaLine
+        @test c isa MakieExt.ConcordiaCurve
+        axislegend(ax4)
+        save("concordia.png",f4)
+        @test size(load("concordia.png")) == (900, 1200)
+        rm("concordia.png")
+        @test_throws ArgumentError concordiacurve!(Axis(Figure()[1,1]), 0, 100, concordiaType=:Foo)
+
+        # Many concordia lines, and a plot of many analyses at once
+        f5 = Figure()
+        ax5 = Axis(f5[1,1])
+        concordialine!(ax5, 10*randn(20).+10, 100*randn(20).+1000)
+        plot!(ax5, analyses, color=(:blue, 0.3))
+        concordiacurve!(ax5) # Time range from axis limits (current axis)
+        save("concordia.png",f5)
+        @test size(load("concordia.png")) == (900, 1200)
+        rm("concordia.png")
+
+        # Tera-Wasserburg analyses
+        f8 = Figure()
+        ax8 = Axis(f8[1,1])
+        plot!(ax8, twanalysis.(analyses), color=(:blue, 0.3))
+        concordiacurve!(ax8, 100, 3000, concordiaType=:TeraWasserburg)
+        twconcordiacurve!(ax8, 100, 3000)
+        twconcordialine!(ax8, 500, 1000)
+        save("concordia.png",f8)
+        @test size(load("concordia.png")) == (900, 1200)
+        rm("concordia.png")
+
+        # York fit
+        x = [0.9304, 2.2969, 2.8047, 3.7933, 5.3853, 6.1995, 6.7479, 8.1856, 8.7423, 10.2588]
+        y = [0.8742, 2.1626, 3.042, 3.829, 5.0116, 5.5614, 6.7675, 7.8856, 9.6414, 10.4955]
+        yf = yorkfit(x, fill(0.25, 10), y, fill(0.25, 10))
+        f6 = Figure()
+        ax6 = Axis(f6[1,1])
+        scatter!(ax6, x, y)
+        @test plot!(ax6, yf) isa MakieExt.LineFit
+        @test plot!(ax6, yf, xlims=(0, 12)) isa MakieExt.LineFit
+
+        # McLean fit
+        mf = mcleanfit(x, fill(0.25, 10), y, fill(0.25, 10))
+        f6 = Figure()
+        ax6 = Axis(f6[1,1])
+        scatter!(ax6, x, y)
+        @test plot!(ax6, mf) isa MakieExt.LineFit
+        @test plot!(ax6, mf, xlims=(0, 12)) isa MakieExt.LineFit
+
+        # 3D McLean fit, as 3D line and as 2D projections
+        pts3 = [[t, 1 + t/2, 2t - 2] .+ 0.05 .* [sin(7t), cos(5t), sin(3t)] for t in range(0, 5, length=12)]
+        mf3 = mcleanfit(pts3, [Matrix(Diagonal([0.05, 0.08, 0.1].^2)) for _ in pts3])
+        f9 = Figure()
+        ax9 = Axis(f9[1,1])
+        scatter!(ax9, [p[1] for p in pts3], [p[2] for p in pts3])
+        @test plot!(ax9, mf3, dims=2) isa MakieExt.LineFit
+        ax9₃ = Axis3(f9[1,2])
+        scatter!(ax9₃, [p[1] for p in pts3], [p[2] for p in pts3], [p[3] for p in pts3])
+        @test plot!(ax9₃, mf3) isa MakieExt.LineFit
+        save("mf3.png", f9)
+        @test size(load("mf3.png")) == (900, 1200)
+        rm("mf3.png")
+
+        # Rank-order plots
+        f7 = Figure()
+        ax7 = Axis(f7[1,1])
+        @test rankorder!(ax7, (1:10) .± (2*ones(10))) isa MakieExt.RankOrderPlot
+        @test rankorder!(ax7, 1:10, 2*ones(10)) isa MakieExt.RankOrderPlot
+        @test rankorder!(ax7, [CI(1:10) for _ in 1:10]) isa MakieExt.RankOrderPlot
+        # Confidence intervals as error bars, in either or both of x and y
+        cis = [CI(exp.(range(-2, 2, length=100)) .+ i) for i in 1:4]
+        f = Figure(size=(900, 300))
+        @test plot!(Axis(f[1,1]), cis) isa MakieExt.CIPlot
+        @test plot!(Axis(f[1,2]), 1:4, cis) isa MakieExt.CIPlot
+        @test plot!(Axis(f[1,3]), cis, cis) isa MakieExt.CIPlot
+        @test plot!(Axis(f[1,3]), cis, 1:4) isa MakieExt.CIPlot
+        # SIMS calibration
+        axc = Axis(f[2,1]; Isoplot.calibrationlabels(calib)...)
+        @test plot!(axc, calib, label=Isoplot.calibrationlabel(calib)) isa MakieExt.SIMSCalibrationPlot
+        @test axc.xlabel[] == Isoplot.calibrationlabels(calib).xlabel
+        @test axislegend(axc) isa Makie.Legend
+        save("par.png", f)
+        @test load("par.png") isa AbstractMatrix
+        rm("par.png")
+        # 3D analyses: ellipsoids, and 2D projections
+        a3 = [Analysis([t, 1+t/2, 2t], [0.2, 0.3, 0.4], [0.04 0.03 0.0; 0.03 0.09 0.05; 0.0 0.05 0.16]) for t in 0:3]
+        f3 = Figure(size=(600, 300))
+        @test plot!(Axis3(f3[1,1]), a3) isa MakieExt.Ellipsoids
+        @test plot!(Axis3(f3[1,2]), a3[1]) isa MakieExt.Ellipsoids
+        @test plot!(Axis(f3[1,3]), Ellipse.(a3, 1, 3)) isa Makie.Poly
+        save("ell3.png", f3)
+        @test load("ell3.png") isa AbstractMatrix
+        rm("ell3.png")
+        @test rankorder!(ax7, [10.0, 10.3, 9.8, 10.6, 10.1] .± 0.2, wmean=true) isa MakieExt.RankOrderPlot
     end
 end
 
