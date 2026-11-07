@@ -1074,6 +1074,12 @@ module PlotsTest
         @test load("ell3.png") isa AbstractMatrix
         rm("ell3.png")
 
+        # CI error bars extend down by (mean - lower) and up by (upper - mean)
+        ci = CI(exp.(range(-2, 2, length=100)))
+        h = plot([ci])
+        lo, hi = h.series_list[1][:yerror]
+        @test lo[1] ≈ ci.mean - ci.lower && hi[1] ≈ ci.upper - ci.mean
+
         # With weighted mean
         d = [10.0, 10.3, 9.8, 10.6, 10.1] .± 0.2
         m = Isoplot.wmeanband(d)
@@ -1160,7 +1166,7 @@ module MakieTest
     using ImageIO, FileIO, CairoMakie
     using ColorTypes
 
-    import ..BaseTests: analyses
+    import ..BaseTests: analyses, calib
 
     const MakieExt = Base.get_extension(Isoplot, :MakieExt)
 
@@ -1273,6 +1279,21 @@ module MakieTest
         @test rankorder!(ax7, (1:10) .± (2*ones(10))) isa MakieExt.RankOrderPlot
         @test rankorder!(ax7, 1:10, 2*ones(10)) isa MakieExt.RankOrderPlot
         @test rankorder!(ax7, [CI(1:10) for _ in 1:10]) isa MakieExt.RankOrderPlot
+        # Confidence intervals as error bars, in either or both of x and y
+        cis = [CI(exp.(range(-2, 2, length=100)) .+ i) for i in 1:4]
+        f = Figure(size=(900, 300))
+        @test plot!(Axis(f[1,1]), cis) isa MakieExt.CIPlot
+        @test plot!(Axis(f[1,2]), 1:4, cis) isa MakieExt.CIPlot
+        @test plot!(Axis(f[1,3]), cis, cis) isa MakieExt.CIPlot
+        @test plot!(Axis(f[1,3]), cis, 1:4) isa MakieExt.CIPlot
+        # SIMS calibration
+        axc = Axis(f[2,1]; Isoplot.calibrationlabels(calib)...)
+        @test plot!(axc, calib, label=Isoplot.calibrationlabel(calib)) isa MakieExt.SIMSCalibrationPlot
+        @test axc.xlabel[] == Isoplot.calibrationlabels(calib).xlabel
+        @test axislegend(axc) isa Makie.Legend
+        save("par.png", f)
+        @test load("par.png") isa AbstractMatrix
+        rm("par.png")
         # 3D analyses: ellipsoids, and 2D projections
         a3 = [Analysis([t, 1+t/2, 2t], [0.2, 0.3, 0.4], [0.04 0.03 0.0; 0.03 0.09 0.05; 0.0 0.05 0.16]) for t in 0:3]
         f3 = Figure(size=(600, 300))

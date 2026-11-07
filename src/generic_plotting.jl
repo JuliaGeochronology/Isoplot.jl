@@ -120,6 +120,15 @@ function ellipsoid(d::Analysis3D{T}; sigmalevel::Number=2.7954, npoints::Integer
     x, y, z = ntuple(k -> [d.μ[k] + A[k,1]*sin(t)*cos(p) + A[k,2]*sin(t)*sin(p) + A[k,3]*cos(t) for t in θ, p in φ], 3)
     return x, y, z
 end
+## --- Axis labels and legend text for U-Pb SIMS calibration plots
+
+# Axis labels, as a NamedTuple of keyword arguments (e.g., `Axis(fig[1,1]; calibrationlabels(calib)...)`)
+calibrationlabels(calib::UPbSIMSCalibration) = (
+    xlabel = "$(prettify(:Pb206)) / $(prettify(calib.U)) RSF",
+    ylabel = "$(prettify(calib.numerator)) / $(prettify(calib.denominator))",
+)
+calibrationlabel(calib::UPbSIMSCalibration) = "York fit (N=$(length(calib.data)), MSWD=$(round(calib.line.mswd, sigdigits=3)))"
+
 
 ## --- Placeholder methods for plotting functions; see ext/ for (library-dependent) implementations
 

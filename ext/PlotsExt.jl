@@ -4,7 +4,7 @@ module PlotsExt
     using Plots: Shape, plot, plot!, plot3d!
     import Plots
     using Measurements
-    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband, ellipsoid
+    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband, ellipsoid, calibrationlabels, calibrationlabel
     # export plot, plot!
 
     const PlotOrSubplot = Union{Plots.Plot, Plots.Subplot}
@@ -64,12 +64,12 @@ module PlotsExt
         @eval function Plots.plot!(hdl::($P), calib::Isoplot.UPbSIMSCalibration; 
                 color = :auto,
                 alpha = 0.75,
-                xlabel="$(Isoplot.prettify(:Pb206)) / $(Isoplot.prettify(calib.U)) RSF",
-                ylabel="$(Isoplot.prettify(calib.numerator)) / $(Isoplot.prettify(calib.denominator))",
+                xlabel=calibrationlabels(calib).xlabel,
+                ylabel=calibrationlabels(calib).ylabel,
                 kwargs...
             )
             plot!(hdl, calib.data; color=(color===:auto ? 1 : color), alpha, xlabel, ylabel, label="Data (95% CI)", kwargs...)
-            plot!(hdl, calib.line; color=(color===:auto ? 2 : color), label="York fit (N=$(length(calib.data)), MSWD=$(round(calib.line.mswd, sigdigits=3)))", kwargs...)
+            plot!(hdl, calib.line; color=(color===:auto ? 2 : color), label=calibrationlabel(calib), kwargs...)
             return hdl
         end
     end
@@ -135,9 +135,9 @@ module PlotsExt
 
     # Plot confidence intervals
     for P in (Plots.Plot, Plots.Subplot)
-        @eval Plots.plot!(hdl::($P), y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), mscolor, kwargs...)
-        @eval Plots.plot!(hdl::($P), x, y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, x, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), mscolor, kwargs...)
-        @eval Plots.plot!(hdl::($P), x::Vector{<:CI}, y; mscolor=:auto, kwargs...) = plot!(hdl, x.|>c->c.mean, y; xerror=(x.|>c->c.upper-c.mean, x.|>c->c.mean-c.lower), mscolor, kwargs...)
+        @eval Plots.plot!(hdl::($P), y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, y.|>c->c.mean; yerror=(y.|>c->c.mean-c.lower, y.|>c->c.upper-c.mean), mscolor, kwargs...)
+        @eval Plots.plot!(hdl::($P), x, y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, x, y.|>c->c.mean; yerror=(y.|>c->c.mean-c.lower, y.|>c->c.upper-c.mean), mscolor, kwargs...)
+        @eval Plots.plot!(hdl::($P), x::Vector{<:CI}, y; mscolor=:auto, kwargs...) = plot!(hdl, x.|>c->c.mean, y; xerror=(x.|>c->c.mean-c.lower, x.|>c->c.upper-c.mean), mscolor, kwargs...)
         @eval Plots.plot!(hdl::($P), x::Vector{<:CI}, y::Vector{<:CI}; mscolor=:auto, kwargs...) = plot!(hdl, x.|>c->c.mean, y.|>c->c.mean; xerror=(x.|>c->c.mean-c.lower, x.|>c->c.upper-c.mean), yerror=(y.|>c->c.mean-c.lower, y.|>c->c.upper-c.mean), mscolor, kwargs...)
     end
 
@@ -174,7 +174,7 @@ module PlotsExt
         wmean && throw(ArgumentError("`wmean` is only supported for `Measurement` data"))
         x = i0 .+ scale.*(1:length(data))
         y = sort(data)
-        plot!(h, x, y.|>c->c.mean; yerror=(y.|>c->c.upper-c.mean, y.|>c->c.mean-c.lower), label, mscolor, seriestype, xticks, kwargs...)
+        plot!(h, x, y.|>c->c.mean; yerror=(y.|>c->c.mean-c.lower, y.|>c->c.upper-c.mean), label, mscolor, seriestype, xticks, kwargs...)
     end
 
 end

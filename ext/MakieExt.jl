@@ -4,7 +4,7 @@ module MakieExt
     using Makie
     using Measurements
     import Isoplot: concordialine, concordialine!, concordiacurve, concordiacurve!
-    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband, ellipsoid
+    import Isoplot: concordiacoords, concordialinecoeffs, concordiacurvedata, xtimerange, wmeanband, ellipsoid, calibrationlabel
 
     ## --- Ellipses and analyses
 
@@ -184,6 +184,62 @@ module MakieExt
             y, z = (value.(Isoplot.line.(lf, x, d)) for d in dims)
             lines!(p, x, y, z; color=p.color, linewidth=p.linewidth, label=p.label)
         end
+        return p
+    end
+
+    ## --- U-Pb SIMS calibrations: data ellipses with the York fit. Axis labels: `Axis(fig[1,1]; Isoplot.calibrationlabels(calib)...)`
+
+    @recipe(SIMSCalibrationPlot, calib) do scene
+        Attributes(
+            color = Makie.wong_colors()[1],
+            linecolor = Makie.wong_colors()[2],
+            alpha = 0.75,
+            label = nothing, # Legend entry; use `Isoplot.calibrationlabel(calib)` for the standard text
+        )
+    end
+    Makie.legendelements(p::SIMSCalibrationPlot, legend) = [PolyElement(color=(p.color[], p.alpha[])), LineElement(color=p.linecolor[])]
+    Makie.convert_arguments(::Type{<:SIMSCalibrationPlot}, c::Isoplot.UPbSIMSCalibration) = (c,)
+    Makie.plottype(::Isoplot.UPbSIMSCalibration) = SIMSCalibrationPlot
+
+    function Makie.plot!(p::SIMSCalibrationPlot)
+        c = p.calib[]
+        xmin, xmax = datalimits(c.data)[1:2]
+        pad = (xmax - xmin)/10
+        poly!(p, c.data; color=(p.color[], p.alpha[]))
+        linefit!(p, c.line; xlims=(xmin - pad, xmax + pad), color=p.linecolor)
+        return p
+    end
+
+    ## --- Confidence intervals as error bars, in place of either or both of x and y
+
+    @recipe(CIPlot, x, y) do scene
+        Attributes(
+            color = Makie.wong_colors()[1],
+            markersize = 9,
+            whiskerwidth = 0,
+            label = nothing,
+        )
+    end
+    const CIs = AbstractVector{<:CI}
+    Makie.convert_arguments(::Type{<:CIPlot}, y::CIs) = (collect(1:length(y)), y)
+    Makie.convert_arguments(::Type{<:CIPlot}, x::AbstractVector, y::AbstractVector) = (x, y)
+    Makie.plottype(::CIs) = CIPlot
+    Makie.plottype(::AbstractVector, ::CIs) = CIPlot
+    Makie.plottype(::CIs, ::AbstractVector) = CIPlot
+    Makie.plottype(::CIs, ::CIs) = CIPlot
+
+    civalue(v::CIs) = [c.mean for c in v]
+    civalue(v) = v
+    # Errorbars as (lower distance, upper distance), if any
+    function cierrors(v::CIs)
+        return [c.mean - c.lower for c in v], [c.upper - c.mean for c in v]
+    end
+
+    function Makie.plot!(p::CIPlot)
+        x, y = p.x[], p.y[]
+        y isa CIs && errorbars!(p, civalue(x), civalue(y), cierrors(y)...; color=p.color, whiskerwidth=p.whiskerwidth)
+        x isa CIs && errorbars!(p, civalue(x), civalue(y), cierrors(x)...; color=p.color, whiskerwidth=p.whiskerwidth, direction=:x)
+        scatter!(p, civalue(x), civalue(y); color=p.color, markersize=p.markersize, label=p.label)
         return p
     end
 
