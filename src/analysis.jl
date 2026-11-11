@@ -163,6 +163,11 @@ function Ellipse(d::Analysis2D;
     a, b, θ = ellipseparameters(d, sigmalevel)
     return Ellipse(d, a, b, θ, _val(npoints))
 end
+# Make the 2D ellipse of the marginal distribution of variables `i` and `j` of a higher-dimensional analysis
+function Ellipse(d::Analysis{N,T}, i::Integer, j::Integer; kwargs...) where {N,T}
+    ij = SVector(i, j)
+    return Ellipse(Analysis2D(d.μ[ij], d.σ[ij], d.Σ[ij, ij]); kwargs...)
+end
 # Make an ellipse if given x and y positions, major and minor axes, and rotation
 # Keeping the number of points at the type level for stability
 function Ellipse(d::Analysis2D{T}, a, b, θ, ::Val{npoints}=Val(50)) where {T,npoints}

@@ -272,8 +272,9 @@ struct YorkFit{T<:Number} <: Data{T}
 end
 
 # Calculate a line given data
-line(yf::YorkFit, x::Number) =  yf.ym + (x - yf.xm) * yf.slope
-invline(yf::YorkFit, y::Number) = (y - yf.ym) / yf.slope + yf.xm
+line(yf::YorkFit, x::Number) =  yf.ym + (x - yf.xm) * yf.slope      # Calculate independent variable from dependent variable
+invline(yf::YorkFit, y::Number) = (y - yf.ym) / yf.slope + yf.xm    # Calculate dependent variable from independent variable
+line(yf::YorkFit, x::Number, j::Integer) = j == 2 ? line(yf, x) : throw(ArgumentError("A YorkFit is two-dimensional"))
 
 """
 ```julia
