@@ -150,11 +150,6 @@ end
 Ellipse(args...; kwargs...) = Ellipse(Analysis(args...); kwargs...)
 # AbstractAnalysis types must be unwrapped
 @inline Ellipse(d::AbstractAnalysis, args...; kwargs...) = Ellipse(d.data, args...; kwargs...)
-# Make the 2D ellipse of the marginal distribution of variables `i` and `j` of a higher-dimensional analysis
-function Ellipse(d::Analysis{N,T}, i::Integer, j::Integer; kwargs...) where {N,T}
-    ij = SVector(i, j)
-    return Ellipse(Analysis2D(d.μ[ij], d.σ[ij], d.Σ[ij, ij]); kwargs...)
-end
 # Make a 2d ellipse from a 2d analysis
 function Ellipse(d::Analysis2D; 
         sigmalevel::Number = 2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
@@ -164,7 +159,7 @@ function Ellipse(d::Analysis2D;
     return Ellipse(d, a, b, θ, _val(npoints))
 end
 # Make the 2D ellipse of the marginal distribution of variables `i` and `j` of a higher-dimensional analysis
-function Ellipse(d::Analysis{N,T}, i::Integer, j::Integer; kwargs...) where {N,T}
+function Ellipse(d::Analysis, i::Integer, j::Integer; kwargs...)
     ij = SVector(i, j)
     return Ellipse(Analysis2D(d.μ[ij], d.σ[ij], d.Σ[ij, ij]); kwargs...)
 end
