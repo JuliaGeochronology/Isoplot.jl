@@ -47,13 +47,12 @@ end
 
 function isconcordant(d::UPbAnalysis;
         sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
-        npoints::Integer = 50,
     )
     isnan(d) && return false # No NaNs allowed
     (0 < abs(det(cov(d))) < Inf) || return false # Determinant of covariance matrix must be finite and not zero
 
     # Make error ellipse
-    e = Ellipse(d; sigmalevel, npoints)
+    e = Ellipse(d; sigmalevel)
     # Calculate mean
     μ, mswd = wmean([age75(d), age68(d)], corrected=true)
 
@@ -115,7 +114,7 @@ end
 σcombined(m::Measurement, σ) = sqrt(stdev(m)^2 + σ^2)
 σcombined(_, σ) = σ # If m is not a Measurement
 
-upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, Ellipse(d; npoints=50))
+upperintercept(tₗₗ::Number, d::UPbAnalysis) = upperintercept(tₗₗ, Ellipse(d.data))
 
 function upperintercept(tₗₗ::Number, d::UPbAnalysis{T}, nresamplings::Integer) where T
     # Get ratios

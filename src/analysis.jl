@@ -148,17 +148,24 @@ end
 
 # Make an ellipse from anything which can be turned into an analysis object
 Ellipse(args...; kwargs...) = Ellipse(Analysis(args...); kwargs...)
-# Make an ellipse from a Analysis object
-Ellipse(d::AbstractAnalysis, args...; kwargs...) = Ellipse(d.data, args...; kwargs...)
-function Ellipse(d::Analysis2D;
-        sigmalevel::Number=2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
-        npoints::Integer=50,
+# AbstractAnalysis types must be unwrapped
+@inline Ellipse(d::AbstractAnalysis, args...; kwargs...) = Ellipse(d.data, args...; kwargs...)
+# Make the 2D ellipse of the marginal distribution of variables `i` and `j` of a higher-dimensional analysis
+function Ellipse(d::Analysis{N,T}, i::Integer, j::Integer; kwargs...) where {N,T}
+    ij = SVector(i, j)
+    return Ellipse(Analysis2D(d.μ[ij], d.σ[ij], d.Σ[ij, ij]); kwargs...)
+end
+# Make a 2d ellipse from a 2d analysis
+function Ellipse(d::Analysis2D; 
+        sigmalevel::Number = 2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
+        npoints = Val(50),
     )
     a, b, θ = ellipseparameters(d, sigmalevel)
-    return Ellipse(d, a, b, θ; npoints)
+    return Ellipse(d, a, b, θ, _val(npoints))
 end
 # Make an ellipse if given x and y positions, major and minor axes, and rotation
-function Ellipse(d::Analysis2D{T}, a, b, θ; npoints::Integer=50) where {T}
+# Keeping the number of points at the type level for stability
+function Ellipse(d::Analysis2D{T}, a, b, θ, ::Val{npoints}=Val(50)) where {T,npoints}
     x₀, y₀ = mean(d)
     σx₀, σy₀ = std(d)
     t = SVector{npoints,T}(range(0, 2π, length=npoints))
@@ -166,6 +173,8 @@ function Ellipse(d::Analysis2D{T}, a, b, θ; npoints::Integer=50) where {T}
     y = a*sin(θ)*cos.(t) .+ b*cos(θ)*sin.(t) .+ y₀
     return Ellipse(x, y, x₀, y₀, σx₀, σy₀)
 end
+_val(x) = Val(x)
+_val(x::Val) = x
 
 # Non-exported function: return semimajor and minor axes for a given U-Pb analysis
 function ellipseparameters(d::Analysis2D{T}, sigmalevel::Number) where T
@@ -175,7 +184,7 @@ function ellipseparameters(d::Analysis2D{T}, sigmalevel::Number) where T
 
     # Calculate eigenvectors and eigenvalues from the covariance matrix.
     # V: matrix of eigenvectors, D: diagonal matrix of eigenvalues
-    F = eigen(d.Σ)
+    F = eigen(Symmetric(d.Σ))
     # Find index of semimajor and semiminor axes
     major = argmax(F.values)
     minor = argmin(F.values)

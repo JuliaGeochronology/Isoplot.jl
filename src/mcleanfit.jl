@@ -217,14 +217,17 @@ function mclean_solve(θ::SVector{M,F}, S::SMatrix{M2,M,F}, z₀, p, W, tol, max
     scale = sum(i -> (ρᵢ = p[i] - a₀; ρᵢ ⋅ (W[i]*ρᵢ)), eachindex(p))
     tolₑ = max(tol, 100*eps(F)*scale)
 
-    function evaluate(θ, derivatives=true)
+    function likelihood(θ)
         a, v = _mclean_halves(z₀ + S*θ, N)
-        derivatives || return _mclean_loglikelihood(a, v, p, W)
+        return _mclean_loglikelihood(a, v, p, W)
+    end
+    function evaluate(θ)
+        a, v = _mclean_halves(z₀ + S*θ, N)
         Gz, Hz = _mclean_derivatives(a, v, p, W)
         return S' * Gz, S' * Hz * S # Restrict to the free parameters
     end
     λ = F(1e-3)
-    L = evaluate(θ, false)
+    L = likelihood(θ)
     G, H = evaluate(θ)
     converged = false
     for _ in 1:maxiter
@@ -241,7 +244,7 @@ function mclean_solve(θ::SVector{M,F}, S::SMatrix{M2,M,F}, z₀, p, W, tol, max
             continue
         end
         h = -Hₗ \ G
-        Lₙ = evaluate(θ + h, false)
+        Lₙ = likelihood(θ + h)
         if Lₙ > L
             # Accept step and relax damping
             θ += h
@@ -258,7 +261,7 @@ function mclean_solve(θ::SVector{M,F}, S::SMatrix{M2,M,F}, z₀, p, W, tol, max
 
     # Polish with one last Newton step if converged to tolerance (cheap, and quadratically convergent from here)
     converged && (θ -= H \ G)
-    return θ, evaluate(θ, false), last(evaluate(θ))
+    return θ, likelihood(θ), last(evaluate(θ))
 end
 
 # Profile log-likelihood (minus constants) of the line `a + vt`, McLean eq. 17
