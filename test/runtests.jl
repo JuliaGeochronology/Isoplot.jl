@@ -133,10 +133,10 @@ module BaseTests
         tₗₗ = 35
         ui = upperintercept(tₗₗ ± 10, d1)
         @test ui.val ≈ 3921.343026090256
-        @test ui.err ≈ 2.745595368456472
+        @test ui.err ≈ 2.7457641146989196
         ui = upperintercept(tₗₗ, d1)
         @test ui.val ≈ 3921.343026090256
-        @test ui.err ≈ 0.7241111646504936
+        @test ui.err ≈ 0.7247507330459223
 
         N = 10000
         uis = upperintercept(tₗₗ, d1, N)
@@ -695,10 +695,10 @@ module BaseTests
 
     @testset "Concordia Metropolis" begin
         data = upperintercept.(0, analyses)
-        @test Isoplot.dist_ll(ones(10), data, 751, 755) + Isoplot.prior_ll(data, 751, 755) ≈ -20.09136536048026
-        @test Isoplot.dist_ll(ones(10), data, 750, 760) + Isoplot.prior_ll(data, 750, 760) ≈ -30.459633175497830
-        @test Isoplot.dist_ll(ones(10), data, 752, 753) + Isoplot.prior_ll(data, 752, 753) ≈ -15.305463167234748
-        @test Isoplot.dist_ll(ones(10), data, 751, 752) + Isoplot.prior_ll(data, 751, 752) ≈ -47.386667785224034
+        @test Isoplot.dist_ll(ones(10), data, 751, 755) + Isoplot.prior_ll(data, 751, 755) ≈ -20.09351207575044
+        @test Isoplot.dist_ll(ones(10), data, 750, 760) + Isoplot.prior_ll(data, 750, 760) ≈ -30.46006213166579
+        @test Isoplot.dist_ll(ones(10), data, 752, 753) + Isoplot.prior_ll(data, 752, 753) ≈ -15.305942156335554
+        @test Isoplot.dist_ll(ones(10), data, 751, 752) + Isoplot.prior_ll(data, 751, 752) ≈ -47.38494840554831
 
         tmindist, t0dist = metropolis_min(1000, ones(100), analyses; burnin=200, method=:bivariate)
         @test tmindist isa Vector{Float64}

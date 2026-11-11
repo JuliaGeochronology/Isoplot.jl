@@ -153,7 +153,7 @@ Ellipse(args...; kwargs...) = Ellipse(Analysis(args...); kwargs...)
 # Make a 2d ellipse from a 2d analysis
 function Ellipse(d::Analysis2D; 
         sigmalevel::Number = 2.447746830680816, # bivariate p=0.05 level: sqrt(invlogccdf(Chisq(2), log(0.05)))
-        npoints = Val(50),
+        npoints = Val(128),
     )
     a, b, θ = ellipseparameters(d, sigmalevel)
     return Ellipse(d, a, b, θ, _val(npoints))
@@ -165,7 +165,7 @@ function Ellipse(d::Analysis, i::Integer, j::Integer; kwargs...)
 end
 # Make an ellipse if given x and y positions, major and minor axes, and rotation
 # Keeping the number of points at the type level for stability
-function Ellipse(d::Analysis2D{T}, a, b, θ, ::Val{npoints}=Val(50)) where {T,npoints}
+function Ellipse(d::Analysis2D{T}, a, b, θ, ::Val{npoints}=Val(128)) where {T,npoints}
     x₀, y₀ = mean(d)
     σx₀, σy₀ = std(d)
     t = SVector{npoints,T}(range(0, 2π, length=npoints))
