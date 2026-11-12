@@ -1,5 +1,5 @@
-
-# Custom pretty-printing for York fit results
+## --- Custom pretty-printing for various types
+# York fits
 function Base.show(io::IO, x::YorkFit{T}) where T
     if get(io, :compact, false)
         print(io, "YorkFit{$T}(…)")
@@ -17,7 +17,7 @@ function Base.show(io::IO, ::MIME"text/plain", x::YorkFit{T}) where T
     )
 end
 
-# Custom pretty-printing for McLean fit results
+# McLean fits
 function Base.show(io::IO, x::McLeanFit{T,N}) where {T,N}
     if get(io, :compact, false)
         print(io, "McLeanFit{$T,$N}(…)")
@@ -45,6 +45,7 @@ function Base.show(io::IO, ::MIME"text/plain", x::McLeanFit{T,N}) where {T,N}
     end
 end
 
+# CIs
 function Base.show(io::IO, x::CI{T}) where T
     if get(io, :compact, false)
         l = round(x.mean - x.lower, sigdigits=2)
@@ -79,6 +80,25 @@ function Base.print(io::IO, x::CI)
     print(io, "$m +$u/-$l")
 end
 
+# RadiocarbonCalibration
+function Base.show(io::IO, x::RadiocarbonCalibration{T}) where T
+    if get(io, :compact, false)
+        print(io, "RadiocarbonCalibration{$T}(…)")
+    else
+        Base.show_default(io, x)
+    end
+end
+function Base.show(io::IO, ::MIME"text/plain", x::RadiocarbonCalibration{T}) where T
+    print(io, """RadiocarbonCalibration{$T}:
+      dt            : $(x.dt) years
+      age_calendar  : $(x.age_calendar) years
+      age_sigma     : [$(first(x.age_sigma)) ... $(last(x.age_sigma))] years
+      age_14C       : [$(first(x.age_14C)) ... $(last(x.age_14C))] ¹⁴C years
+    """
+    )
+end
+
+## --- Helpers
 # Convert symbols to unicode
 function prettify(s::Symbol)
     if s === :U238

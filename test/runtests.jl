@@ -5,8 +5,6 @@ module BaseTests
     using Isoplot
 
     @testset "Show" begin
-        yf = Isoplot.YorkFit(1±1, 1±1, 0.0, 1±1, 1.0)
-        @test display(yf) != NaN
 
         ci = CI(1:10)
         @test ci == CI{Float64}(5.5, 3.0276503540974917, 5.5, 1.225, 9.775)
@@ -16,8 +14,13 @@ module BaseTests
         a = Age(ci)
         @test display(a) != NaN
 
+        yf = yorkfit(1:10, ones(10), 1:10, ones(10))
+        @test display(yf) != NaN
+
         mf = mcleanfit(1:10, ones(10), 1:10, ones(10))
         @test display(mf) != NaN
+    
+        @test display(intcal20) != NaN
     end
 
     @testset "General" begin
